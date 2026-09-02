@@ -162,6 +162,77 @@ describe('TISNET API (e2e)', () => {
         adminAccessToken = response.body.data.accessToken;
       });
     });
+
+    describe('Revocación de tokens (logout real)', () => {
+      it('PRUEBA A — access token queda inválido tras logout', async () => {
+        // 1. Login independiente
+        const loginRes = await request(app.getHttpServer())
+          .post('/api/v1/auth/login')
+          .send(adminUser)
+          .expect(200);
+
+        const token = loginRes.body.data.accessToken as string;
+
+        // 2. El token es válido antes del logout
+        await request(app.getHttpServer())
+          .get('/api/v1/auth/me')
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        // 3. Logout — invalida tokenVersion en BD
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/logout')
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        // 4. El mismo token ahora debe ser rechazado con 401
+        const meRes = await request(app.getHttpServer())
+          .get('/api/v1/auth/me')
+          .set('Authorization', `Bearer ${token}`)
+          .expect(401);
+
+        expect(meRes.body.success).toBe(false);
+
+        // 5. Restaurar adminAccessToken con un nuevo login para los demás tests
+        const newLogin = await request(app.getHttpServer())
+          .post('/api/v1/auth/login')
+          .send(adminUser)
+          .expect(200);
+        adminAccessToken = newLogin.body.data.accessToken;
+      });
+
+      it('PRUEBA B — refresh token queda inválido tras logout', async () => {
+        // 1. Login independiente
+        const loginRes = await request(app.getHttpServer())
+          .post('/api/v1/auth/login')
+          .send(adminUser)
+          .expect(200);
+
+        const token = loginRes.body.data.accessToken as string;
+        const rToken = loginRes.body.data.refreshToken as string;
+
+        // 2. Logout con el access token
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/logout')
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        // 3. El refresh token anterior debe ser rechazado con 401
+        const refreshRes = await request(app.getHttpServer())
+          .post('/api/v1/auth/refresh')
+          .send({ refreshToken: rToken })
+          .expect(401);
+
+        expect(refreshRes.body.success).toBe(false);
+
+        // 4. Restaurar adminAccessToken con un nuevo login para los demás tests
+        const newLogin = await request(app.getHttpServer())
+          .post('/api/v1/auth/login')
+          .send(adminUser)
+          .expect(200);
+        adminAccessToken = newLogin.body.data.accessToken;
+      });
+    });
   });
 
   describe('Categories', () => {

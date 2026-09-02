@@ -27,6 +27,7 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  tokenVersion Int @default(0)
   role         Role     @relation(fields: [roleId], references: [id])
 }
 model Category {

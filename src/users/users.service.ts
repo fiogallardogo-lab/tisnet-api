@@ -22,4 +22,15 @@ export class UsersService {
       },
     });
   }
+
+  async incrementTokenVersion(id: number) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        tokenVersion: {
+          increment: 1,
+        },
+      },
+    });
+  }
 }
