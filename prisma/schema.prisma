@@ -29,3 +29,11 @@ model User {
   updatedAt    DateTime @updatedAt
   role         Role     @relation(fields: [roleId], references: [id])
 }
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
