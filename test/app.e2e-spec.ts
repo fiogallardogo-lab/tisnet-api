@@ -333,6 +333,174 @@ describe('TISNET API (e2e)', () => {
     });
   });
 
+  describe('Technologies', () => {
+    let createdTechnologyId: number;
+    const testTechnologyName = `Tecnologia E2E ${Date.now()}`;
+
+    describe('RBAC', () => {
+      it('debe rechazar POST /technologies sin token con 401', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/technologies')
+          .send({ name: testTechnologyName })
+          .expect(401);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar GET /technologies con DEVELOPER con 403', async () => {
+        expect(developerAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/technologies')
+          .set('Authorization', `Bearer ${developerAccessToken}`)
+          .expect(403);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('No tienes permisos suficientes');
+      });
+
+      it('debe permitir a SUPER_ADMIN listar tecnologías', async () => {
+        expect(adminAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/technologies')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(Array.isArray(response.body.data)).toBe(true);
+      });
+    });
+
+    describe('POST /api/v1/technologies', () => {
+      it('debe rechazar un nombre vacío con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/technologies')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({ name: '' })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe crear una tecnología con SUPER_ADMIN', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/technologies')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: testTechnologyName,
+            description: 'Tecnología creada automáticamente por e2e',
+            icon: 'tech-icon.svg',
+            isActive: true,
+          })
+          .expect(201);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toBeDefined();
+        expect(response.body.data.name).toBe(testTechnologyName);
+        expect(response.body.data.description).toBe(
+          'Tecnología creada automáticamente por e2e',
+        );
+        expect(response.body.data.icon).toBe('tech-icon.svg');
+        expect(response.body.data.isActive).toBe(true);
+
+        createdTechnologyId = response.body.data.id;
+        expect(createdTechnologyId).toBeDefined();
+      });
+
+      it('debe rechazar una tecnología duplicada con 409', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/technologies')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: testTechnologyName,
+            description: 'Intento duplicado',
+          })
+          .expect(409);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('La tecnología ya existe');
+      });
+    });
+
+    describe('GET /api/v1/technologies', () => {
+      it('debe listar las tecnologías', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/technologies')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(Array.isArray(response.body.data)).toBe(true);
+
+        const technology = response.body.data.find(
+          (item: { id: number }) => item.id === createdTechnologyId,
+        );
+
+        expect(technology).toBeDefined();
+        expect(technology.name).toBe(testTechnologyName);
+      });
+    });
+
+    describe('GET /api/v1/technologies/:id', () => {
+      it('debe devolver una tecnología existente', async () => {
+        expect(createdTechnologyId).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/technologies/${createdTechnologyId}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdTechnologyId);
+        expect(response.body.data.name).toBe(testTechnologyName);
+      });
+
+      it('debe devolver 404 para una tecnología inexistente', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/technologies/999999')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Tecnología no encontrada');
+      });
+    });
+
+    describe('PATCH /api/v1/technologies/:id', () => {
+      it('debe actualizar una tecnología existente', async () => {
+        expect(createdTechnologyId).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/technologies/${createdTechnologyId}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            description: 'Tecnología actualizada mediante e2e',
+          })
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdTechnologyId);
+        expect(response.body.data.description).toBe(
+          'Tecnología actualizada mediante e2e',
+        );
+      });
+
+      it('debe devolver 404 al actualizar una tecnología inexistente', async () => {
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/technologies/999999')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            description: 'No debería actualizarse',
+          })
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Tecnología no encontrada');
+      });
+    });
+  });
+
   describe('Logout', () => {
     it('debe permitir cerrar sesión a un usuario autenticado', async () => {
       expect(adminAccessToken).toBeDefined();
