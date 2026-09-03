@@ -1,0 +1,31 @@
+# Dependencies
+node_modules
+dist
+
+# Version control
+.git
+.gitignore
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE/editor
+.vscode
+.cursor
+.claude
+.devin
+.agents
+
+# Logs
+npm-debug.log
+*.log
+
+# Tests / coverage / cache
+coverage
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+Thumbs.db
