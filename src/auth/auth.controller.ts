@@ -20,7 +20,7 @@ import {
 } from '@nestjs/swagger';
 
 interface AuthenticatedUser {
-  userId: number;
+  id: number;
   email: string;
   role: string;
 }
@@ -54,7 +54,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cerrar sesión' })
   async logout(@Request() req: AuthenticatedRequest) {
-    return this.authService.logout(req.user.userId);
+    return this.authService.logout(req.user.id);
   }
 
   @Get('me')
