@@ -2,7 +2,6 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 
@@ -22,18 +21,29 @@ export class AuthService {
   async validateUser(email: string, pass: string) {
     const user = await this.usersService.findByEmail(email);
 
+    console.log('=== LOGIN DEBUG ===');
+    console.log('email:', email);
+    console.log('usuario encontrado:', !!user);
+    console.log('isActive:', user?.isActive);
+    console.log('role:', user?.role?.name);
+
     if (!user || !user.isActive) {
+      console.log('FALLO: usuario inexistente o inactivo');
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
     const isMatch = await bcrypt.compare(pass, user.passwordHash);
 
+    console.log('password coincide:', isMatch);
+
     if (!isMatch) {
+      console.log('FALLO: contraseña incorrecta');
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    const { passwordHash: _passwordHash, ...result } = user;
+    console.log('LOGIN CORRECTO');
 
+    const { passwordHash: _passwordHash, ...result } = user;
     return result;
   }
 
