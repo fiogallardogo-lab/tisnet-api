@@ -1,6 +1,7 @@
 services:
   mysql:
     image: mysql:8.0
+    command: --lower_case_table_names=1
     container_name: tisnet-mysql
     restart: unless-stopped
 
