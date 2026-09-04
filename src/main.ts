@@ -9,8 +9,16 @@ import { HttpExceptionFilter } from './common/filters/http-exception/http-except
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+    'http://localhost:5177',
+  ];
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
