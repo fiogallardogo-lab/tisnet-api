@@ -10,6 +10,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ProjectStatus {
+  DRAFT
+  IN_DEVELOPMENT
+  IN_REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
 model Role {
   id        Int      @id @default(autoincrement())
   name      String   @unique @db.VarChar(30)
@@ -27,24 +35,67 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  tokenVersion Int @default(0)
+  tokenVersion Int      @default(0)
   role         Role     @relation(fields: [roleId], references: [id])
 }
+
 model Category {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique @db.VarChar(100)
-  description String?  @db.Text
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(100)
+  description String?   @db.Text
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  projects    Project[]
 }
 
 model Technology {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique @db.VarChar(100)
-  description String?  @db.Text
-  icon        String?  @db.VarChar(255)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          Int                 @id @default(autoincrement())
+  name        String              @unique @db.VarChar(100)
+  description String?             @db.Text
+  icon        String?             @db.VarChar(255)
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  projects    ProjectTechnology[]
+}
+
+model Project {
+  id               Int                 @id @default(autoincrement())
+  name             String              @db.VarChar(150)
+  slug             String              @unique @db.VarChar(180)
+  shortDescription String              @db.VarChar(300)
+  description      String              @db.Text
+  problem          String?             @db.Text
+  solution         String?             @db.Text
+  objective        String?             @db.Text
+  features         Json?
+  categoryId       Int
+  status           ProjectStatus       @default(DRAFT)
+  developmentDate  DateTime?           @db.Date
+  clientName       String?             @db.VarChar(150)
+  demoUrl          String?             @db.VarChar(500)
+  externalUrl      String?             @db.VarChar(500)
+  coverImageUrl    String?             @db.VarChar(500)
+  isFeatured       Boolean             @default(false)
+  isPublished      Boolean             @default(false)
+  displayOrder     Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  category         Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  technologies     ProjectTechnology[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([isPublished, displayOrder])
+}
+
+model ProjectTechnology {
+  projectId    Int
+  technologyId Int
+  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  technology   Technology @relation(fields: [technologyId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, technologyId])
+  @@index([technologyId])
 }
