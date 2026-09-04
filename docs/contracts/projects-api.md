@@ -11,6 +11,7 @@ El contrato no incluye Workspace, integrantes, actualizaciones internas ni carga
 - Base URL local: `http://localhost:3000/api/v1`.
 - Los endpoints privados requieren `Authorization: Bearer <accessToken>`.
 - Roles autorizados en administración: `ADMIN` y `SUPER_ADMIN`.
+- El rol `DEVELOPER` no accede a los endpoints administrativos de Project. Su participación se realizará mediante el módulo Workspace y estará limitada a proyectos donde tenga una asignación activa, de acuerdo con la matriz de permisos del producto.
 - Las fechas se devuelven como texto ISO 8601.
 - Los identificadores son números enteros positivos.
 - Las imágenes se representan mediante URL. No se acepta Base64.
