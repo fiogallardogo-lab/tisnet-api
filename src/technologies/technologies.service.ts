@@ -28,8 +28,9 @@ export class TechnologiesService {
         });
     }
 
-    async findAll() {
+    async findAll(isActive?: boolean) {
         return this.prisma.technology.findMany({
+            ...(isActive === undefined ? {} : { where: { isActive } }),
             orderBy: {
                 name: 'asc',
             },
