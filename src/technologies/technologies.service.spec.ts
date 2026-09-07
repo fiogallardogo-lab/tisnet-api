@@ -92,6 +92,18 @@ describe('TechnologiesService', () => {
 
             expect(result).toEqual([]);
         });
+
+        it('debe filtrar tecnologías activas cuando isActive es true', async () => {
+            prismaServiceMock.technology.findMany.mockResolvedValue([mockTechnology]);
+
+            const result = await service.findAll(true);
+
+            expect(result).toEqual([mockTechnology]);
+            expect(prismaServiceMock.technology.findMany).toHaveBeenCalledWith({
+                where: { isActive: true },
+                orderBy: { name: 'asc' },
+            });
+        });
     });
 
     // --------------------------------------------------------------- findOne

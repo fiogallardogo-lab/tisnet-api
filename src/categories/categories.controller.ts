@@ -6,9 +6,10 @@ import {
     ParseIntPipe,
     Patch,
     Post,
+    Query,
     UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -17,6 +18,7 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { ActiveFilterQueryDto } from '../common/dto/active-filter-query.dto';
 
 @ApiTags('Categories')
 @ApiBearerAuth()
@@ -33,8 +35,9 @@ export class CategoriesController {
 
     @Get()
     @Roles('ADMIN', 'SUPER_ADMIN')
-    findAll() {
-        return this.categoriesService.findAll();
+    @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+    findAll(@Query() query: ActiveFilterQueryDto) {
+        return this.categoriesService.findAll(query.isActive);
     }
 
     @Get(':id')

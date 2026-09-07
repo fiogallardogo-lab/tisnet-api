@@ -6,9 +6,10 @@ import {
     ParseIntPipe,
     Patch,
     Post,
+    Query,
     UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { TechnologiesService } from './technologies.service';
 import { CreateTechnologyDto } from './dto/create-technology.dto';
@@ -17,6 +18,7 @@ import { UpdateTechnologyDto } from './dto/update-technology.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { ActiveFilterQueryDto } from '../common/dto/active-filter-query.dto';
 
 @ApiTags('Technologies')
 @ApiBearerAuth()
@@ -33,8 +35,9 @@ export class TechnologiesController {
 
     @Get()
     @Roles('ADMIN', 'SUPER_ADMIN')
-    findAll() {
-        return this.technologiesService.findAll();
+    @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+    findAll(@Query() query: ActiveFilterQueryDto) {
+        return this.technologiesService.findAll(query.isActive);
     }
 
     @Get(':id')
