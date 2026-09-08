@@ -22,6 +22,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node --env-file=.env prisma/seed.cjs",
+    "prisma:seed:test": "node --env-file=.env.test prisma/seed.cjs",
     "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {
