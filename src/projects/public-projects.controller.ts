@@ -10,13 +10,15 @@ export class PublicProjectsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar proyectos publicados del portafolio' })
+  @ApiResponse({ status: 200, description: 'Operación realizada correctamente' })
   findAll(@Query() query: ListPublicProjectsQueryDto) {
     return this.projectsService.findPublic(query);
   }
 
   @Get(':slug')
   @ApiOperation({ summary: 'Consultar un proyecto publicado por slug' })
-  @ApiResponse({ status: 404, description: 'Proyecto público no encontrado' })
+  @ApiResponse({ status: 200, description: 'Operación realizada correctamente' })
+  @ApiResponse({ status: 404, description: 'Proyecto no encontrado' })
   findOne(@Param('slug') slug: string) {
     return this.projectsService.findPublicBySlug(slug);
   }

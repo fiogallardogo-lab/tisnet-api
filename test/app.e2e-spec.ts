@@ -6,9 +6,11 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { TransformInterceptor } from '../src/common/interceptors/transform/transform.interceptor.js';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception/http-exception.filter.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
 
 describe('TISNET API (e2e)', () => {
   let app: INestApplication<App>;
+  let prisma: PrismaService;
 
   let adminAccessToken: string;
   let adminRefreshToken: string;
@@ -16,19 +18,55 @@ describe('TISNET API (e2e)', () => {
 
   let createdCategoryId: number;
 
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  const developerEmail = process.env.SEED_DEVELOPER_EMAIL;
+  const developerPassword = process.env.SEED_DEVELOPER_PASSWORD;
+
   const adminUser = {
-    email: 'admin@tisnet.test',
-    password: 'Test1234!',
+    email: adminEmail ?? '',
+    password: adminPassword ?? '',
   };
 
   const developerUser = {
-    email: 'developer@tisnet.test',
-    password: 'DevTest1234!',
+    email: developerEmail ?? '',
+    password: developerPassword ?? '',
   };
 
   const testCategoryName = `Categoria E2E ${Date.now()}`;
 
   beforeAll(async () => {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('Falta DATABASE_URL para ejecutar las pruebas E2E.');
+    }
+
+    let databaseName: string;
+    try {
+      databaseName = new URL(databaseUrl).pathname.replace(/^\//, '');
+    } catch {
+      throw new Error(
+        'DATABASE_URL no tiene un formato válido para las pruebas E2E.',
+      );
+    }
+
+    if (!/(^|[_-])test($|[_-])/i.test(databaseName)) {
+      throw new Error(
+        `E2E cancelado: la base "${databaseName}" no parece una base aislada de pruebas.`,
+      );
+    }
+
+    if (!adminEmail || !adminPassword) {
+      throw new Error(
+        'Faltan variables de entorno para E2E: SEED_ADMIN_EMAIL y/o SEED_ADMIN_PASSWORD no están definidas.',
+      );
+    }
+    if (!developerEmail || !developerPassword) {
+      throw new Error(
+        'Faltan variables de entorno para E2E: SEED_DEVELOPER_EMAIL y/o SEED_DEVELOPER_PASSWORD no están definidas.',
+      );
+    }
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -48,6 +86,7 @@ describe('TISNET API (e2e)', () => {
     app.useGlobalFilters(new HttpExceptionFilter());
 
     await app.init();
+    prisma = app.get(PrismaService);
   });
 
   describe('Authentication', () => {
@@ -254,9 +293,7 @@ describe('TISNET API (e2e)', () => {
           .expect(403);
 
         expect(response.body.success).toBe(false);
-        expect(response.body.message).toBe(
-          'No tienes permisos suficientes',
-        );
+        expect(response.body.message).toBe('No tienes permisos suficientes');
       });
 
       it('debe permitir a SUPER_ADMIN listar categorías', async () => {
@@ -572,6 +609,443 @@ describe('TISNET API (e2e)', () => {
     });
   });
 
+  describe('Projects Lifecycle (E2E)', () => {
+    let projectCategoryId: number;
+    let inactiveCategoryId: number;
+    let projectTechnologyId: number;
+    let inactiveTechnologyId: number;
+
+    let createdProjectId: number;
+    const projectSlug = `proyecto-e2e-${Date.now()}`;
+    const projectName = `Proyecto E2E ${Date.now()}`;
+
+    beforeAll(async () => {
+      // 1. Crear categoría activa para pruebas de proyectos
+      const activeCategoryRes = await request(app.getHttpServer())
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({
+          name: `Cat Proyecto ${Date.now()}`,
+          description: 'Categoría activa para proyectos E2E',
+          isActive: true,
+        })
+        .expect(201);
+      projectCategoryId = activeCategoryRes.body.data.id;
+
+      // 2. Crear categoría inactiva para validar rechazos
+      const inactiveCategoryRes = await request(app.getHttpServer())
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({
+          name: `Cat Inactiva ${Date.now()}`,
+          description: 'Categoría inactiva para validación E2E',
+          isActive: false,
+        })
+        .expect(201);
+      inactiveCategoryId = inactiveCategoryRes.body.data.id;
+
+      // 3. Crear tecnología activa para proyectos
+      const activeTechRes = await request(app.getHttpServer())
+        .post('/api/v1/technologies')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({
+          name: `Tech Proyecto ${Date.now()}`,
+          description: 'Tecnología activa para proyectos E2E',
+          icon: 'tech-e2e.svg',
+          isActive: true,
+        })
+        .expect(201);
+      projectTechnologyId = activeTechRes.body.data.id;
+
+      // 4. Crear tecnología inactiva para validar rechazos
+      const inactiveTechRes = await request(app.getHttpServer())
+        .post('/api/v1/technologies')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({
+          name: `Tech Inactiva ${Date.now()}`,
+          description: 'Tecnología inactiva para validación E2E',
+          icon: 'tech-inactive.svg',
+          isActive: false,
+        })
+        .expect(201);
+      inactiveTechnologyId = inactiveTechRes.body.data.id;
+    });
+
+    describe('Seguridad y RBAC', () => {
+      it('debe rechazar GET /api/v1/projects sin token con 401', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/projects')
+          .expect(401);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar POST /api/v1/projects sin token con 401', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/projects')
+          .send({ name: 'Proyecto no autorizado' })
+          .expect(401);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar acceso de DEVELOPER a GET /api/v1/projects con 403', async () => {
+        expect(developerAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/projects')
+          .set('Authorization', `Bearer ${developerAccessToken}`)
+          .expect(403);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('No tienes permisos suficientes');
+      });
+
+      it('debe rechazar creación de proyecto con DEVELOPER con 403', async () => {
+        expect(developerAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/projects')
+          .set('Authorization', `Bearer ${developerAccessToken}`)
+          .send({
+            name: 'Proyecto Developer Denegado',
+            slug: `dev-denegado-${Date.now()}`,
+            shortDescription: 'Descripción breve de intento no autorizado.',
+            description: 'Descripción completa de intento no autorizado.',
+            categoryId: projectCategoryId,
+          })
+          .expect(403);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('No tienes permisos suficientes');
+      });
+    });
+
+    describe('Creación y Validaciones de Proyecto', () => {
+      it('debe rechazar proyecto con payload inválido con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/projects')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: '',
+          })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar creación con categoría inactiva con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/projects')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: 'Proyecto Categoría Inactiva',
+            slug: `cat-inactiva-${Date.now()}`,
+            shortDescription:
+              'Descripción breve para validación de categoría inactiva.',
+            description:
+              'Descripción completa para validación de categoría inactiva en E2E.',
+            categoryId: inactiveCategoryId,
+          })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe(
+          'La categoría no existe o está inactiva',
+        );
+      });
+
+      it('debe rechazar creación con tecnología inactiva con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/projects')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: 'Proyecto Tecnología Inactiva',
+            slug: `tech-inactiva-${Date.now()}`,
+            shortDescription:
+              'Descripción breve para validación de tecnología inactiva.',
+            description:
+              'Descripción completa para validación de tecnología inactiva en E2E.',
+            categoryId: projectCategoryId,
+            technologyIds: [inactiveTechnologyId],
+          })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe(
+          'Una o más tecnologías no existen o están inactivas',
+        );
+      });
+
+      it('debe rechazar creación con tecnología inexistente con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/projects')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: 'Proyecto Tecnología Inexistente',
+            slug: `tech-inexistente-${Date.now()}`,
+            shortDescription:
+              'Descripción breve para validación de tecnología inexistente.',
+            description:
+              'Descripción completa para validación de tecnología inexistente en E2E.',
+            categoryId: projectCategoryId,
+            technologyIds: [999999],
+          })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe(
+          'Una o más tecnologías no existen o están inactivas',
+        );
+      });
+
+      it('debe crear un proyecto válido en estado DRAFT e isPublished false', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/projects')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: projectName,
+            slug: projectSlug,
+            shortDescription: 'Plataforma centralizada creada en prueba E2E.',
+            description:
+              'Descripción pública completa del proyecto para validación de ciclo de vida E2E.',
+            problem: 'Problema de prueba E2E.',
+            solution: 'Solución de prueba E2E.',
+            objective: 'Objetivo de prueba E2E.',
+            features: ['Característica 1 E2E', 'Característica 2 E2E'],
+            categoryId: projectCategoryId,
+            technologyIds: [projectTechnologyId],
+            developmentDate: '2026-09-08',
+            clientName: 'Cliente Privado E2E',
+            demoUrl: 'https://demo.e2e.tisnet.test',
+            externalUrl: 'https://github.com/tisnet-lab/e2e-project',
+            coverImageUrl: 'https://cdn.tisnet.test/e2e-cover.webp',
+            isFeatured: true,
+            displayOrder: 1,
+          })
+          .expect(201);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toBeDefined();
+
+        createdProjectId = response.body.data.id;
+        expect(createdProjectId).toBeDefined();
+        expect(response.body.data.name).toBe(projectName);
+        expect(response.body.data.slug).toBe(projectSlug);
+        expect(response.body.data.status).toBe('DRAFT');
+        expect(response.body.data.isPublished).toBe(false);
+        expect(response.body.data.isFeatured).toBe(true);
+        expect(response.body.data.category.id).toBe(projectCategoryId);
+        expect(response.body.data.technologies[0].id).toBe(projectTechnologyId);
+      });
+
+      it('debe rechazar la creación de un proyecto con slug duplicado con 409', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/projects')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: `${projectName} Duplicado`,
+            slug: projectSlug,
+            shortDescription: 'Intento de registro con slug repetido.',
+            description: 'Descripción completa para intento duplicado.',
+            categoryId: projectCategoryId,
+          })
+          .expect(409);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('El slug ya está registrado');
+      });
+    });
+
+    describe('Consultas Administrativas y Edición', () => {
+      it('debe listar proyectos administrativos incluyendo el proyecto borrador', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/projects?search=${encodeURIComponent(projectSlug)}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.items).toBeDefined();
+
+        const foundProject = response.body.data.items.find(
+          (item: { id: number }) => item.id === createdProjectId,
+        );
+
+        expect(foundProject).toBeDefined();
+        expect(foundProject.slug).toBe(projectSlug);
+      });
+
+      it('debe consultar el detalle administrativo por ID', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/projects/${createdProjectId}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdProjectId);
+        expect(response.body.data.clientName).toBe('Cliente Privado E2E');
+      });
+
+      it('debe editar un proyecto administrativo con PATCH /projects/:id', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/projects/${createdProjectId}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            shortDescription: 'Descripción breve actualizada durante E2E.',
+          })
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.shortDescription).toBe(
+          'Descripción breve actualizada durante E2E.',
+        );
+      });
+    });
+
+    describe('Privacidad Pública de Borradores', () => {
+      it('no debe mostrar el proyecto borrador en el listado público', async () => {
+        const response = await request(app.getHttpServer())
+          .get(
+            `/api/v1/public/projects?search=${encodeURIComponent(projectName)}`,
+          )
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        const found = response.body.data.items.find(
+          (item: { id: number }) => item.id === createdProjectId,
+        );
+        expect(found).toBeUndefined();
+      });
+
+      it('debe responder 404 en el detalle público para el proyecto borrador', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/public/projects/${projectSlug}`)
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Proyecto no encontrado');
+      });
+    });
+
+    describe('Publicación y Visibilidad Pública', () => {
+      it('debe publicar el proyecto con PATCH /projects/:id/publish', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/projects/${createdProjectId}/publish`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdProjectId);
+        expect(response.body.data.isPublished).toBe(true);
+      });
+
+      it('debe mostrar el proyecto publicado en el listado público', async () => {
+        const response = await request(app.getHttpServer())
+          .get(
+            `/api/v1/public/projects?search=${encodeURIComponent(projectName)}`,
+          )
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        const found = response.body.data.items.find(
+          (item: { id: number }) => item.id === createdProjectId,
+        );
+        expect(found).toBeDefined();
+        expect(found.slug).toBe(projectSlug);
+        expect(found).not.toHaveProperty('clientName');
+        expect(found).not.toHaveProperty('status');
+        expect(found).not.toHaveProperty('isPublished');
+        expect(found).not.toHaveProperty('createdAt');
+        expect(found).not.toHaveProperty('updatedAt');
+      });
+
+      it('debe mostrar el detalle público por slug omitiendo campos internos', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/public/projects/${projectSlug}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdProjectId);
+        expect(response.body.data.slug).toBe(projectSlug);
+        expect(response.body.data.name).toBe(projectName);
+        expect(response.body.data).not.toHaveProperty('clientName');
+        expect(response.body.data).not.toHaveProperty('status');
+        expect(response.body.data).not.toHaveProperty('isPublished');
+        expect(response.body.data).not.toHaveProperty('createdAt');
+        expect(response.body.data).not.toHaveProperty('updatedAt');
+      });
+    });
+
+    describe('Despublicación', () => {
+      it('debe despublicar el proyecto con PATCH /projects/:id/unpublish', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/projects/${createdProjectId}/unpublish`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.isPublished).toBe(false);
+      });
+
+      it('debe responder 404 en el detalle público tras despublicar', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/public/projects/${projectSlug}`)
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Proyecto no encontrado');
+      });
+
+      it('no debe mostrar el proyecto despublicado en el listado público', async () => {
+        const response = await request(app.getHttpServer())
+          .get(
+            `/api/v1/public/projects?search=${encodeURIComponent(projectName)}`,
+          )
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        const found = response.body.data.items.find(
+          (item: { id: number }) => item.id === createdProjectId,
+        );
+        expect(found).toBeUndefined();
+      });
+    });
+
+    describe('Archivado Lógico y Restricciones', () => {
+      it('debe archivar el proyecto con PATCH /projects/:id/archive', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/projects/${createdProjectId}/archive`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.status).toBe('ARCHIVED');
+        expect(response.body.data.isPublished).toBe(false);
+      });
+
+      it('no debe mostrar el proyecto archivado en el detalle público (404)', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/public/projects/${projectSlug}`)
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Proyecto no encontrado');
+      });
+
+      it('debe rechazar la publicación de un proyecto archivado con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/projects/${createdProjectId}/publish`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe(
+          'Un proyecto archivado no puede publicarse',
+        );
+      });
+    });
+  });
+
   describe('Logout', () => {
     it('debe permitir cerrar sesión a un usuario autenticado', async () => {
       expect(adminAccessToken).toBeDefined();
@@ -587,6 +1061,31 @@ describe('TISNET API (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (prisma) {
+      await prisma.project.deleteMany({
+        where: { slug: { startsWith: 'proyecto-e2e-' } },
+      });
+      await prisma.category.deleteMany({
+        where: {
+          OR: [
+            { name: { startsWith: 'Categoria E2E ' } },
+            { name: { startsWith: 'Cat Proyecto ' } },
+            { name: { startsWith: 'Cat Inactiva ' } },
+          ],
+        },
+      });
+      await prisma.technology.deleteMany({
+        where: {
+          OR: [
+            { name: { startsWith: 'Tecnologia E2E ' } },
+            { name: { startsWith: 'Tech Proyecto ' } },
+            { name: { startsWith: 'Tech Inactiva ' } },
+          ],
+        },
+      });
+    }
+    if (app) {
+      await app.close();
+    }
   });
 });
