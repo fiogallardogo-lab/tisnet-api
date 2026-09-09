@@ -6,9 +6,11 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { TransformInterceptor } from '../src/common/interceptors/transform/transform.interceptor.js';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception/http-exception.filter.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
 
 describe('TISNET API (e2e)', () => {
   let app: INestApplication<App>;
+  let prisma: PrismaService;
 
   let adminAccessToken: string;
   let adminRefreshToken: string;
@@ -34,6 +36,26 @@ describe('TISNET API (e2e)', () => {
   const testCategoryName = `Categoria E2E ${Date.now()}`;
 
   beforeAll(async () => {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('Falta DATABASE_URL para ejecutar las pruebas E2E.');
+    }
+
+    let databaseName: string;
+    try {
+      databaseName = new URL(databaseUrl).pathname.replace(/^\//, '');
+    } catch {
+      throw new Error(
+        'DATABASE_URL no tiene un formato válido para las pruebas E2E.',
+      );
+    }
+
+    if (!/(^|[_-])test($|[_-])/i.test(databaseName)) {
+      throw new Error(
+        `E2E cancelado: la base "${databaseName}" no parece una base aislada de pruebas.`,
+      );
+    }
+
     if (!adminEmail || !adminPassword) {
       throw new Error(
         'Faltan variables de entorno para E2E: SEED_ADMIN_EMAIL y/o SEED_ADMIN_PASSWORD no están definidas.',
@@ -64,6 +86,7 @@ describe('TISNET API (e2e)', () => {
     app.useGlobalFilters(new HttpExceptionFilter());
 
     await app.init();
+    prisma = app.get(PrismaService);
   });
 
   describe('Authentication', () => {
@@ -270,9 +293,7 @@ describe('TISNET API (e2e)', () => {
           .expect(403);
 
         expect(response.body.success).toBe(false);
-        expect(response.body.message).toBe(
-          'No tienes permisos suficientes',
-        );
+        expect(response.body.message).toBe('No tienes permisos suficientes');
       });
 
       it('debe permitir a SUPER_ADMIN listar categorías', async () => {
@@ -720,14 +741,18 @@ describe('TISNET API (e2e)', () => {
           .send({
             name: 'Proyecto Categoría Inactiva',
             slug: `cat-inactiva-${Date.now()}`,
-            shortDescription: 'Descripción breve para validación de categoría inactiva.',
-            description: 'Descripción completa para validación de categoría inactiva en E2E.',
+            shortDescription:
+              'Descripción breve para validación de categoría inactiva.',
+            description:
+              'Descripción completa para validación de categoría inactiva en E2E.',
             categoryId: inactiveCategoryId,
           })
           .expect(400);
 
         expect(response.body.success).toBe(false);
-        expect(response.body.message).toBe('La categoría no existe o está inactiva');
+        expect(response.body.message).toBe(
+          'La categoría no existe o está inactiva',
+        );
       });
 
       it('debe rechazar creación con tecnología inactiva con 400', async () => {
@@ -737,15 +762,19 @@ describe('TISNET API (e2e)', () => {
           .send({
             name: 'Proyecto Tecnología Inactiva',
             slug: `tech-inactiva-${Date.now()}`,
-            shortDescription: 'Descripción breve para validación de tecnología inactiva.',
-            description: 'Descripción completa para validación de tecnología inactiva en E2E.',
+            shortDescription:
+              'Descripción breve para validación de tecnología inactiva.',
+            description:
+              'Descripción completa para validación de tecnología inactiva en E2E.',
             categoryId: projectCategoryId,
             technologyIds: [inactiveTechnologyId],
           })
           .expect(400);
 
         expect(response.body.success).toBe(false);
-        expect(response.body.message).toBe('Una o más tecnologías no existen o están inactivas');
+        expect(response.body.message).toBe(
+          'Una o más tecnologías no existen o están inactivas',
+        );
       });
 
       it('debe rechazar creación con tecnología inexistente con 400', async () => {
@@ -755,15 +784,19 @@ describe('TISNET API (e2e)', () => {
           .send({
             name: 'Proyecto Tecnología Inexistente',
             slug: `tech-inexistente-${Date.now()}`,
-            shortDescription: 'Descripción breve para validación de tecnología inexistente.',
-            description: 'Descripción completa para validación de tecnología inexistente en E2E.',
+            shortDescription:
+              'Descripción breve para validación de tecnología inexistente.',
+            description:
+              'Descripción completa para validación de tecnología inexistente en E2E.',
             categoryId: projectCategoryId,
             technologyIds: [999999],
           })
           .expect(400);
 
         expect(response.body.success).toBe(false);
-        expect(response.body.message).toBe('Una o más tecnologías no existen o están inactivas');
+        expect(response.body.message).toBe(
+          'Una o más tecnologías no existen o están inactivas',
+        );
       });
 
       it('debe crear un proyecto válido en estado DRAFT e isPublished false', async () => {
@@ -774,7 +807,8 @@ describe('TISNET API (e2e)', () => {
             name: projectName,
             slug: projectSlug,
             shortDescription: 'Plataforma centralizada creada en prueba E2E.',
-            description: 'Descripción pública completa del proyecto para validación de ciclo de vida E2E.',
+            description:
+              'Descripción pública completa del proyecto para validación de ciclo de vida E2E.',
             problem: 'Problema de prueba E2E.',
             solution: 'Solución de prueba E2E.',
             objective: 'Objetivo de prueba E2E.',
@@ -871,7 +905,9 @@ describe('TISNET API (e2e)', () => {
     describe('Privacidad Pública de Borradores', () => {
       it('no debe mostrar el proyecto borrador en el listado público', async () => {
         const response = await request(app.getHttpServer())
-          .get(`/api/v1/public/projects?search=${encodeURIComponent(projectName)}`)
+          .get(
+            `/api/v1/public/projects?search=${encodeURIComponent(projectName)}`,
+          )
           .expect(200);
 
         expect(response.body.success).toBe(true);
@@ -905,7 +941,9 @@ describe('TISNET API (e2e)', () => {
 
       it('debe mostrar el proyecto publicado en el listado público', async () => {
         const response = await request(app.getHttpServer())
-          .get(`/api/v1/public/projects?search=${encodeURIComponent(projectName)}`)
+          .get(
+            `/api/v1/public/projects?search=${encodeURIComponent(projectName)}`,
+          )
           .expect(200);
 
         expect(response.body.success).toBe(true);
@@ -960,7 +998,9 @@ describe('TISNET API (e2e)', () => {
 
       it('no debe mostrar el proyecto despublicado en el listado público', async () => {
         const response = await request(app.getHttpServer())
-          .get(`/api/v1/public/projects?search=${encodeURIComponent(projectName)}`)
+          .get(
+            `/api/v1/public/projects?search=${encodeURIComponent(projectName)}`,
+          )
           .expect(200);
 
         expect(response.body.success).toBe(true);
@@ -999,7 +1039,9 @@ describe('TISNET API (e2e)', () => {
           .expect(400);
 
         expect(response.body.success).toBe(false);
-        expect(response.body.message).toBe('Un proyecto archivado no puede publicarse');
+        expect(response.body.message).toBe(
+          'Un proyecto archivado no puede publicarse',
+        );
       });
     });
   });
@@ -1019,6 +1061,31 @@ describe('TISNET API (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (prisma) {
+      await prisma.project.deleteMany({
+        where: { slug: { startsWith: 'proyecto-e2e-' } },
+      });
+      await prisma.category.deleteMany({
+        where: {
+          OR: [
+            { name: { startsWith: 'Categoria E2E ' } },
+            { name: { startsWith: 'Cat Proyecto ' } },
+            { name: { startsWith: 'Cat Inactiva ' } },
+          ],
+        },
+      });
+      await prisma.technology.deleteMany({
+        where: {
+          OR: [
+            { name: { startsWith: 'Tecnologia E2E ' } },
+            { name: { startsWith: 'Tech Proyecto ' } },
+            { name: { startsWith: 'Tech Inactiva ' } },
+          ],
+        },
+      });
+    }
+    if (app) {
+      await app.close();
+    }
   });
 });
