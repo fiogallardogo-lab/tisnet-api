@@ -1046,6 +1046,710 @@ describe('TISNET API (e2e)', () => {
     });
   });
 
+  describe('Services (e2e)', () => {
+    let regularAdminAccessToken: string;
+    let createdPrimaryServiceId: number;
+    let createdSecondaryServiceId: number;
+    const timestamp = Date.now();
+    const primarySlug = `e2e-service-primary-${timestamp}`;
+    const secondarySlug = `e2e-service-secondary-${timestamp}`;
+    const primaryName = `Desarrollo E2E ${timestamp}`;
+    const secondaryName = `Consultoría E2E ${timestamp}`;
+
+    beforeAll(async () => {
+      const adminRole = await prisma.role.findUnique({
+        where: { name: 'ADMIN' },
+      });
+      if (adminRole) {
+        const bcrypt = await import('bcrypt');
+        const passwordHash = await bcrypt.hash('AdminTest1234!', 12);
+        await prisma.user.upsert({
+          where: { email: 'admin-role-e2e@tisnet.test' },
+          update: { passwordHash, roleId: adminRole.id, isActive: true },
+          create: {
+            name: 'Admin Role E2E',
+            email: 'admin-role-e2e@tisnet.test',
+            passwordHash,
+            roleId: adminRole.id,
+            isActive: true,
+          },
+        });
+
+        const loginRes = await request(app.getHttpServer())
+          .post('/api/v1/auth/login')
+          .send({
+            email: 'admin-role-e2e@tisnet.test',
+            password: 'AdminTest1234!',
+          });
+        regularAdminAccessToken = loginRes.body.data.accessToken;
+      }
+    });
+
+    describe('Seguridad y RBAC', () => {
+      it('debe rechazar GET /api/v1/services sin token con 401', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services')
+          .expect(401);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar POST /api/v1/services sin token con 401', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/services')
+          .send({ name: 'Servicio No Autorizado' })
+          .expect(401);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar GET /api/v1/services/:id sin token con 401', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services/1')
+          .expect(401);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar PATCH /api/v1/services/:id sin token con 401', async () => {
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/services/1')
+          .send({ name: 'Actualización No Autorizada' })
+          .expect(401);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar PATCH /api/v1/services/:id/activate sin token con 401', async () => {
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/services/1/activate')
+          .expect(401);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar PATCH /api/v1/services/:id/deactivate sin token con 401', async () => {
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/services/1/deactivate')
+          .expect(401);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar acceso de DEVELOPER a GET /api/v1/services con 403', async () => {
+        expect(developerAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services')
+          .set('Authorization', `Bearer ${developerAccessToken}`)
+          .expect(403);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('No tienes permisos suficientes');
+      });
+
+      it('debe rechazar creación con DEVELOPER a POST /api/v1/services con 403', async () => {
+        expect(developerAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/services')
+          .set('Authorization', `Bearer ${developerAccessToken}`)
+          .send({
+            name: 'Servicio Developer Denegado',
+            slug: `e2e-dev-denegado-${Date.now()}`,
+            shortDescription:
+              'Descripción breve no autorizada para el servicio.',
+            description:
+              'Descripción completa suficientemente extensa para intento no autorizado.',
+          })
+          .expect(403);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('No tienes permisos suficientes');
+      });
+
+      it('debe rechazar edición con DEVELOPER a PATCH /api/v1/services/:id con 403', async () => {
+        expect(developerAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/services/1')
+          .set('Authorization', `Bearer ${developerAccessToken}`)
+          .send({ name: 'Edición Denegada' })
+          .expect(403);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('No tienes permisos suficientes');
+      });
+
+      it('debe rechazar desactivación con DEVELOPER con 403', async () => {
+        expect(developerAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/services/1/deactivate')
+          .set('Authorization', `Bearer ${developerAccessToken}`)
+          .expect(403);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('No tienes permisos suficientes');
+      });
+
+      it('debe rechazar activación con DEVELOPER con 403', async () => {
+        expect(developerAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/services/1/activate')
+          .set('Authorization', `Bearer ${developerAccessToken}`)
+          .expect(403);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('No tienes permisos suficientes');
+      });
+
+      it('debe permitir a usuario con rol ADMIN listar servicios con 200', async () => {
+        expect(regularAdminAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services')
+          .set('Authorization', `Bearer ${regularAdminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.items).toBeDefined();
+      });
+
+      it('debe permitir a usuario con rol SUPER_ADMIN listar servicios con 200', async () => {
+        expect(adminAccessToken).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.items).toBeDefined();
+      });
+    });
+
+    describe('Creación y Validaciones de Servicios', () => {
+      it('debe rechazar servicio con name vacío con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/services')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: '',
+            slug: 'slug-valido-1',
+            shortDescription: 'Descripción breve válida para el servicio.',
+            description:
+              'Descripción completa suficientemente extensa para la prueba.',
+          })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar servicio con slug inválido con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/services')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: 'Servicio Slug Inválido',
+            slug: 'INVALID SLUG WITH SPACES & SYMBOLS!',
+            shortDescription: 'Descripción breve válida para el servicio.',
+            description:
+              'Descripción completa suficientemente extensa para la prueba.',
+          })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar servicio con shortDescription demasiado corta con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/services')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: 'Servicio Descripción Corta',
+            slug: 'slug-valido-2',
+            shortDescription: 'Corta',
+            description:
+              'Descripción completa suficientemente extensa para la prueba.',
+          })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe rechazar servicio con description demasiado corta con 400', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/services')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: 'Servicio Descripción Detalle Corta',
+            slug: 'slug-valido-3',
+            shortDescription: 'Descripción breve válida para el servicio.',
+            description: 'Muy corta',
+          })
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe crear un servicio válido (primario) con 201 y valores por defecto', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/services')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: primaryName,
+            slug: primarySlug,
+            shortDescription: 'Servicio creado durante las pruebas E2E.',
+            description:
+              'Descripción suficientemente extensa para validar la creación del servicio durante las pruebas E2E.',
+            icon: 'Code',
+            imageUrl: 'https://cdn.tisnet.test/services/primary.webp',
+            displayOrder: 1,
+            isFeatured: true,
+            isActive: true,
+          })
+          .expect(201);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toBeDefined();
+
+        createdPrimaryServiceId = response.body.data.id;
+        expect(createdPrimaryServiceId).toBeDefined();
+        expect(response.body.data.name).toBe(primaryName);
+        expect(response.body.data.slug).toBe(primarySlug);
+        expect(response.body.data.shortDescription).toBe(
+          'Servicio creado durante las pruebas E2E.',
+        );
+        expect(response.body.data.description).toBe(
+          'Descripción suficientemente extensa para validar la creación del servicio durante las pruebas E2E.',
+        );
+        expect(response.body.data.icon).toBe('Code');
+        expect(response.body.data.imageUrl).toBe(
+          'https://cdn.tisnet.test/services/primary.webp',
+        );
+        expect(response.body.data.displayOrder).toBe(1);
+        expect(response.body.data.isFeatured).toBe(true);
+        expect(response.body.data.isActive).toBe(true);
+        expect(response.body.data.createdAt).toBeDefined();
+        expect(response.body.data.updatedAt).toBeDefined();
+      });
+
+      it('debe crear un segundo servicio válido con 201', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/services')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: secondaryName,
+            slug: secondarySlug,
+            shortDescription:
+              'Servicio secundario para validar unicidad y filtros.',
+            description:
+              'Descripción completa del servicio secundario para pruebas E2E de servicios.',
+            icon: 'Server',
+            imageUrl: null,
+            displayOrder: 2,
+            isFeatured: false,
+            isActive: true,
+          })
+          .expect(201);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toBeDefined();
+
+        createdSecondaryServiceId = response.body.data.id;
+        expect(createdSecondaryServiceId).toBeDefined();
+        expect(response.body.data.name).toBe(secondaryName);
+        expect(response.body.data.slug).toBe(secondarySlug);
+        expect(response.body.data.isFeatured).toBe(false);
+      });
+
+      it('debe rechazar la creación de un servicio con slug duplicado con 409', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/v1/services')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: `${primaryName} Duplicado`,
+            slug: primarySlug,
+            shortDescription: 'Intento de registro con slug repetido en E2E.',
+            description:
+              'Descripción completa para validar el rechazo por slug duplicado.',
+          })
+          .expect(409);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('El slug ya está registrado');
+      });
+    });
+
+    describe('Consultas Administrativas y Edición', () => {
+      it('debe listar servicios administrativos incluyendo metadatos de paginación', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(Array.isArray(response.body.data.items)).toBe(true);
+        expect(response.body.data.meta).toBeDefined();
+        expect(response.body.data.meta.page).toBe(1);
+        expect(response.body.data.meta.totalItems).toBeGreaterThanOrEqual(2);
+      });
+
+      it('debe paginar servicios con ?page=1&limit=1', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services?page=1&limit=1')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.items.length).toBe(1);
+        expect(response.body.data.meta.page).toBe(1);
+        expect(response.body.data.meta.limit).toBe(1);
+        expect(response.body.data.meta.totalPages).toBeGreaterThanOrEqual(2);
+      });
+
+      it('debe buscar servicios por término con ?search', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/services?search=${encodeURIComponent(primarySlug)}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        const found = response.body.data.items.find(
+          (item: { id: number }) => item.id === createdPrimaryServiceId,
+        );
+        expect(found).toBeDefined();
+        expect(found.slug).toBe(primarySlug);
+      });
+
+      it('debe filtrar servicios administrativos por ?isActive=true', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services?isActive=true')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        for (const item of response.body.data.items) {
+          expect(item.isActive).toBe(true);
+        }
+      });
+
+      it('debe filtrar servicios administrativos por ?isActive=false', async () => {
+        // Desactivamos temporalmente el servicio secundario para asegurar existencia de registro inactivo
+        await request(app.getHttpServer())
+          .patch(`/api/v1/services/${createdSecondaryServiceId}/deactivate`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services?isActive=false')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.items.length).toBeGreaterThanOrEqual(1);
+        for (const item of response.body.data.items) {
+          expect(item.isActive).toBe(false);
+        }
+
+        // Reactivamos para los siguientes tests
+        await request(app.getHttpServer())
+          .patch(`/api/v1/services/${createdSecondaryServiceId}/activate`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+      });
+
+      it('debe filtrar servicios administrativos por ?isFeatured=true', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services?isFeatured=true')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        for (const item of response.body.data.items) {
+          expect(item.isFeatured).toBe(true);
+        }
+      });
+
+      it('debe consultar el detalle administrativo por ID existente', async () => {
+        expect(createdPrimaryServiceId).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/services/${createdPrimaryServiceId}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdPrimaryServiceId);
+        expect(response.body.data.slug).toBe(primarySlug);
+        expect(response.body.data.description).toBeDefined();
+        expect(response.body.data.isActive).toBe(true);
+      });
+
+      it('debe responder 404 al consultar servicio administrativo inexistente', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/services/999999')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Servicio no encontrado');
+      });
+
+      it('debe editar un servicio con PATCH /services/:id y persistir cambios', async () => {
+        expect(createdPrimaryServiceId).toBeDefined();
+
+        const updateResponse = await request(app.getHttpServer())
+          .patch(`/api/v1/services/${createdPrimaryServiceId}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: `${primaryName} Actualizado`,
+            displayOrder: 10,
+          })
+          .expect(200);
+
+        expect(updateResponse.body.success).toBe(true);
+        expect(updateResponse.body.data.id).toBe(createdPrimaryServiceId);
+        expect(updateResponse.body.data.name).toBe(`${primaryName} Actualizado`);
+        expect(updateResponse.body.data.displayOrder).toBe(10);
+
+        // Verificar persistencia consultando por GET
+        const getResponse = await request(app.getHttpServer())
+          .get(`/api/v1/services/${createdPrimaryServiceId}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(getResponse.body.data.name).toBe(`${primaryName} Actualizado`);
+        expect(getResponse.body.data.displayOrder).toBe(10);
+      });
+
+      it('debe responder 404 al intentar actualizar servicio inexistente', async () => {
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/services/999999')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            name: 'Intento en servicio inexistente',
+          })
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Servicio no encontrado');
+      });
+
+      it('debe rechazar actualización de slug con conflicto duplicado (409)', async () => {
+        expect(createdSecondaryServiceId).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/services/${createdSecondaryServiceId}`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .send({
+            slug: primarySlug,
+          })
+          .expect(409);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('El slug ya está registrado');
+      });
+    });
+
+    describe('Catálogo Público de Servicios', () => {
+      it('debe listar servicios activos públicamente sin token y con campos públicos estrictos', async () => {
+        const response = await request(app.getHttpServer())
+          .get(
+            `/api/v1/public/services?search=${encodeURIComponent(primaryName)}`,
+          )
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(Array.isArray(response.body.data.items)).toBe(true);
+
+        const found = response.body.data.items.find(
+          (item: { id: number }) => item.id === createdPrimaryServiceId,
+        );
+        expect(found).toBeDefined();
+        expect(found.slug).toBe(primarySlug);
+
+        // Verificar campos públicos presentes
+        expect(found).toHaveProperty('id');
+        expect(found).toHaveProperty('name');
+        expect(found).toHaveProperty('slug');
+        expect(found).toHaveProperty('shortDescription');
+        expect(found).toHaveProperty('icon');
+        expect(found).toHaveProperty('imageUrl');
+        expect(found).toHaveProperty('displayOrder');
+        expect(found).toHaveProperty('isFeatured');
+
+        // Verificar que NO se devuelven campos privados ni description en listado
+        expect(found).not.toHaveProperty('description');
+        expect(found).not.toHaveProperty('isActive');
+        expect(found).not.toHaveProperty('createdAt');
+        expect(found).not.toHaveProperty('updatedAt');
+      });
+
+      it('debe paginar el catálogo público con ?page=1&limit=1', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/public/services?page=1&limit=1')
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.items.length).toBe(1);
+        expect(response.body.data.meta.page).toBe(1);
+        expect(response.body.data.meta.limit).toBe(1);
+      });
+
+      it('debe filtrar el catálogo público por ?isFeatured=true', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/public/services?isFeatured=true')
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        for (const item of response.body.data.items) {
+          expect(item.isFeatured).toBe(true);
+        }
+      });
+
+      it('debe rechazar query params inválidos en catálogo público con 400 (?limit=999)', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/public/services?limit=999')
+          .expect(400);
+
+        expect(response.body.success).toBe(false);
+      });
+
+      it('debe obtener el detalle público por slug omitiendo campos internos', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/public/services/${primarySlug}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdPrimaryServiceId);
+        expect(response.body.data.slug).toBe(primarySlug);
+        expect(response.body.data.description).toBeDefined();
+
+        // Ocultación de campos
+        expect(response.body.data).not.toHaveProperty('isActive');
+        expect(response.body.data).not.toHaveProperty('createdAt');
+        expect(response.body.data).not.toHaveProperty('updatedAt');
+      });
+
+      it('debe responder 404 para un slug inexistente en el detalle público', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/api/v1/public/services/slug-inexistente-no-registrado-e2e')
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Servicio no encontrado');
+      });
+    });
+
+    describe('Desactivación, Privacidad Pública y Reactivación', () => {
+      it('debe desactivar el servicio con PATCH /services/:id/deactivate', async () => {
+        expect(createdPrimaryServiceId).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/services/${createdPrimaryServiceId}/deactivate`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdPrimaryServiceId);
+        expect(response.body.data.isActive).toBe(false);
+      });
+
+      it('el servicio desactivado YA NO debe aparecer en el listado público', async () => {
+        const response = await request(app.getHttpServer())
+          .get(
+            `/api/v1/public/services?search=${encodeURIComponent(primaryName)}`,
+          )
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        const found = response.body.data.items.find(
+          (item: { id: number }) => item.id === createdPrimaryServiceId,
+        );
+        expect(found).toBeUndefined();
+      });
+
+      it('el detalle público por slug debe responder 404 cuando el servicio está desactivado', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/public/services/${primarySlug}`)
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Servicio no encontrado');
+      });
+
+      it('debe permitir llamada idempotente a deactivate sin errores', async () => {
+        expect(createdPrimaryServiceId).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/services/${createdPrimaryServiceId}/deactivate`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.isActive).toBe(false);
+      });
+
+      it('debe reactivar el servicio con PATCH /services/:id/activate', async () => {
+        expect(createdPrimaryServiceId).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/services/${createdPrimaryServiceId}/activate`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdPrimaryServiceId);
+        expect(response.body.data.isActive).toBe(true);
+      });
+
+      it('el servicio reactivado debe volver a responder 200 en el detalle público', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/public/services/${primarySlug}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.id).toBe(createdPrimaryServiceId);
+        expect(response.body.data.slug).toBe(primarySlug);
+      });
+
+      it('debe permitir llamada idempotente a activate sin errores', async () => {
+        expect(createdPrimaryServiceId).toBeDefined();
+
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/services/${createdPrimaryServiceId}/activate`)
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+        expect(response.body.data.isActive).toBe(true);
+      });
+
+      it('debe responder 404 al activar un servicio inexistente', async () => {
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/services/999999/activate')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Servicio no encontrado');
+      });
+
+      it('debe responder 404 al desactivar un servicio inexistente', async () => {
+        const response = await request(app.getHttpServer())
+          .patch('/api/v1/services/999999/deactivate')
+          .set('Authorization', `Bearer ${adminAccessToken}`)
+          .expect(404);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.message).toBe('Servicio no encontrado');
+      });
+    });
+  });
+
   describe('Logout', () => {
     it('debe permitir cerrar sesión a un usuario autenticado', async () => {
       expect(adminAccessToken).toBeDefined();
@@ -1062,6 +1766,9 @@ describe('TISNET API (e2e)', () => {
 
   afterAll(async () => {
     if (prisma) {
+      await prisma.service.deleteMany({
+        where: { slug: { startsWith: 'e2e-service-' } },
+      });
       await prisma.project.deleteMany({
         where: { slug: { startsWith: 'proyecto-e2e-' } },
       });
@@ -1083,9 +1790,13 @@ describe('TISNET API (e2e)', () => {
           ],
         },
       });
+      await prisma.user.deleteMany({
+        where: { email: 'admin-role-e2e@tisnet.test' },
+      });
     }
     if (app) {
       await app.close();
     }
   });
 });
+

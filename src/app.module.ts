@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { CategoriesModule } from './categories/categories.module.js';
 import { TechnologiesModule } from './technologies/technologies.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
+import { ServicesModule } from './services/services.module.js';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
@@ -21,6 +22,7 @@ import { ConfigModule } from '@nestjs/config';
     CategoriesModule,
     TechnologiesModule,
     ProjectsModule,
+    ServicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
