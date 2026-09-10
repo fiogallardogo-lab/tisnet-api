@@ -99,3 +99,21 @@ model ProjectTechnology {
   @@id([projectId, technologyId])
   @@index([technologyId])
 }
+
+model Service {
+  id               Int      @id @default(autoincrement())
+  name             String   @db.VarChar(150)
+  slug             String   @unique @db.VarChar(180)
+  shortDescription String   @db.VarChar(300)
+  description      String   @db.Text
+  icon             String?  @db.VarChar(100)
+  imageUrl         String?  @db.VarChar(500)
+  isActive         Boolean  @default(true)
+  displayOrder     Int      @default(0)
+  isFeatured       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([isActive, displayOrder])
+  @@index([isFeatured])
+}
