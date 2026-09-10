@@ -55,6 +55,10 @@ export class ServicesController {
     description: 'Operación realizada correctamente',
   })
   @ApiResponse({
+    status: 400,
+    description: 'Solicitud inválida o parámetros incorrectos',
+  })
+  @ApiResponse({
     status: 401,
     description: 'Token JWT ausente, inválido o expirado',
   })

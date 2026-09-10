@@ -10,14 +10,25 @@ import {
 } from 'class-validator';
 
 export class ListServicesQueryDto {
-  @ApiPropertyOptional({ default: 1, minimum: 1 })
+  @ApiPropertyOptional({
+    description: 'Número de página a consultar',
+    example: 1,
+    default: 1,
+    minimum: 1,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page = 1;
 
-  @ApiPropertyOptional({ default: 10, minimum: 1, maximum: 100 })
+  @ApiPropertyOptional({
+    description: 'Cantidad de registros por página',
+    example: 10,
+    default: 10,
+    minimum: 1,
+    maximum: 100,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -25,12 +36,18 @@ export class ListServicesQueryDto {
   @Max(100)
   limit = 10;
 
-  @ApiPropertyOptional({ example: 'software' })
+  @ApiPropertyOptional({
+    description: 'Búsqueda por texto en nombre, slug o descripción corta',
+    example: 'software',
+  })
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ type: Boolean })
+  @ApiPropertyOptional({
+    description: 'Filtrar por estado activo (true) o inactivo (false)',
+    type: Boolean,
+  })
   @IsOptional()
   @Transform(({ value }) => {
     if (value === 'true') return true;
@@ -40,7 +57,10 @@ export class ListServicesQueryDto {
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ type: Boolean })
+  @ApiPropertyOptional({
+    description: 'Filtrar por servicios destacados (true) o no destacados (false)',
+    type: Boolean,
+  })
   @IsOptional()
   @Transform(({ value }) => {
     if (value === 'true') return true;
