@@ -6,8 +6,32 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateServiceDto } from './dto/create-service.dto';
+import { ListPublicServicesQueryDto } from './dto/list-public-services-query.dto';
 import { ListServicesQueryDto } from './dto/list-services-query.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
+
+const publicServiceSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  shortDescription: true,
+  icon: true,
+  imageUrl: true,
+  displayOrder: true,
+  isFeatured: true,
+} satisfies Prisma.ServiceSelect;
+
+const publicServiceDetailSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  shortDescription: true,
+  description: true,
+  icon: true,
+  imageUrl: true,
+  displayOrder: true,
+  isFeatured: true,
+} satisfies Prisma.ServiceSelect;
 
 @Injectable()
 export class ServicesService {
@@ -109,6 +133,59 @@ export class ServicesService {
       where: { id },
       data: { isActive: false },
     });
+  }
+
+  async findPublic(query: ListPublicServicesQueryDto) {
+    const { page = 1, limit = 12, search, isFeatured } = query;
+    const where: Prisma.ServiceWhereInput = {
+      isActive: true,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search } },
+              { shortDescription: { contains: search } },
+            ],
+          }
+        : {}),
+      ...(isFeatured === undefined ? {} : { isFeatured }),
+    };
+
+    const [services, totalItems] = await this.prisma.$transaction([
+      this.prisma.service.findMany({
+        where,
+        select: publicServiceSelect,
+        orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.service.count({ where }),
+    ]);
+
+    return {
+      items: services,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+      },
+    };
+  }
+
+  async findPublicBySlug(slug: string) {
+    const service = await this.prisma.service.findFirst({
+      where: {
+        slug,
+        isActive: true,
+      },
+      select: publicServiceDetailSelect,
+    });
+
+    if (!service) {
+      throw new NotFoundException('Servicio no encontrado');
+    }
+
+    return service;
   }
 
   private async ensureServiceExists(id: number): Promise<void> {
