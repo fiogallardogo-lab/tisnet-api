@@ -10,6 +10,8 @@ import { ProjectsModule } from './projects/projects.module.js';
 import { ServicesModule } from './services/services.module.js';
 import { ConfigModule } from '@nestjs/config';
 import { ProfilesModule } from './profiles/profiles.module.js';
+import { QuotesModule } from './quotes/quotes.module.js';
+import { quotesCatalogV1 } from './quotes/catalog/quotes-catalog-v1.js';
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ import { ProfilesModule } from './profiles/profiles.module.js';
     ProjectsModule,
     ServicesModule,
     ProfilesModule,
+    QuotesModule.register({ catalog: quotesCatalogV1 }),
   ],
   controllers: [AppController],
   providers: [AppService],
