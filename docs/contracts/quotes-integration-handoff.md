@@ -15,6 +15,7 @@
 - DTOs anidados y validaciones en `src/quotes/dto`.
 - Normalización, estados y generación de códigos en `src/quotes/domain`.
 - Puerto del catálogo en `src/quotes/catalog/quote-catalog.ts`.
+- Catálogo aprobado v1 en `src/quotes/catalog/quotes-catalog-v1.ts`.
 - Puerto de persistencia en `src/quotes/repositories/quote.repository.ts`.
 - Interfaz del motor de precios en `src/quotes/pricing/pricing-engine.ts`.
 - Mapper seguro de respuesta en `src/quotes/mappers/public-quote.mapper.ts`.
