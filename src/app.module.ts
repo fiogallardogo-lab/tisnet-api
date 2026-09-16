@@ -9,6 +9,7 @@ import { TechnologiesModule } from './technologies/technologies.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
 import { ServicesModule } from './services/services.module.js';
 import { ConfigModule } from '@nestjs/config';
+import { ProfilesModule } from './profiles/profiles.module.js';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ConfigModule } from '@nestjs/config';
     TechnologiesModule,
     ProjectsModule,
     ServicesModule,
+    ProfilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
