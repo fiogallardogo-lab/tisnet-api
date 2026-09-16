@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseInterceptors,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -10,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { CreatePublicQuoteDto } from './dto/create-public-quote.dto';
 import { CreatePublicQuoteResponseDto } from './dto/public-quote-response.dto';
+import { RejectUnknownQuoteFieldsInterceptor } from './interceptors/reject-unknown-quote-fields.interceptor';
 import { QuotesService } from './quotes.service';
 
 @ApiTags('Public Quotes')
@@ -19,13 +27,16 @@ export class PublicQuotesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(RejectUnknownQuoteFieldsInterceptor)
   @ApiOperation({ summary: 'Registrar una cotización pública' })
   @ApiBody({ type: CreatePublicQuoteDto })
   @ApiCreatedResponse({
     description: 'Cotización registrada correctamente',
     type: CreatePublicQuoteResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Payload o formato inválido' })
+  @ApiBadRequestResponse({
+    description: 'Payload, formato, tipo o campo desconocido',
+  })
   @ApiUnprocessableEntityResponse({
     description: 'Solución u opción inexistente, inactiva o incompatible',
   })

@@ -50,7 +50,7 @@ describe('CreatePublicQuoteDto', () => {
     expect(contactError?.children?.[0].property).toBe('phone');
   });
 
-  it('debe eliminar campos administrativos y campos extra anidados', async () => {
+  it('el pipe global puede eliminar extras; el interceptor HTTP debe rechazarlos antes', async () => {
     const pipe = new ValidationPipe({ transform: true, whitelist: true });
     const result = (await pipe.transform(
       {

@@ -51,11 +51,11 @@ La implementación de `QuoteRepository.create()` debe cumplir:
 | Caso | HTTP esperado | Persistencia esperada |
 |---|---:|---|
 | Payload válido sin token | `201` | Quote y opciones completas. |
-| Campos administrativos adicionales | `201` | Se ignoran y no alteran estado ni monto. |
+| Campos administrativos o desconocidos | `400` | Sin escritura. |
 | DTO o teléfono inválido | `400` | Sin escritura. |
 | Opciones vacías o duplicadas | `400` | Sin escritura. |
-| Solución u opción desconocida | Pendiente `400`/`422` | Sin escritura. |
-| Opción incompatible | Pendiente `400`/`422` | Sin escritura. |
+| Solución u opción desconocida | `422` | Sin escritura. |
+| Opción incompatible | `422` | Sin escritura. |
 | Dos colisiones y tercer código libre | `201` | Una sola Quote con el tercer código. |
 | Tres colisiones | `503` | Sin escritura parcial. |
 | Fallo al crear una opción | `500` controlado | Rollback de Quote y opciones. |
@@ -106,7 +106,7 @@ export interface CreatePublicQuoteResponse {
 - No recalcular precios en frontend.
 - Con `PENDING_RULES`, mostrar el código y un mensaje de cálculo pendiente; no mostrar cero ni un monto ficticio.
 - Tratar `400` como error de formulario, `429` como exceso de solicitudes y `503` como indisponibilidad temporal.
-- El manejo definitivo de catálogos inválidos se ajustará cuando A confirme `400` o `422`.
+- Tratar `422` como selección de catálogo desconocida, inactiva o incompatible.
 
 ### Mock permitido mientras SP-01 está pendiente
 
@@ -140,6 +140,5 @@ El mock debe permanecer detrás de una bandera explícita y retirarse cuando la 
 
 - Catálogo versionado real de `solutionType` y `optionCode`.
 - Compatibilidad entre soluciones y opciones.
-- Código HTTP definitivo para catálogos inválidos: `400` o `422`.
 - Commit de Prisma, migración y cliente generado por A.
 - SP-01 para habilitar `CALCULATED`.

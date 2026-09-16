@@ -130,7 +130,7 @@ Registra una nueva cotización. No requiere token JWT.
 | `contact.company` | `string` | No | Trim, espacios internos normalizados, 2-150 caracteres. Cadena vacía se convierte en ausencia. |
 | `notes` | `string` | No | Trim, máximo 1000 caracteres. Cadena vacía se convierte en ausencia. |
 
-El objeto raíz, `contact` y cada elemento de `options` son DTOs con whitelist. No forman parte del contrato y nunca deben persistirse desde este endpoint campos como:
+El objeto raíz, `contact` y cada elemento de `options` son cerrados. Cualquier campo desconocido produce `400 Bad Request` antes de que el whitelist global pueda eliminarlo. No forman parte del contrato ni deben persistirse campos como:
 
 - `id`, `publicCode`, `status` o `pricingStatus`;
 - `amountMinor`, `currency` o `pricingVersion`;
@@ -204,7 +204,7 @@ Todas mantienen el envoltorio estándar:
 
 | HTTP | Error | Escenario |
 |---:|---|---|
-| `400` | `BadRequestException` | Forma, tipo, longitud o formato inválido; opciones vacías o duplicadas. |
+| `400` | `BadRequestException` | Forma, tipo, longitud o formato inválido; campos desconocidos; opciones vacías o duplicadas. |
 | `422` | `UnprocessableEntityException` | Código de solución/opción inexistente, inactivo o incompatible con la solución. |
 | `429` | `TooManyRequestsException` | Se supera el límite configurado para el endpoint. |
 | `503` | `ServiceUnavailableException` | No se pudo reservar un código único después de los reintentos o la persistencia no está disponible. |
