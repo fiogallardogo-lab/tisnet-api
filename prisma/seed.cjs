@@ -5,20 +5,35 @@ const prisma = new PrismaClient();
 
 async function upsertUser({ name, email, password, roleId }) {
   if (!email || !password || password.startsWith('change_me_')) {
-    throw new Error('Define credenciales de desarrollo válidas en las variables SEED_*');
+    throw new Error(
+      'Define credenciales de desarrollo válidas en las variables SEED_*',
+    );
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+
+  if (existing) {
+    return prisma.user.update({
+      where: { email },
+      data: { name, roleId, isActive: true },
+    });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  return prisma.user.upsert({
-    where: { email },
-    update: { name, passwordHash, roleId, isActive: true },
-    create: { name, email, passwordHash, roleId, isActive: true },
+  return prisma.user.create({
+    data: { name, email, passwordHash, roleId, isActive: true },
   });
 }
 
 async function main() {
   const roles = {};
-  for (const name of ['SUPER_ADMIN', 'ADMIN', 'DEVELOPER']) {
+  for (const name of [
+    'CLIENT',
+    'DEVELOPER',
+    'PRODUCT_OWNER',
+    'ADMIN',
+    'SUPER_ADMIN',
+  ]) {
     roles[name] = await prisma.role.upsert({
       where: { name },
       update: {},
