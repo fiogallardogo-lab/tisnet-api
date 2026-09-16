@@ -1,8 +1,11 @@
 # Catálogo de Quotes v1
 
-**Versión:** `quotes-catalog-v1`  
-**Alcance:** Sprint 3 / iteración técnica 5  
-**Estado:** Aprobado por el Product Owner para el flujo inicial  
+**Versión:** `quotes-catalog-v1`
+
+**Alcance:** Sprint 3 / iteración técnica 5
+
+**Estado:** Aprobado por el Product Owner para el flujo inicial
+
 **Fecha:** 16 de septiembre de 2026
 
 Este catálogo define únicamente soluciones, características, compatibilidades y orden de presentación. No define precios, impuestos ni descuentos; esas reglas siguen bloqueadas por SP-01.
