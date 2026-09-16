@@ -18,6 +18,15 @@ enum ProjectStatus {
   ARCHIVED
 }
 
+enum QuoteStatus {
+  RECEIVED
+}
+
+enum QuotePricingStatus {
+  PENDING_RULES
+  CALCULATED
+}
+
 model Role {
   id        Int      @id @default(autoincrement())
   name      String   @unique @db.VarChar(30)
@@ -27,16 +36,145 @@ model Role {
 }
 
 model User {
+  id                  Int                  @id @default(autoincrement())
+  name                String               @db.VarChar(100)
+  email               String               @unique @db.VarChar(150)
+  passwordHash        String               @db.VarChar(255)
+  roleId              Int
+  isActive            Boolean              @default(true)
+  acceptedTermsAt     DateTime?
+  termsVersion        String?              @db.VarChar(50)
+  privacyVersion      String?              @db.VarChar(50)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  tokenVersion        Int                  @default(0)
+  role                Role                 @relation(fields: [roleId], references: [id])
+  clientProfile       ClientProfile?
+  developerProfile    DeveloperProfile?
+  productOwnerProfile ProductOwnerProfile?
+  adminProfile        AdminProfile?
+
+  @@index([roleId, isActive])
+}
+
+model ClientProfile {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique
+  dni              String?  @unique @db.VarChar(8)
+  age              Int?
+  phone            String?  @db.VarChar(20)
+  district         String?  @db.VarChar(100)
+  businessName     String?  @db.VarChar(150)
+  ruc              String?  @unique @db.VarChar(11)
+  commercialName   String?  @db.VarChar(150)
+  businessDistrict String?  @db.VarChar(100)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DeveloperProfile {
+  id              Int                   @id @default(autoincrement())
+  userId          Int                   @unique
+  career          String?               @db.VarChar(150)
+  university      String?               @db.VarChar(180)
+  academicStatus  String?               @db.VarChar(100)
+  experienceYears Int?
+  specialty       String?               @db.VarChar(120)
+  cvUrl           String?               @db.VarChar(500)
+  photoUrl        String?               @db.VarChar(500)
+  linkedinUrl     String?               @db.VarChar(500)
+  githubUrl       String?               @db.VarChar(500)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  technologies    DeveloperTechnology[]
+}
+
+model DeveloperTechnology {
+  developerProfileId Int
+  technologyId       Int
+  developerProfile   DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
+  technology         Technology       @relation(fields: [technologyId], references: [id], onDelete: Restrict)
+
+  @@id([developerProfileId, technologyId])
+  @@index([technologyId])
+}
+
+model ProductOwnerProfile {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @unique
+  bio               String?  @db.Text
+  specialty         String?  @db.VarChar(120)
+  availabilityNotes String?  @db.VarChar(500)
+  photoUrl          String?  @db.VarChar(500)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AdminProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  executiveTitle  String?  @db.VarChar(120)
+  specialty       String?  @db.VarChar(120)
+  photoUrl        String?  @db.VarChar(500)
+  calendlyUrl     String?  @db.VarChar(500)
+  isPublicAdvisor Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Quote {
+  id             Int                @id @default(autoincrement())
+  publicCode     String             @unique @db.VarChar(20)
+  status         QuoteStatus        @default(RECEIVED)
+  solutionType   String             @db.VarChar(64)
+  contactName    String             @db.VarChar(100)
+  contactEmail   String             @db.VarChar(150)
+  contactPhone   String             @db.VarChar(30)
+  contactCompany String?            @db.VarChar(150)
+  notes          String?            @db.Text
+  pricingStatus  QuotePricingStatus @default(PENDING_RULES)
+  amountMinor    Decimal?           @db.Decimal(15, 0)
+  currency       String?            @db.Char(3)
+  pricingVersion String?            @db.VarChar(50)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  options        QuoteOption[]
+  items          QuoteItem[]
+
+  @@index([status, createdAt])
+  @@index([pricingStatus, createdAt])
+  @@index([solutionType, createdAt])
+}
+
+model QuoteOption {
   id           Int      @id @default(autoincrement())
-  name         String   @db.VarChar(100)
-  email        String   @unique @db.VarChar(150)
-  passwordHash String   @db.VarChar(255)
-  roleId       Int
-  isActive     Boolean  @default(true)
+  quoteId      Int
+  optionCode   String   @db.VarChar(64)
+  optionName   String   @db.VarChar(150)
+  displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  tokenVersion Int      @default(0)
-  role         Role     @relation(fields: [roleId], references: [id])
+  quote        Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@unique([quoteId, optionCode])
+  @@index([quoteId, displayOrder])
+}
+
+model QuoteItem {
+  id           Int      @id @default(autoincrement())
+  quoteId      Int
+  itemCode     String   @db.VarChar(64)
+  label        String   @db.VarChar(150)
+  amountMinor  Decimal  @db.Decimal(15, 0)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  quote        Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@unique([quoteId, itemCode])
+  @@index([quoteId, displayOrder])
 }
 
 model Category {
@@ -50,14 +188,15 @@ model Category {
 }
 
 model Technology {
-  id          Int                 @id @default(autoincrement())
-  name        String              @unique @db.VarChar(100)
-  description String?             @db.Text
-  icon        String?             @db.VarChar(255)
-  isActive    Boolean             @default(true)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  id          Int                   @id @default(autoincrement())
+  name        String                @unique @db.VarChar(100)
+  description String?               @db.Text
+  icon        String?               @db.VarChar(255)
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
   projects    ProjectTechnology[]
+  developers  DeveloperTechnology[]
 }
 
 model Project {
