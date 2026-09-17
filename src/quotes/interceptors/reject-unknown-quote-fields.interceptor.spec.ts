@@ -37,6 +37,24 @@ describe('RejectUnknownQuoteFieldsInterceptor', () => {
     expect(result).toBeDefined();
   });
 
+  it('debe permitir deliveryMode como campo raíz válido', () => {
+    const result = interceptor.intercept(
+      contextWithBody({
+        solutionType: 'ECOMMERCE',
+        options: [{ code: 'SEO_ADVANCED' }],
+        deliveryMode: 'URGENT',
+        contact: {
+          fullName: 'Ana Torres',
+          email: 'ana@example.com',
+          phone: '987654321',
+        },
+      }),
+      next,
+    );
+
+    expect(result).toBeDefined();
+  });
+
   it('debe rechazar campos administrativos y extras anidados', () => {
     expect(() =>
       interceptor.intercept(

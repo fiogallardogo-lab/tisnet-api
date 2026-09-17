@@ -5,7 +5,11 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuoteCatalog } from './catalog/quote-catalog';
 import { CreatePublicQuoteDto } from './dto/create-public-quote.dto';
-import { QuotePricingStatus, QuoteStatus } from './domain/quote.enums';
+import {
+  QuoteDeliveryMode,
+  QuotePricingStatus,
+  QuoteStatus,
+} from './domain/quote.enums';
 import { PricingEngine } from './pricing/pricing-engine';
 import {
   QuoteCodeCollisionError,
@@ -98,6 +102,36 @@ describe('QuotesService', () => {
       pricingVersion: null,
       createdAt: '2026-09-16T18:30:00.000Z',
     });
+  });
+
+  it('debe registrar PENDING_RULES cuando el PricingEngine no tiene regla aprobada', async () => {
+    const pricingEngine: PricingEngine = {
+      calculate: vi.fn().mockReturnValue(undefined),
+    };
+    const service = new QuotesService(
+      repository,
+      catalog,
+      pricingEngine,
+      () => 'Q-AAAAAAAA',
+    );
+
+    const result = await service.createPublic(dto);
+
+    expect(pricingEngine.calculate).toHaveBeenCalledWith({
+      solutionType: 'WEB_APP',
+      optionCodes: ['AUTH', 'REPORTS'],
+      deliveryMode: QuoteDeliveryMode.NORMAL,
+    });
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pricingStatus: QuotePricingStatus.PENDING_RULES,
+        amountMinor: null,
+        currency: null,
+        pricingVersion: null,
+        items: [],
+      }),
+    );
+    expect(result.pricingStatus).toBe(QuotePricingStatus.PENDING_RULES);
   });
 
   it('debe rechazar una solución inexistente o inactiva', async () => {
@@ -231,11 +265,15 @@ describe('QuotesService', () => {
       () => 'Q-AAAAAAAA',
     );
 
-    const result = await service.createPublic(dto);
+    const result = await service.createPublic({
+      ...dto,
+      deliveryMode: QuoteDeliveryMode.URGENT,
+    });
 
     expect(pricingEngine.calculate).toHaveBeenCalledWith({
       solutionType: 'WEB_APP',
       optionCodes: ['AUTH', 'REPORTS'],
+      deliveryMode: QuoteDeliveryMode.URGENT,
     });
     expect(repository.create).toHaveBeenCalledWith(
       expect.objectContaining({

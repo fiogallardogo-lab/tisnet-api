@@ -21,12 +21,14 @@ const isolatedDatabase = /(^|[_-])test($|[_-])/i.test(databaseName);
 
 const solutions: QuoteSolutionDefinition[] = [
   { code: 'WEB_APP', name: 'Aplicación web de prueba', isActive: true },
+  { code: 'ECOMMERCE', name: 'Tienda virtual de prueba', isActive: true },
+  { code: 'MOBILE_APP', name: 'Aplicación móvil de prueba', isActive: true },
 ];
 const options: QuoteOptionDefinition[] = [
   {
     code: 'AUTH',
     name: 'Autenticación de prueba',
-    solutionTypes: ['WEB_APP'],
+    solutionTypes: ['WEB_APP', 'MOBILE_APP'],
     isActive: true,
     displayOrder: 1,
   },
@@ -36,6 +38,20 @@ const options: QuoteOptionDefinition[] = [
     solutionTypes: ['WEB_APP'],
     isActive: true,
     displayOrder: 2,
+  },
+  {
+    code: 'SEO_ADVANCED',
+    name: 'SEO avanzado de prueba',
+    solutionTypes: ['ECOMMERCE', 'WEB_APP'],
+    isActive: true,
+    displayOrder: 3,
+  },
+  {
+    code: 'ADVANCED_ANALYTICS',
+    name: 'Analítica avanzada de prueba',
+    solutionTypes: ['ECOMMERCE', 'WEB_APP'],
+    isActive: true,
+    displayOrder: 4,
   },
 ];
 
@@ -64,7 +80,7 @@ describe.skipIf(!isolatedDatabase)('Quotes API (e2e, base aislada)', () => {
     prisma = app.get(PrismaService);
   });
 
-  it('debe crear una cotización pública persistente en PENDING_RULES', async () => {
+  it('debe crear una cotización pública persistente en PENDING_RULES para opciones sin regla', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/public/quotes')
       .send({
@@ -96,6 +112,99 @@ describe.skipIf(!isolatedDatabase)('Quotes API (e2e, base aislada)', () => {
     expect(quote?.contactEmail).toBe('ana.e2e@example.com');
     expect(quote?.options).toHaveLength(2);
     expect(quote?.items).toHaveLength(0);
+  });
+
+  it('debe admitir categorías reconocidas sin regla (MOBILE_APP) persistiendo en PENDING_RULES', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/public/quotes')
+      .send({
+        solutionType: 'MOBILE_APP',
+        options: [{ code: 'AUTH' }],
+        contact: {
+          fullName: 'Carlos Movil',
+          email: 'carlos.movil@example.com',
+          phone: '987654321',
+        },
+      })
+      .expect(201);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.pricingStatus).toBe('PENDING_RULES');
+    expect(response.body.data.amountMinor).toBeNull();
+
+    const quote = await prisma.quote.findUnique({
+      where: { publicCode: response.body.data.code },
+      include: { items: true },
+    });
+    expect(quote?.items).toHaveLength(0);
+  });
+
+  it('debe calcular y persistir cotización con regla aprobada SP-01-v2 (ECOMMERCE + NORMAL => S/ 4,000.00)', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/public/quotes')
+      .send({
+        solutionType: 'ECOMMERCE',
+        options: [{ code: 'SEO_ADVANCED' }, { code: 'ADVANCED_ANALYTICS' }],
+        deliveryMode: 'NORMAL',
+        contact: {
+          fullName: 'Beatriz Ecommerce',
+          email: 'beatriz.e2e@example.com',
+          phone: '987654321',
+        },
+      })
+      .expect(201);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.pricingStatus).toBe('CALCULATED');
+    expect(response.body.data.amountMinor).toBe(400000);
+    expect(response.body.data.currency).toBe('PEN');
+    expect(response.body.data.pricingVersion).toBe('SP-01-v2');
+
+    const quote = await prisma.quote.findUnique({
+      where: { publicCode: response.body.data.code },
+      include: { options: true, items: { orderBy: { displayOrder: 'asc' } } },
+    });
+    expect(quote?.pricingStatus).toBe('CALCULATED');
+    expect(quote?.amountMinor?.toNumber()).toBe(400000);
+    expect(quote?.currency).toBe('PEN');
+    expect(quote?.pricingVersion).toBe('SP-01-v2');
+    expect(quote?.items).toHaveLength(3);
+
+    expect(quote?.items[0].itemCode).toBe('BASE');
+    expect(quote?.items[0].amountMinor.toNumber()).toBe(320000);
+
+    expect(quote?.items[1].itemCode).toBe('EXTRA');
+    expect(quote?.items[1].amountMinor.toNumber()).toBe(80000);
+
+    expect(quote?.items[2].itemCode).toBe('DELIVERY_ADJUSTMENT');
+    expect(quote?.items[2].amountMinor.toNumber()).toBe(0);
+  });
+
+  it('debe calcular y persistir cotización con URGENT (+30%) => S/ 5,200.00', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/public/quotes')
+      .send({
+        solutionType: 'ECOMMERCE',
+        options: [{ code: 'SEO_ADVANCED' }, { code: 'ADVANCED_ANALYTICS' }],
+        deliveryMode: 'URGENT',
+        contact: {
+          fullName: 'David Urgente',
+          email: 'david.e2e@example.com',
+          phone: '987654321',
+        },
+      })
+      .expect(201);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.pricingStatus).toBe('CALCULATED');
+    expect(response.body.data.amountMinor).toBe(520000);
+
+    const quote = await prisma.quote.findUnique({
+      where: { publicCode: response.body.data.code },
+      include: { items: { orderBy: { displayOrder: 'asc' } } },
+    });
+    expect(quote?.items[2].itemCode).toBe('DELIVERY_ADJUSTMENT');
+    expect(quote?.items[2].amountMinor.toNumber()).toBe(120000);
   });
 
   it('debe rechazar campos desconocidos con 400 antes de persistir', async () => {

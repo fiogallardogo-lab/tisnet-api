@@ -3,6 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it } from 'vitest';
 import { CreatePublicQuoteDto } from './create-public-quote.dto';
+import { QuoteDeliveryMode } from '../domain/quote.enums';
 
 const validPayload = {
   solutionType: 'web_app',
@@ -27,6 +28,32 @@ describe('CreatePublicQuoteDto', () => {
       'REPORTS',
     ]);
     expect(dto.contact.email).toBe('ana.torres@example.com');
+  });
+
+  it('debe aceptar y normalizar modalidades válidas de entrega', async () => {
+    const dtoUrgent = plainToInstance(CreatePublicQuoteDto, {
+      ...validPayload,
+      deliveryMode: ' urgent ',
+    });
+    expect(await validate(dtoUrgent)).toHaveLength(0);
+    expect(dtoUrgent.deliveryMode).toBe(QuoteDeliveryMode.URGENT);
+
+    const dtoFlexible = plainToInstance(CreatePublicQuoteDto, {
+      ...validPayload,
+      deliveryMode: 'FLEXIBLE',
+    });
+    expect(await validate(dtoFlexible)).toHaveLength(0);
+    expect(dtoFlexible.deliveryMode).toBe(QuoteDeliveryMode.FLEXIBLE);
+  });
+
+  it('debe rechazar una modalidad de entrega no permitida', async () => {
+    const dto = plainToInstance(CreatePublicQuoteDto, {
+      ...validPayload,
+      deliveryMode: 'SUPER_FAST',
+    });
+
+    const errors = await validate(dto);
+    expect(errors.some(({ property }) => property === 'deliveryMode')).toBe(true);
   });
 
   it('debe rechazar opciones duplicadas después de normalizar códigos', async () => {

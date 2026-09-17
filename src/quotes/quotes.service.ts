@@ -8,7 +8,11 @@ import {
 import { QuoteCatalog, QUOTE_CATALOG } from './catalog/quote-catalog';
 import { CreatePublicQuoteDto } from './dto/create-public-quote.dto';
 import { PublicQuoteResponseDto } from './dto/public-quote-response.dto';
-import { QuotePricingStatus, QuoteStatus } from './domain/quote.enums';
+import {
+  QuoteDeliveryMode,
+  QuotePricingStatus,
+  QuoteStatus,
+} from './domain/quote.enums';
 import { generateQuoteCode } from './domain/quote-code.generator';
 import { normalizePublicQuote } from './domain/quote-normalizer';
 import { toPublicQuoteResponse } from './mappers/public-quote.mapper';
@@ -78,6 +82,7 @@ export class QuotesService {
     const pricing = this.calculatePricing(
       solution.code,
       options.map(({ code }) => code),
+      normalized.deliveryMode,
     );
 
     for (let attempt = 1; attempt <= MAX_CODE_ATTEMPTS; attempt += 1) {
@@ -120,10 +125,17 @@ export class QuotesService {
   private calculatePricing(
     solutionType: string,
     optionCodes: string[],
+    deliveryMode: QuoteDeliveryMode,
   ): PricingResult | undefined {
     if (!this.pricingEngine) return undefined;
 
-    const result = this.pricingEngine.calculate({ solutionType, optionCodes });
+    const result = this.pricingEngine.calculate({
+      solutionType,
+      optionCodes,
+      deliveryMode,
+    });
+    if (!result) return undefined;
+
     this.assertValidPricing(result);
     return result;
   }

@@ -1,12 +1,12 @@
 # Contrato API del módulo Quotes - Cotización pública
 
-**Versión del contrato:** Sprint 3 - Borrador 1
+**Versión del contrato:** Sprint 3 - SP-01-v2 Aprobado
 
-**Fecha de actualización:** 16 de septiembre de 2026
+**Fecha de actualización:** 17 de septiembre de 2026
 
 **Ámbito:** Backend (`tisnet-api`) y formulario público (`tisnet-web`)
 
-**Estado:** Modelo aprobado por A con ajustes menores; catálogo y SP-01 pendientes
+**Estado:** SP-01-v2 aprobado con cálculo determinista de precios en céntimos PEN.
 
 **Iteración técnica del repositorio:** 5 (`feature/s5-quotes-api`)
 
@@ -14,106 +14,133 @@
 
 ## 1. Objetivo
 
-Permitir que un visitante solicite una cotización sin crear una cuenta. La API valida los datos de contacto y la selección, registra la cotización de forma transaccional y devuelve un código público único con el estado del cálculo.
+Permitir que un visitante solicite una cotización sin crear una cuenta. La API valida los datos de contacto y la selección, registra la cotización de forma transaccional y devuelve un código público único (`Q-XXXXXXXX`) con el estado del cálculo y el desglose de precios cuando aplique.
 
-Este contrato separa dos resultados:
+Este contrato define:
 
-- **Cotización registrada:** puede completarse durante el Sprint 3.
-- **Monto aproximado calculado:** solo puede completarse cuando SP-01 defina y apruebe la fórmula, precios, moneda y reglas de redondeo.
+- **Cotización con regla aprobada (`pricingStatus: CALCULATED`):** Cuando la solución y las opciones seleccionadas pertenecen al catálogo tarifado SP-01-v2, se calcula el precio en céntimos PEN y se persiste el total junto a su desglose (`QuoteItem`).
+- **Cotización reconocida sin regla (`pricingStatus: PENDING_RULES`):** Cuando la categoría está reconocida en el contrato pero carece de tarifa aprobada (ej. `MOBILE_APP`, `CUSTOM_SOFTWARE`) o no existe motor de precios, se persiste con `amountMinor: null`, `currency: null` y `pricingVersion: null`.
 
-No se inventarán precios ni se ejecutarán reglas de cálculo no aprobadas.
+No se asignan precios por equivalencia ni se inventan importes no aprobados.
 
 ## 2. Alcance
 
 ### Incluido
 
 - Endpoint público para registrar una cotización.
-- Tipo de solución y características seleccionadas mediante códigos estables.
-- Datos básicos de contacto.
-- Normalización y validación del payload.
-- Código público único y no predecible.
-- Persistencia transaccional de la cotización y sus selecciones.
-- Estado explícito del cálculo.
-- Respuesta pública sin identificadores internos ni campos administrativos.
+- Catálogo SP-01-v2 de soluciones y características adicionales (extras).
+- Modalidad de entrega del proyecto (`deliveryMode`).
+- Datos básicos de contacto y validación estricta de teléfono.
+- Normalización y validación del payload (rechazo de campos desconocidos).
+- Código público único y no predecible (`Q-XXXXXXXX`).
+- Motor determinista `Sp01V2PricingEngine` en céntimos PEN con redondeo simétrico (`roundHalfAwayFromZero`).
+- Desglose estructurado persistido en `QuoteItem`:
+  - `BASE`: Solución base.
+  - `EXTRA`: Adicionales seleccionados.
+  - `DELIVERY_ADJUSTMENT`: Ajuste por modalidad.
+- Respuesta pública sin identificadores internos ni datos sensibles.
 
-### Fuera de alcance
+### Fuera de alcance (Responsable B)
 
-- Crear un usuario o un prospecto.
-- Enviar correos o notificaciones.
-- Generar PDF.
-- Vincular posteriormente una cotización a una cuenta.
-- Gestión comercial o cambio de estados desde un panel administrativo.
-- Cotización oficial, planes de pago, pagos o contratos.
+- Modificación de `prisma/schema.prisma`, migraciones de Prisma o seeds (propiedad exclusiva de Responsable A).
+- Creación de usuarios o cuentas vinculadas.
+- Envío de correos o notificaciones automáticas.
 
 ## 3. URL y convenciones
 
 - **Base URL local:** `http://localhost:3000/api/v1`
 - **Endpoint:** `POST /api/v1/public/quotes`
-- **Autenticación:** no requerida.
+- **Autenticación:** no requerida (público).
 - **Content-Type:** `application/json`.
 - **Fechas:** ISO 8601 en UTC.
-- **Importes:** enteros en la unidad mínima de la moneda (`amountMinor`), nunca números de punto flotante.
-- **Respuestas:** usan `TransformInterceptor` y `HttpExceptionFilter` del proyecto.
+- **Moneda:** `PEN` (Soles peruanos).
+- **Importes:** enteros en céntimos (`amountMinor`), nunca números de punto flotante.
 
-## 4. Catálogos del contrato
+---
 
-### 4.1 Tipo de solución
+## 4. Catálogos del contrato SP-01-v2
 
-`solutionType` es un código de catálogo, no una etiqueta visible ni texto libre. El conjunto definitivo de valores debe ser confirmado por el equipo antes de cerrar el contrato.
+### 4.1 Tipos de solución (`solutionType`)
 
-Mientras esté pendiente esa decisión, el backend validará la forma del código (`UPPER_SNAKE_CASE`) y el servicio lo comprobará contra una lista versionada. No se documentarán valores ficticios como si fueran definitivos.
+| Código | Nombre visible | Precio base (`amountMinor`) | Equivalente S/ | Estado SP-01-v2 |
+|---|---|:---:|:---:|:---:|
+| `LANDING_PAGE` | Landing page | 85000 | S/ 850.00 | Aprobado |
+| `CORPORATE_SITE` | Sitio web corporativo | 180000 | S/ 1,800.00 | Aprobado |
+| `ECOMMERCE` | Tienda virtual (E-commerce) | 320000 | S/ 3,200.00 | Aprobado |
+| `PERSONAL_PORTFOLIO` | Portafolio profesional | 140000 | S/ 1,400.00 | Aprobado |
+| `WEB_APP` | Aplicación web | 580000 | S/ 5,800.00 | Aprobado |
+| `SAAS_PLATFORM` | Plataforma SaaS | 760000 | S/ 7,600.00 | Aprobado |
+| `MOBILE_APP` | Aplicación móvil | *Sin precio* | — | Reconocida (`PENDING_RULES`) |
+| `CUSTOM_SOFTWARE` | Software a medida | *Sin precio* | — | Reconocida (`PENDING_RULES`) |
 
-### 4.2 Características
+Cualquier código fuera de los reconocidos responderá con `422 UnprocessableEntityException`.
 
-Cada elemento de `options` contiene el código estable de una característica aplicable al tipo de solución. Los códigos deben:
+### 4.2 Características adicionales / Extras (`options`)
 
-- existir en el catálogo versionado;
-- estar activos;
-- ser compatibles con `solutionType`;
-- no repetirse dentro de una misma solicitud.
+| Código | Descripción | Precio (`amountMinor`) | Equivalente S/ | Compatibilidad |
+|---|---|:---:|:---:|---|
+| `SEO_ADVANCED` | SEO avanzado y posicionamiento | 45000 | S/ 450.00 | Todos los tipos |
+| `CUSTOM_CMS` | Panel autoadministrable a medida (CMS) | 70000 | S/ 700.00 | Todos los tipos |
+| `ADVANCED_ANALYTICS` | Analítica avanzada y eventos | 35000 | S/ 350.00 | Todos los tipos |
+| `HOSTING_1Y` | Alojamiento cloud y dominio por 1 año | 28000 | S/ 280.00 | Todos los tipos |
+| `MULTILINGUAL` | Soporte multiidioma | 95000 | S/ 950.00 | Todos los tipos |
+| `MAINTENANCE_6M` | Mantenimiento y soporte técnico por 6 meses | 65000 | S/ 650.00 | Todos los tipos |
+| `LEAD_AUTOMATION` | Automatización de captación de leads | 78000 | S/ 780.00 | Todos los tipos |
+| `COMMERCIAL_CRM` | Integración con CRM comercial | 92000 | S/ 920.00 | Todos los tipos |
 
-El catálogo definitivo y su versión son una decisión pendiente del equipo. El cliente no envía nombres ni precios.
+### 4.3 Modalidades de entrega (`deliveryMode`)
 
-## 5. Estados
+| Código | Nombre visible | Factor de ajuste | Efecto económico |
+|---|---|:---:|---|
+| `NORMAL` | Entrega estándar | `0%` | Sin variación de precio (por defecto si se omite) |
+| `URGENT` | Entrega urgente | `+30%` | Recargo del 30% sobre el subtotal |
+| `FLEXIBLE` | Entrega flexible | `-10%` | Descuento del 10% sobre el subtotal |
 
-### 5.1 Estado de la cotización (`status`)
+---
 
-| Valor | Significado |
-|---|---|
-| `RECEIVED` | La solicitud fue validada y persistida correctamente. |
+## 5. Fórmula y Reglas de Cálculo SP-01-v2
 
-El Sprint 3 no incorpora estados de seguimiento comercial. Cualquier ampliación exige versionar este contrato.
+```
+subtotalMinor = baseMinor + suma(extrasMinor)
+adjustmentMinor = roundHalfAwayFromZero((subtotalMinor * tasaPorcentaje) / 100)
+totalMinor = subtotalMinor + adjustmentMinor
+```
 
-### 5.2 Estado del cálculo (`pricingStatus`)
+### Redondeo Simétrico (`roundHalfAwayFromZero`)
+Para garantizar consistencia matemática tanto en recargos positivos (`+30%`) como en descuentos negativos (`-10%`), cualquier mitad fraccionaria (`.5`) se redondea alejándose de cero:
+- `+2.5 => +3`
+- `-2.5 => -3`
 
-| Valor | Significado |
-|---|---|
-| `PENDING_RULES` | SP-01 todavía no está aprobado; no existe un monto válido. |
-| `CALCULATED` | El monto fue calculado con una versión aprobada de las reglas. |
+### Desglose de Ítems (`QuoteItem`)
+1. **Línea `BASE`:** Precio base de la solución (`amountMinor = baseMinor`).
+2. **Línea `EXTRA`:** Suma agregada de los adicionales seleccionados (`amountMinor = suma(extrasMinor)`).
+3. **Línea `DELIVERY_ADJUSTMENT`:** Ajuste según modalidad (`amountMinor = adjustmentMinor`, firmado: positivo, negativo o cero).
 
-No se devuelve `0` para representar un cálculo pendiente. Cuando `pricingStatus` es `PENDING_RULES`, todos los campos monetarios y `pricingVersion` son `null`.
+Invariante obligatoria: `BASE.amountMinor + EXTRA.amountMinor + DELIVERY_ADJUSTMENT.amountMinor === totalMinor`.
+
+---
 
 ## 6. Endpoint público
 
 ### `POST /api/v1/public/quotes`
 
-Registra una nueva cotización. No requiere token JWT.
-
 #### Request (`CreatePublicQuoteDto`)
 
 ```json
 {
-  "solutionType": "CODIGO_DE_SOLUCION",
+  "solutionType": "ECOMMERCE",
   "options": [
-    { "code": "CODIGO_DE_CARACTERISTICA" }
+    { "code": "SEO_ADVANCED" },
+    { "code": "ADVANCED_ANALYTICS" }
   ],
+  "deliveryMode": "URGENT",
   "contact": {
-    "fullName": "Ana Torres",
-    "email": "ana.torres@example.com",
+    "fullName": "Beatriz Echevarría",
+    "email": "beatriz@example.com",
     "phone": "+51 987 654 321",
-    "company": "Empresa Ejemplo SAC"
+    "company": "Comercial Ejemplo SAC"
   },
-  "notes": "Necesitamos una primera versión para el cuarto trimestre."
+  "notes": "Requerimos entrega prioritaria antes de fin de mes."
 }
 ```
 
@@ -121,41 +148,19 @@ Registra una nueva cotización. No requiere token JWT.
 
 | Campo | Tipo | Requerido | Reglas |
 |---|---|:---:|---|
-| `solutionType` | `string` | Sí | Trim, 2-64 caracteres, patrón `^[A-Z][A-Z0-9_]*$`, código activo del catálogo. |
-| `options` | `object[]` | Sí | Entre 1 y 20 elementos; códigos únicos y compatibles con la solución. |
-| `options[].code` | `string` | Sí | Trim, 2-64 caracteres, patrón `^[A-Z][A-Z0-9_]*$`. |
-| `contact.fullName` | `string` | Sí | Trim, espacios internos normalizados, 2-100 caracteres. |
-| `contact.email` | `string` | Sí | Email válido, trim, minúsculas, máximo 150 caracteres. |
-| `contact.phone` | `string` | Sí | Trim, 7-30 caracteres; admite dígitos, espacios y `+()-`; debe contener entre 7 y 15 dígitos. |
-| `contact.company` | `string` | No | Trim, espacios internos normalizados, 2-150 caracteres. Cadena vacía se convierte en ausencia. |
-| `notes` | `string` | No | Trim, máximo 1000 caracteres. Cadena vacía se convierte en ausencia. |
+| `solutionType` | `string` | Sí | Trim, mayúsculas, código activo del catálogo. |
+| `options` | `object[]` | Sí | Entre 1 y 20 elementos; códigos únicos y compatibles sin repetición. |
+| `options[].code` | `string` | Sí | Trim, mayúsculas, código activo del catálogo. |
+| `deliveryMode` | `string` | No | `NORMAL`, `URGENT`, `FLEXIBLE`. Por defecto `NORMAL` si se omite. |
+| `contact.fullName` | `string` | Sí | 2-100 caracteres, espacios colapsados. |
+| `contact.email` | `string` | Sí | Email RFC 5322 válido, normalizado a minúsculas, máx 150 caracteres. |
+| `contact.phone` | `string` | Sí | 7-30 caracteres, entre 7 y 15 dígitos numéricos obligatorios. |
+| `contact.company` | `string` | No | 2-150 caracteres. |
+| `notes` | `string` | No | Máximo 1000 caracteres. |
 
-El objeto raíz, `contact` y cada elemento de `options` son cerrados. Cualquier campo desconocido produce `400 Bad Request` antes de que el whitelist global pueda eliminarlo. No forman parte del contrato ni deben persistirse campos como:
+Cualquier campo desconocido (ej. `status`, `amountMinor`, etc.) es rechazado inmediatamente con `400 Bad Request`.
 
-- `id`, `publicCode`, `status` o `pricingStatus`;
-- `amountMinor`, `currency` o `pricingVersion`;
-- precios, subtotales o nombres enviados dentro de una opción;
-- fechas, observaciones administrativas o identificadores de usuario.
-
-#### Respuesta `201 Created` con SP-01 pendiente
-
-```json
-{
-  "success": true,
-  "message": "Cotización registrada correctamente",
-  "data": {
-    "code": "Q-7K4M9X2P",
-    "status": "RECEIVED",
-    "pricingStatus": "PENDING_RULES",
-    "amountMinor": null,
-    "currency": null,
-    "pricingVersion": null,
-    "createdAt": "2026-09-16T18:30:00.000Z"
-  }
-}
-```
-
-#### Respuesta `201 Created` con reglas aprobadas
+#### Respuesta `201 Created` - Cálculo SP-01-v2 exitoso
 
 ```json
 {
@@ -165,111 +170,38 @@ El objeto raíz, `contact` y cada elemento de `options` son cerrados. Cualquier 
     "code": "Q-7K4M9X2P",
     "status": "RECEIVED",
     "pricingStatus": "CALCULATED",
-    "amountMinor": 125000,
+    "amountMinor": 520000,
     "currency": "PEN",
-    "pricingVersion": "SP-01-v1",
-    "createdAt": "2026-09-16T18:30:00.000Z"
+    "pricingVersion": "SP-01-v2",
+    "createdAt": "2026-09-17T17:30:00.000Z"
   }
 }
 ```
 
-Los valores monetarios del segundo ejemplo son únicamente ilustrativos de la representación técnica; no constituyen precios aprobados ni deben copiarse al motor de cálculo.
-
-## 7. Reglas de negocio
-
-1. El endpoint es público y no depende de una sesión.
-2. Una solicitud válida crea una sola cotización y todas sus selecciones en una única transacción.
-3. `code` es generado exclusivamente por el backend con entropía criptográfica; no deriva del ID, fecha, email o teléfono.
-4. El formato inicial del código es `Q-` seguido de 8 caracteres aleatorios del alfabeto `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`, evitando caracteres ambiguos.
-5. La base de datos debe imponer unicidad sobre el código. Ante una colisión, el servicio reintenta como máximo 3 veces; si todas fallan responde `503` sin persistencia parcial.
-6. La selección debe incluir al menos una característica válida y no puede contener códigos duplicados.
-7. El frontend envía códigos, nunca precios. El backend resuelve nombres, compatibilidad y precios desde sus catálogos versionados.
-8. El cálculo es determinista: el mismo payload normalizado y la misma versión de reglas producen el mismo resultado.
-9. Si SP-01 no está aprobado, se persiste la cotización con `pricingStatus: PENDING_RULES`; no se genera un precio provisional.
-10. La respuesta pública no contiene IDs internos, datos de contacto completos, reglas, costos unitarios, observaciones administrativas ni metadatos internos.
-11. La implementación debe aplicar limitación de solicitudes al endpoint público. El límite concreto se definirá con la configuración de seguridad del entorno.
-12. Los logs no deben registrar el cuerpo completo, email ni teléfono en texto plano.
-
-## 8. Respuestas de error
-
-Todas mantienen el envoltorio estándar:
+#### Respuesta `201 Created` - Categoría reconocida sin regla (`PENDING_RULES`)
 
 ```json
 {
-  "success": false,
-  "message": ["El correo electrónico no es válido"],
-  "error": "BadRequestException"
+  "success": true,
+  "message": "Cotización registrada correctamente",
+  "data": {
+    "code": "Q-9M2K8P3X",
+    "status": "RECEIVED",
+    "pricingStatus": "PENDING_RULES",
+    "amountMinor": null,
+    "currency": null,
+    "pricingVersion": null,
+    "createdAt": "2026-09-17T17:30:00.000Z"
+  }
 }
 ```
 
-| HTTP | Error | Escenario |
-|---:|---|---|
-| `400` | `BadRequestException` | Forma, tipo, longitud o formato inválido; campos desconocidos; opciones vacías o duplicadas. |
-| `422` | `UnprocessableEntityException` | Código de solución/opción inexistente, inactivo o incompatible con la solución. |
-| `429` | `TooManyRequestsException` | Se supera el límite configurado para el endpoint. |
-| `503` | `ServiceUnavailableException` | No se pudo reservar un código único después de los reintentos o la persistencia no está disponible. |
-| `500` | `InternalServerError` | Error inesperado no controlado. |
+---
 
-No se utilizan `401` ni `403` porque el endpoint es público. Un error nunca devuelve `200` ni incluye detalles de Prisma, SQL, stack traces o datos personales.
+## 7. Dependencia Técnica con el Responsable A
 
-## 9. Contrato lógico para persistencia
+| Campo | Modelo | Tipo Prisma | Nulabilidad / Default | Justificación técnica |
+|---|---|---|---|---|
+| `deliveryMode` | `Quote` | `String @db.VarChar(20)` | `String?` o `@default("NORMAL")` | Persistir la modalidad directamente en la entidad raíz `Quote` para facilitar consultas administrativas, reportes y dashboards sin necesidad de consultar el desglose de `QuoteItem`. |
 
-Esta sección es la entrega de B para que A proponga el detalle físico en Prisma. No autoriza a B a modificar `schema.prisma` ni migraciones.
-
-La propuesta concreta de campos, tipos, relaciones, índices e invariantes para revisión de A se encuentra en [`quotes-data-model-proposal.md`](./quotes-data-model-proposal.md).
-
-### Quote
-
-Debe poder almacenar, como mínimo:
-
-- identificador interno;
-- código público único;
-- estado de la cotización;
-- tipo de solución seleccionado;
-- nombre, email, teléfono y empresa opcional normalizados;
-- notas opcionales;
-- estado del cálculo;
-- monto en unidad mínima, moneda y versión de precios, todos opcionales mientras SP-01 esté pendiente;
-- fechas de creación y actualización.
-
-### QuoteOption
-
-Debe representar cada característica seleccionada y conservar una fotografía estable de lo cotizado:
-
-- relación con `Quote`;
-- código de opción;
-- nombre visible resuelto por backend;
-- orden estable;
-- componentes monetarios solo cuando existan reglas aprobadas.
-
-Debe existir una restricción única equivalente a `(quoteId, optionCode)`.
-
-### QuoteItem
-
-Se mantiene como entidad reservada para el desglose versionado del cálculo. Su estructura definitiva depende de SP-01. No debe crearse con semántica ficticia; A y B decidirán si la primera migración la incluye después de aprobar la fórmula.
-
-## 10. Casos de aceptación
-
-- Un visitante sin token envía datos válidos y recibe `201`, código único y `RECEIVED`.
-- La cotización y todas las opciones quedan persistidas o ninguna queda persistida.
-- Dos cotizaciones reciben códigos diferentes.
-- Una colisión simulada genera un nuevo código dentro del máximo de reintentos.
-- Un campo administrativo enviado por el cliente no altera el estado, código ni monto calculado por el servidor.
-- Emails y teléfonos se guardan normalizados.
-- Opciones repetidas, inexistentes o incompatibles son rechazadas.
-- Con SP-01 pendiente se devuelve `PENDING_RULES` y valores monetarios `null`.
-- Con SP-01 aprobado se guarda y devuelve `amountMinor`, `currency` y `pricingVersion` coherentes.
-- La respuesta nunca expone ID interno, email, teléfono, detalles de cálculo ni metadatos administrativos.
-
-## 11. Decisiones pendientes para aprobar el contrato
-
-| Decisión | Responsable | Impacto |
-|---|---|---|
-| Catálogo definitivo de `solutionType` | Equipo/producto | Cierra validación y ejemplos reales. |
-| Catálogo de opciones y compatibilidad | Equipo/producto | Cierra DTOs y persistencia de selecciones. |
-| Fórmula, tabla de precios y moneda de SP-01 | Producto/Diego | Desbloquea `CALCULATED`. |
-| Regla de redondeo e impuestos | Producto | Cierra resultados monetarios. |
-| Límite de solicitudes por IP/ventana | Backend/infraestructura | Cierra protección antiabuso. |
-| Inclusión de `QuoteItem` en la primera migración | A y B | Define el desglose físico del cálculo. |
-
-Hasta resolver estas decisiones, el contrato de registro y persistencia puede implementarse; el catálogo real y el cálculo no deben declararse terminados.
+*Nota de implementación:* Mientras el Responsable A integra la columna en Prisma, la modalidad queda registrada y respaldada financieramente en la tabla `QuoteItem` bajo el código `DELIVERY_ADJUSTMENT`.
