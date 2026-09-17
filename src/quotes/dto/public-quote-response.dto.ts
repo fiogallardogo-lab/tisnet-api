@@ -14,13 +14,13 @@ export class PublicQuoteResponseDto {
   })
   pricingStatus: QuotePricingStatus;
 
-  @ApiProperty({ example: null, nullable: true, type: Number })
+  @ApiProperty({ example: 400000, nullable: true, type: Number })
   amountMinor: number | null;
 
-  @ApiProperty({ example: null, nullable: true, type: String })
+  @ApiProperty({ example: 'PEN', nullable: true, type: String })
   currency: string | null;
 
-  @ApiProperty({ example: null, nullable: true, type: String })
+  @ApiProperty({ example: 'SP-01-v2', nullable: true, type: String })
   pricingVersion: string | null;
 
   @ApiProperty({ example: '2026-09-16T18:30:00.000Z' })

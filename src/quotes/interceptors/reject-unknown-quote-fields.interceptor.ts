@@ -7,7 +7,13 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 
-const ROOT_FIELDS = new Set(['solutionType', 'options', 'contact', 'notes']);
+const ROOT_FIELDS = new Set([
+  'solutionType',
+  'options',
+  'contact',
+  'notes',
+  'deliveryMode',
+]);
 const CONTACT_FIELDS = new Set(['fullName', 'email', 'phone', 'company']);
 const OPTION_FIELDS = new Set(['code']);
 

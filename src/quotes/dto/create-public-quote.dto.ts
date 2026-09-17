@@ -5,6 +5,7 @@ import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
+  IsEnum,
   IsOptional,
   IsString,
   Matches,
@@ -14,6 +15,7 @@ import {
 } from 'class-validator';
 import { QuoteContactDto } from './quote-contact.dto';
 import { QuoteOptionDto } from './quote-option.dto';
+import { QuoteDeliveryMode } from '../domain/quote.enums';
 
 const normalizeCode = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toUpperCase() : value;
@@ -27,7 +29,7 @@ const emptyToUndefined = ({ value }: { value: unknown }) => {
 export class CreatePublicQuoteDto {
   @ApiProperty({
     description: 'Código estable del tipo de solución',
-    example: 'CODIGO_DE_SOLUCION',
+    example: 'ECOMMERCE',
     minLength: 2,
     maxLength: 64,
   })
@@ -51,6 +53,19 @@ export class CreatePublicQuoteDto {
   @ValidateNested({ each: true })
   @Type(() => QuoteOptionDto)
   options: QuoteOptionDto[];
+
+  @ApiPropertyOptional({
+    description: 'Modalidad de entrega del proyecto',
+    enum: QuoteDeliveryMode,
+    example: QuoteDeliveryMode.NORMAL,
+    default: QuoteDeliveryMode.NORMAL,
+  })
+  @Transform(normalizeCode)
+  @IsOptional()
+  @IsEnum(QuoteDeliveryMode, {
+    message: 'La modalidad de entrega debe ser NORMAL, URGENT o FLEXIBLE',
+  })
+  deliveryMode?: QuoteDeliveryMode;
 
   @ApiProperty({ type: QuoteContactDto })
   @ValidateNested()

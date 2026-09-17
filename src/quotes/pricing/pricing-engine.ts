@@ -1,6 +1,9 @@
+import { QuoteDeliveryMode } from '../domain/quote.enums';
+
 export interface PricingSelection {
   solutionType: string;
   optionCodes: string[];
+  deliveryMode?: QuoteDeliveryMode | string;
 }
 
 export interface PricingItem {
@@ -18,11 +21,12 @@ export interface PricingResult {
 }
 
 /**
- * Contrato del cálculo. No debe existir una implementación productiva hasta
- * que SP-01 apruebe fórmula, tabla de precios, moneda y redondeo.
+ * Contrato del cálculo determinista de precios.
+ * Si una selección no tiene regla aprobada en la versión activa,
+ * calculate retorna undefined para indicar estado PENDING_RULES.
  */
 export interface PricingEngine {
-  calculate(selection: PricingSelection): PricingResult;
+  calculate(selection: PricingSelection): PricingResult | undefined;
 }
 
 export const PRICING_ENGINE = Symbol('PRICING_ENGINE');

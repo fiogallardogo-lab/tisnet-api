@@ -1,4 +1,5 @@
 import { CreatePublicQuoteDto } from '../dto/create-public-quote.dto';
+import { QuoteDeliveryMode } from './quote.enums';
 
 const collapseWhitespace = (value: string) => value.trim().replace(/\s+/g, ' ');
 
@@ -11,6 +12,7 @@ const optionalText = (value?: string) => {
 export interface NormalizedPublicQuote {
   solutionType: string;
   options: Array<{ code: string }>;
+  deliveryMode: QuoteDeliveryMode;
   contact: {
     fullName: string;
     email: string;
@@ -28,6 +30,8 @@ export function normalizePublicQuote(
     options: dto.options.map(({ code }) => ({
       code: code.trim().toUpperCase(),
     })),
+    deliveryMode:
+      (dto.deliveryMode as QuoteDeliveryMode) ?? QuoteDeliveryMode.NORMAL,
     contact: {
       fullName: collapseWhitespace(dto.contact.fullName),
       email: dto.contact.email.trim().toLowerCase(),
