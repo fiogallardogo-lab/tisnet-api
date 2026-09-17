@@ -1,9 +1,15 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 
 interface RefreshTokenPayload {
   sub: number;
@@ -16,7 +22,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async validateUser(email: string, pass: string) {
     const user = await this.usersService.findByEmail(email);
@@ -36,10 +42,7 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const user = await this.validateUser(
-      loginDto.email,
-      loginDto.password,
-    );
+    const user = await this.validateUser(loginDto.email, loginDto.password);
 
     const payload = {
       email: user.email,
@@ -50,9 +53,9 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload);
 
-    const refreshExpiration =
-      (this.configService.get<string>('JWT_REFRESH_EXPIRATION') ??
-        '7d') as JwtSignOptions['expiresIn'];
+    const refreshExpiration = (this.configService.get<string>(
+      'JWT_REFRESH_EXPIRATION',
+    ) ?? '7d') as JwtSignOptions['expiresIn'];
 
     const refreshToken = this.jwtService.sign(
       {
@@ -60,10 +63,7 @@ export class AuthService {
         tokenVersion: user.tokenVersion,
       },
       {
-        secret:
-          this.configService.getOrThrow<string>(
-            'JWT_REFRESH_SECRET',
-          ),
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
         expiresIn: refreshExpiration,
       },
     );
@@ -81,29 +81,21 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     try {
-      const payload =
-        this.jwtService.verify<RefreshTokenPayload>(
-          refreshToken,
-          {
-            secret:
-              this.configService.getOrThrow<string>(
-                'JWT_REFRESH_SECRET',
-              ),
-          },
-        );
+      const payload = this.jwtService.verify<RefreshTokenPayload>(
+        refreshToken,
+        {
+          secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        },
+      );
 
       const user = await this.usersService.findById(payload.sub);
 
       if (!user || !user.isActive) {
-        throw new UnauthorizedException(
-          'Usuario inactivo o no existe',
-        );
+        throw new UnauthorizedException('Usuario inactivo o no existe');
       }
 
       if (user.tokenVersion !== payload.tokenVersion) {
-        throw new UnauthorizedException(
-          'Refresh token revocado',
-        );
+        throw new UnauthorizedException('Refresh token revocado');
       }
 
       const newPayload = {
@@ -113,16 +105,13 @@ export class AuthService {
         tokenVersion: user.tokenVersion,
       };
 
-      const newAccessToken =
-        this.jwtService.sign(newPayload);
+      const newAccessToken = this.jwtService.sign(newPayload);
 
       return {
         accessToken: newAccessToken,
       };
     } catch {
-      throw new UnauthorizedException(
-        'Refresh token inválido o expirado',
-      );
+      throw new UnauthorizedException('Refresh token inválido o expirado');
     }
   }
 
@@ -133,6 +122,46 @@ export class AuthService {
       success: true,
       message: 'Sesión cerrada correctamente',
       data: null,
+    };
+  }
+
+  async register(registerDto: RegisterDto) {
+    const termsVersion = this.configService.get<string>('TERMS_VERSION');
+    const privacyVersion = this.configService.get<string>('PRIVACY_VERSION');
+
+    if (!termsVersion || !privacyVersion) {
+      throw new ServiceUnavailableException(
+        'Las versiones legales no están configuradas',
+      );
+    }
+
+    if (
+      registerDto.termsVersion !== termsVersion ||
+      registerDto.privacyVersion !== privacyVersion
+    ) {
+      throw new BadRequestException(
+        'Las versiones de términos o privacidad no son vigentes',
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(registerDto.password, 12);
+    const user = await this.usersService.createClient({
+      name: registerDto.name,
+      email: registerDto.email,
+      passwordHash,
+      termsVersion,
+      privacyVersion,
+    });
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role.name,
+      isActive: user.isActive,
+      acceptedTermsAt: user.acceptedTermsAt,
+      termsVersion: user.termsVersion,
+      privacyVersion: user.privacyVersion,
     };
   }
 }
