@@ -1,0 +1,3 @@
+CREATE DATABASE IF NOT EXISTS tisnet_test;
+GRANT ALL PRIVILEGES ON tisnet_test.* TO 'tisnet_user'@'%';
+FLUSH PRIVILEGES;

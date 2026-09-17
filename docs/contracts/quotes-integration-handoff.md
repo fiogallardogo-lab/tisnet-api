@@ -6,7 +6,7 @@
 
 **Rama de B:** `feature/s5-quotes-api`
 
-**Estado:** lógica independiente terminada; persistencia y catálogo pendientes
+**Estado:** módulo integrado y verificado; cálculo monetario condicionado por SP-01
 
 ## 1. Entregables disponibles
 
@@ -21,20 +21,18 @@
 - Mapper seguro de respuesta en `src/quotes/mappers/public-quote.mapper.ts`.
 - Servicio, controlador Swagger y pruebas unitarias en `src/quotes`.
 
-## 2. Integración pendiente con A
+## 2. Integración completada con A
 
-Cuando A entregue su commit, B debe:
+La integración con el bloque Prisma entregado por A quedó completada:
 
-1. Actualizar la rama desde el commit habilitante de A.
-2. Confirmar que Prisma Client expone `quote`, `quoteOption`, `quoteItem`, `QuoteStatus` y `QuotePricingStatus` con los nombres acordados.
-3. Implementar `PrismaQuoteRepository` detrás de `QuoteRepository`.
-4. Crear `Quote`, `QuoteOption[]` y `QuoteItem[]` mediante una única transacción.
-5. Convertir `Prisma.Decimal` a `number` solo después de comprobar `Number.isSafeInteger`.
-6. Mapear exclusivamente la colisión única de `publicCode` a `QuoteCodeCollisionError`.
-7. No convertir otras restricciones, errores de conexión o fallos transaccionales en colisiones.
-8. Proporcionar `QUOTE_REPOSITORY`, `QUOTE_CATALOG` y `QUOTE_CODE_GENERATOR` desde `QuotesModule`.
-9. Solicitar a A el registro de `QuotesModule` en `AppModule`.
-10. Ejecutar migración, pruebas HTTP y E2E contra una base aislada.
+1. Prisma Client expone `quote`, `quoteOption`, `quoteItem`, `QuoteStatus` y `QuotePricingStatus` con los nombres acordados.
+2. `PrismaQuoteRepository` implementa `QuoteRepository` y crea `Quote`, `QuoteOption[]` y `QuoteItem[]` mediante una única transacción.
+3. La conversión de `Prisma.Decimal` a `number` exige un entero seguro.
+4. Solo la colisión única de `publicCode` se convierte en `QuoteCodeCollisionError`; los demás errores conservan su naturaleza.
+5. `QuotesModule` proporciona `QUOTE_REPOSITORY`, `QUOTE_CATALOG` y `QUOTE_CODE_GENERATOR`.
+6. `AppModule` registra `QuotesModule` con `quotesCatalogV1`.
+7. La migración consolidada se aplicó correctamente en la base aislada `tisnet_test`.
+8. Lint, pruebas unitarias, build y pruebas E2E finalizaron correctamente el 17 de septiembre de 2026.
 
 ## 3. Contrato de la transacción
 
@@ -62,7 +60,7 @@ La implementación de `QuoteRepository.create()` debe cumplir:
 | Fallo al crear una opción | `500` controlado | Rollback de Quote y opciones. |
 | SP-01 pendiente | `201` | `PENDING_RULES`, monetarios `null`, items vacíos. |
 
-Estas pruebas se implementarán cuando exista Prisma Client y una base aislada. No se agregan pruebas omitidas artificialmente a la suite actual.
+La cobertura se reparte entre pruebas unitarias del servicio, repositorio, DTOs, interceptor, generador y mapper, más pruebas E2E contra una base aislada. La ejecución verificada obtuvo 115 pruebas unitarias y 106 pruebas E2E aprobadas.
 
 ## 5. Integración para C
 
@@ -129,17 +127,30 @@ export interface CreatePublicQuoteResponse {
 
 El mock debe permanecer detrás de una bandera explícita y retirarse cuando la API real esté integrada.
 
-## 6. Seguridad pendiente
+## 6. Seguridad y decisiones de infraestructura pendientes
 
 - Definir el límite por IP y ventana con backend/infraestructura.
 - Aplicar límite de tamaño del body en la configuración global.
 - Evitar cuerpo completo, email y teléfono en logs.
-- Mantener el mapper público como única salida del servicio.
+- El mapper público ya es la única salida del servicio y tiene pruebas que impiden exponer IDs o datos de contacto.
 - No agregar CAPTCHA ni verificación de correo sin una decisión de alcance.
 
-## 7. Decisiones bloqueantes
+## 7. Decisión bloqueante restante
 
-- Catálogo versionado real de `solutionType` y `optionCode`.
-- Compatibilidad entre soluciones y opciones.
-- Commit de Prisma, migración y cliente generado por A.
-- SP-01 para habilitar `CALCULATED`.
+- SP-01 debe aprobar fórmula, tabla de precios, moneda y redondeo antes de registrar una implementación productiva de `PricingEngine` y habilitar `CALCULATED`.
+
+El catálogo versionado, sus compatibilidades y la integración Prisma ya están resueltos. Mientras SP-01 continúe pendiente, el comportamiento aprobado es persistir la cotización con `PENDING_RULES`, campos monetarios en `null` y sin `QuoteItem`.
+
+## 8. Estado de actividades del Responsable B
+
+| Actividad | Estado | Evidencia |
+|---|---|---|
+| B1. Contrato de Quote | Completada | `docs/contracts/quotes-api.md` |
+| B2. Propuesta de datos | Completada e integrada por A | `docs/contracts/quotes-data-model-proposal.md` y migración consolidada |
+| B3. POST público | Completada | `POST /api/v1/public/quotes` |
+| B4. Validación y normalización | Completada | DTOs, normalizador, catálogo e interceptor de campos desconocidos |
+| B5. Código único | Completada | Generador criptográfico, índice único y hasta tres intentos ante colisión |
+| B6. Persistencia transaccional | Completada | `PrismaQuoteRepository` |
+| B7. Motor de precios | Completada hasta el límite aprobado | Interfaz pura y versionable lista; implementación productiva condicionada por SP-01 |
+| B8. Pruebas | Completada para el alcance no bloqueado | Unitarias y E2E aprobadas |
+| B9. Swagger y ejemplos para C | Completada | Decoradores Swagger, contrato y sección de integración frontend |
