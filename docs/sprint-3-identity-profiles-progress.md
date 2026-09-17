@@ -1,8 +1,10 @@
 # Sprint 3 - Avance de identidad y perfiles
 
-Fecha: 16/09/2026  
-Responsable: A - Backend de identidad, perfiles y Prisma  
-Estado: implementación local y migración consolidada validadas; comprobación HTTP pendiente.
+Fecha de actualización: 17/09/2026
+
+Responsable: A - Backend de identidad, perfiles y Prisma
+
+Estado: alcance de backend del Responsable A implementado y validado; pendiente únicamente la integración de entrega mediante PR.
 
 ## Alcance implementado
 
@@ -19,16 +21,17 @@ Estado: implementación local y migración consolidada validadas; comprobación 
 
 ## Verificaciones ejecutadas
 
-| Comprobación | Resultado |
-| --- | --- |
-| `npx prisma format` | Correcto |
-| `npx prisma validate` | Correcto |
-| `npx prisma generate` | Correcto |
-| `npx prisma migrate deploy` | Migración consolidada aplicada correctamente |
-| `npx prisma migrate status` | Base de datos actualizada, 8 migraciones |
-| `npm test` | 16 archivos, 102 pruebas aprobadas |
-| `npm run lint` | Sin errores |
-| `npm run build` | Correcto |
+| Comprobación                | Resultado                                             |
+| --------------------------- | ----------------------------------------------------- |
+| `npx prisma format`         | Correcto                                              |
+| `npx prisma validate`       | Correcto                                              |
+| `npx prisma generate`       | Correcto                                              |
+| `npx prisma migrate deploy` | Migración consolidada aplicada correctamente          |
+| `npx prisma migrate status` | Base de datos actualizada, 8 migraciones              |
+| `npm test`                  | 24 archivos, 131 pruebas aprobadas                    |
+| `npm run test:e2e:full`     | 3 archivos, 114 pruebas aprobadas sobre `tisnet_test` |
+| `npm run lint`              | Sin errores                                           |
+| `npm run build`             | Correcto                                              |
 
 ## Controles de seguridad comprobados
 
@@ -39,12 +42,25 @@ Estado: implementación local y migración consolidada validadas; comprobación 
 - Tecnologías inexistentes o inactivas se rechazan antes de actualizar Developer.
 - Campos desconocidos se rechazan mediante ValidationPipe.
 
-## Trabajo pendiente antes de evidencia HTTP
+## Evidencia HTTP incorporada
 
-1. Configurar `TERMS_VERSION` y `PRIVACY_VERSION` en `.env` sin versionar secretos.
-2. Ejecutar el seed cuando se requieran los cinco roles en la base local.
-3. Probar registro, perfiles y regresión en Swagger/E2E con datos de prueba.
-4. Publicar el commit de Prisma para que el Responsable B conecte QuoteRepository.
-5. Integrar QuotesModule en AppModule cuando B entregue su commit revisable.
+`test/identity-profiles.e2e-spec.ts` valida en una base aislada:
 
-Se creó y aplicó localmente `20260916155021_add_identity_profiles_quotes`. No se ejecutó el seed y todavía no se realizó commit o push.
+1. Registro exclusivo de CLIENT, normalización y ausencia de campos sensibles.
+2. Rechazo de email duplicado, consentimiento inválido, versiones legales obsoletas y campos privilegiados.
+3. Consulta y actualización del usuario y perfil propios.
+4. Autorización por rol y rechazo del acceso cruzado.
+5. Creación de perfiles CLIENT, DEVELOPER, PRODUCT_OWNER y ADMIN.
+6. Rechazo de tecnologías duplicadas o inexistentes.
+
+La prueba cancela su ejecución si el nombre de la base no identifica explícitamente un entorno de test.
+
+## Estado de entrega
+
+- `TERMS_VERSION` y `PRIVACY_VERSION` están documentadas en `.env.example`.
+- El seed aislado crea los roles y usuarios requeridos para E2E.
+- La migración `20260916155021_add_identity_profiles_quotes` está aplicada en desarrollo y test.
+- Prisma y `QuotesModule` ya están integrados en `AppModule` con `quotesCatalogV1`.
+- Los commits previos están publicados en `test/s5-quotes-integration`.
+
+Pendiente operativo: confirmar esta evidencia en un commit, publicar la rama y completar el PR. SP-01 sigue siendo una dependencia externa de Producto y no bloquea el flujo `PENDING_RULES`.
