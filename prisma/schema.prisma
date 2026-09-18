@@ -325,3 +325,34 @@ model Service {
   @@index([isActive, displayOrder])
   @@index([isFeatured])
 }
+
+model PublicQuote {
+  id               Int      @id @default(autoincrement())
+  code             String   @unique @db.VarChar(100)
+  solutionType     String   @db.VarChar(40)
+  deliveryMode     String   @db.VarChar(20)
+  contact          Json
+  notes            String?  @db.Text
+  snapshot         Json
+  pricingStatus    String   @db.VarChar(30)
+  amountMinor      Int?
+  currency         String?  @db.VarChar(3)
+  pricingVersion   String?  @db.VarChar(30)
+  createdAt        DateTime @default(now())
+}
+
+model TeamApplication {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique @db.VarChar(100)
+  email         String   @unique @db.VarChar(150)
+  dni           String   @unique @db.VarChar(8)
+  requestedRole String   @db.VarChar(30)
+  profile       Json
+  cv            Bytes    @db.LongBlob
+  cvName        String   @db.VarChar(255)
+  photo         Bytes    @db.LongBlob
+  photoMime     String   @db.VarChar(30)
+  consent       Boolean
+  status        String   @default("PENDING_REVIEW") @db.VarChar(30)
+  createdAt     DateTime @default(now())
+}

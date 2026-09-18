@@ -1,3 +1,4 @@
+import { IntakeModule } from './public-intake/intake.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
@@ -32,6 +33,7 @@ import { MeetingsModule } from './meetings/meetings.module.js';
     TechnologiesModule,
     ProjectsModule,
     ServicesModule,
+    IntakeModule,
     ProfilesModule,
     QuotesModule.register({ catalog: quotesCatalogV1 }),
     ProspectsModule,
