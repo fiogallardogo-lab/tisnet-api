@@ -12,6 +12,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ProfilesModule } from './profiles/profiles.module.js';
 import { QuotesModule } from './quotes/quotes.module.js';
 import { quotesCatalogV1 } from './quotes/catalog/quotes-catalog-v1.js';
+import { ProspectsModule } from './prospects/prospects.module.js';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { quotesCatalogV1 } from './quotes/catalog/quotes-catalog-v1.js';
     ServicesModule,
     ProfilesModule,
     QuotesModule.register({ catalog: quotesCatalogV1 }),
+    ProspectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
