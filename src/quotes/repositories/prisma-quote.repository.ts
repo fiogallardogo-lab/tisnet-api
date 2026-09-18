@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
-import { QuotePricingStatus, QuoteStatus } from '../domain/quote.enums';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { QuotePricingStatus, QuoteStatus } from '../domain/quote.enums.js';
 import {
   CreateQuoteRecord,
   CreatedQuoteRecord,
   QuoteCodeCollisionError,
+  QuoteDetailRecord,
   QuoteRepository,
-} from './quote.repository';
+} from './quote.repository.js';
 
 function isPublicCodeCollision(error: unknown): boolean {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
@@ -99,5 +100,45 @@ export class PrismaQuoteRepository implements QuoteRepository {
       }
       throw error;
     }
+  }
+
+  async findByPublicCode(publicCode: string): Promise<QuoteDetailRecord | null> {
+    const code = publicCode.trim().toUpperCase();
+    const quote = await this.prisma.quote.findUnique({
+      where: { publicCode: code },
+      include: {
+        options: { orderBy: { displayOrder: 'asc' } },
+        items: { orderBy: { displayOrder: 'asc' } },
+      },
+    });
+
+    if (!quote) return null;
+
+    return {
+      publicCode: quote.publicCode,
+      status: toDomainStatus(quote.status),
+      solutionType: quote.solutionType,
+      contactName: quote.contactName,
+      contactEmail: quote.contactEmail,
+      contactPhone: quote.contactPhone,
+      contactCompany: quote.contactCompany,
+      notes: quote.notes,
+      pricingStatus: toDomainPricingStatus(quote.pricingStatus),
+      amountMinor: decimalToSafeInteger(quote.amountMinor),
+      currency: quote.currency,
+      pricingVersion: quote.pricingVersion,
+      options: quote.options.map((opt) => ({
+        code: opt.optionCode,
+        name: opt.optionName,
+        displayOrder: opt.displayOrder,
+      })),
+      items: quote.items.map((item) => ({
+        code: item.itemCode,
+        label: item.label,
+        amountMinor: decimalToSafeInteger(item.amountMinor) ?? 0,
+        displayOrder: item.displayOrder,
+      })),
+      createdAt: quote.createdAt,
+    };
   }
 }

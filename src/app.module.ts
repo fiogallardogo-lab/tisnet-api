@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -8,10 +9,15 @@ import { CategoriesModule } from './categories/categories.module.js';
 import { TechnologiesModule } from './technologies/technologies.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
 import { ServicesModule } from './services/services.module.js';
-import { ConfigModule } from '@nestjs/config';
 import { ProfilesModule } from './profiles/profiles.module.js';
 import { QuotesModule } from './quotes/quotes.module.js';
 import { quotesCatalogV1 } from './quotes/catalog/quotes-catalog-v1.js';
+import { ProspectsModule } from './prospects/prospects.module.js';
+import { StorageModule } from './storage/storage.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { SchedulingModule } from './scheduling/scheduling.module.js';
+import { DocumentsModule } from './documents/documents.module.js';
+import { MeetingsModule } from './meetings/meetings.module.js';
 
 @Module({
   imports: [
@@ -28,6 +34,12 @@ import { quotesCatalogV1 } from './quotes/catalog/quotes-catalog-v1.js';
     ServicesModule,
     ProfilesModule,
     QuotesModule.register({ catalog: quotesCatalogV1 }),
+    ProspectsModule,
+    StorageModule,
+    NotificationsModule,
+    SchedulingModule,
+    DocumentsModule,
+    MeetingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

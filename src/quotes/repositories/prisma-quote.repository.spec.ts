@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { QuotePricingStatus, QuoteStatus } from '../domain/quote.enums';
-import { PrismaQuoteRepository } from './prisma-quote.repository';
-import { CreateQuoteRecord, QuoteCodeCollisionError } from './quote.repository';
+import { QuotePricingStatus, QuoteStatus } from '../domain/quote.enums.js';
+import { PrismaQuoteRepository } from './prisma-quote.repository.js';
+import { CreateQuoteRecord, QuoteCodeCollisionError } from './quote.repository.js';
 
 const input: CreateQuoteRecord = {
   publicCode: 'Q-AAAAAAAA',
@@ -29,6 +29,9 @@ describe('PrismaQuoteRepository', () => {
   };
   const prisma = {
     $transaction: vi.fn(),
+    quote: {
+      findUnique: vi.fn(),
+    },
   };
   let repository: PrismaQuoteRepository;
 
@@ -135,5 +138,67 @@ describe('PrismaQuoteRepository', () => {
     await expect(repository.create(input)).rejects.toThrow(
       'Unique constraint failed',
     );
+  });
+
+  describe('findByPublicCode', () => {
+    it('devuelve la cotización completa con opciones e ítems ordenados', async () => {
+      const now = new Date('2026-09-18T10:00:00Z');
+      prisma.quote.findUnique.mockResolvedValue({
+        publicCode: 'Q-ABCDEFGH',
+        status: QuoteStatus.RECEIVED,
+        solutionType: 'WEB_APP',
+        contactName: 'Carlos Ruiz',
+        contactEmail: 'carlos@example.com',
+        contactPhone: '+51999999999',
+        contactCompany: 'Empresa SAC',
+        notes: 'Notas de requerimiento',
+        pricingStatus: QuotePricingStatus.CALCULATED,
+        amountMinor: new Prisma.Decimal(250000),
+        currency: 'PEN',
+        pricingVersion: 'SP-01-v2',
+        createdAt: now,
+        options: [
+          { optionCode: 'OPT1', optionName: 'Diseño UI', displayOrder: 1 },
+        ],
+        items: [
+          { itemCode: 'ITEM1', label: 'Desarrollo Base', amountMinor: new Prisma.Decimal(250000), displayOrder: 1 },
+        ],
+      });
+
+      const result = await repository.findByPublicCode('q-abcdefgh');
+
+      expect(prisma.quote.findUnique).toHaveBeenCalledWith({
+        where: { publicCode: 'Q-ABCDEFGH' },
+        include: {
+          options: { orderBy: { displayOrder: 'asc' } },
+          items: { orderBy: { displayOrder: 'asc' } },
+        },
+      });
+
+      expect(result).toEqual({
+        publicCode: 'Q-ABCDEFGH',
+        status: QuoteStatus.RECEIVED,
+        solutionType: 'WEB_APP',
+        contactName: 'Carlos Ruiz',
+        contactEmail: 'carlos@example.com',
+        contactPhone: '+51999999999',
+        contactCompany: 'Empresa SAC',
+        notes: 'Notas de requerimiento',
+        pricingStatus: QuotePricingStatus.CALCULATED,
+        amountMinor: 250000,
+        currency: 'PEN',
+        pricingVersion: 'SP-01-v2',
+        options: [{ code: 'OPT1', name: 'Diseño UI', displayOrder: 1 }],
+        items: [{ code: 'ITEM1', label: 'Desarrollo Base', amountMinor: 250000, displayOrder: 1 }],
+        createdAt: now,
+      });
+    });
+
+    it('devuelve null si no existe la cotización', async () => {
+      prisma.quote.findUnique.mockResolvedValue(null);
+
+      const result = await repository.findByPublicCode('Q-INEXISTENTE');
+      expect(result).toBeNull();
+    });
   });
 });

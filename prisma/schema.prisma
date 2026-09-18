@@ -27,6 +27,27 @@ enum QuotePricingStatus {
   CALCULATED
 }
 
+enum ProspectStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum ProspectSource {
+  QUOTE
+  MEETING
+  MANUAL
+}
+
+enum MeetingStatus {
+  REQUESTED
+  CONFIRMED
+  CANCELED
+  COMPLETED
+}
+
 model Role {
   id        Int      @id @default(autoincrement())
   name      String   @unique @db.VarChar(30)
@@ -53,6 +74,7 @@ model User {
   developerProfile    DeveloperProfile?
   productOwnerProfile ProductOwnerProfile?
   adminProfile        AdminProfile?
+  prospect            Prospect?
 
   @@index([roleId, isActive])
 }
@@ -114,16 +136,17 @@ model ProductOwnerProfile {
 }
 
 model AdminProfile {
-  id              Int      @id @default(autoincrement())
-  userId          Int      @unique
-  executiveTitle  String?  @db.VarChar(120)
-  specialty       String?  @db.VarChar(120)
-  photoUrl        String?  @db.VarChar(500)
-  calendlyUrl     String?  @db.VarChar(500)
-  isPublicAdvisor Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              Int       @id @default(autoincrement())
+  userId          Int       @unique
+  executiveTitle  String?   @db.VarChar(120)
+  specialty       String?   @db.VarChar(120)
+  photoUrl        String?   @db.VarChar(500)
+  calendlyUrl     String?   @db.VarChar(500)
+  isPublicAdvisor Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  advisedMeetings Meeting[] @relation("MeetingAdvisor")
 }
 
 model Quote {
@@ -142,12 +165,58 @@ model Quote {
   pricingVersion String?            @db.VarChar(50)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
+  prospectId     Int?
   options        QuoteOption[]
   items          QuoteItem[]
+  prospect       Prospect?          @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  meetings       Meeting[]
 
   @@index([status, createdAt])
   @@index([pricingStatus, createdAt])
   @@index([solutionType, createdAt])
+  @@index([prospectId, createdAt])
+}
+
+model Prospect {
+  id        Int            @id @default(autoincrement())
+  userId    Int?           @unique
+  name      String         @db.VarChar(100)
+  email     String         @unique @db.VarChar(150)
+  phone     String?        @db.VarChar(30)
+  company   String?        @db.VarChar(150)
+  status    ProspectStatus @default(NEW)
+  source    ProspectSource @default(QUOTE)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  quotes    Quote[]
+  meetings  Meeting[]
+
+  @@index([status, createdAt])
+  @@index([source, createdAt])
+}
+
+model Meeting {
+  id               Int           @id @default(autoincrement())
+  prospectId       Int
+  quoteId          Int?
+  advisorProfileId Int?
+  status           MeetingStatus @default(REQUESTED)
+  scheduledAt      DateTime?
+  timezone         String        @default("America/Lima") @db.VarChar(64)
+  notes            String?       @db.VarChar(1000)
+  externalProvider String?       @db.VarChar(50)
+  externalEventUri String?       @unique @db.VarChar(500)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  prospect         Prospect      @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  quote            Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  advisorProfile   AdminProfile? @relation("MeetingAdvisor", fields: [advisorProfileId], references: [id], onDelete: SetNull)
+
+  @@index([prospectId, createdAt])
+  @@index([quoteId])
+  @@index([advisorProfileId, scheduledAt])
+  @@index([status, scheduledAt])
 }
 
 model QuoteOption {
