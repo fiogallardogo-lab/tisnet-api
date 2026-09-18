@@ -1,3 +1,4 @@
+import { IntakeModule } from './public-intake/intake.module';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -23,6 +24,7 @@ import { ConfigModule } from '@nestjs/config';
     TechnologiesModule,
     ProjectsModule,
     ServicesModule,
+    IntakeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
