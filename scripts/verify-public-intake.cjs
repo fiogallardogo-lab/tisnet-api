@@ -66,6 +66,10 @@ async function apply(form, expected = 201) {
 (async () => {
   try {
     const usersBefore = await prisma.user.count();
+    await postQuote(
+      { solutionType: 'LANDING_PAGE', options: [], contact, amountMinor: 1 },
+      400,
+    );
     for (const [deliveryMode, amountMinor] of [
       ['NORMAL', 400000],
       ['URGENT', 520000],
@@ -77,7 +81,6 @@ async function apply(form, expected = 201) {
         catalogVersion: 'SP-01-v2',
         options: [{ code: 'SEO_ADVANCED' }, { code: 'ADVANCED_ANALYTICS' }],
         contact,
-        amountMinor: 1,
       });
       assert.equal(result.amountMinor, amountMinor);
       assert.equal(result.pricingVersion, 'SP-01-v2');
