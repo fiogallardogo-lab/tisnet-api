@@ -19,6 +19,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { SchedulingModule } from './scheduling/scheduling.module.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { MeetingsModule } from './meetings/meetings.module.js';
+import { DeliverablesModule } from './deliverables/deliverables.module.js';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { MeetingsModule } from './meetings/meetings.module.js';
     SchedulingModule,
     DocumentsModule,
     MeetingsModule,
+    DeliverablesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
