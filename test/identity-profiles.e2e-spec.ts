@@ -21,11 +21,16 @@ describe('Identity and profiles API (e2e)', () => {
   const developerEmail = `developer-${suffix}@example.test`;
   const productOwnerEmail = `product-owner-${suffix}@example.test`;
   const adminEmail = `admin-${suffix}@example.test`;
+  const superAdminEmail = `super-admin-${suffix}@example.test`;
+  const otherClientEmail = `other-client-${suffix}@example.test`;
+  const technologyIds: number[] = [];
   const testEmails = [
     clientEmail,
     developerEmail,
     productOwnerEmail,
     adminEmail,
+    superAdminEmail,
+    otherClientEmail,
   ];
 
   let clientAccessToken: string;
@@ -73,6 +78,8 @@ describe('Identity and profiles API (e2e)', () => {
       [developerEmail, 'DEVELOPER'],
       [productOwnerEmail, 'PRODUCT_OWNER'],
       [adminEmail, 'ADMIN'],
+      [superAdminEmail, 'SUPER_ADMIN'],
+      [otherClientEmail, 'CLIENT'],
     ] as const) {
       const role = await prisma.role.findUniqueOrThrow({
         where: { name: roleName },
@@ -91,6 +98,9 @@ describe('Identity and profiles API (e2e)', () => {
   afterAll(async () => {
     if (prisma) {
       await prisma.user.deleteMany({ where: { email: { in: testEmails } } });
+      await prisma.technology.deleteMany({
+        where: { id: { in: technologyIds } },
+      });
     }
     await app?.close();
   });
@@ -251,7 +261,7 @@ describe('Identity and profiles API (e2e)', () => {
     expect(profile.body.data.profile.type).toBe('DEVELOPER');
   });
 
-  it('rechaza tecnologías duplicadas o inexistentes para DEVELOPER', async () => {
+  it('rechaza tecnologías inexistentes incluso si están repetidas', async () => {
     await request(app.getHttpServer())
       .patch('/api/v1/users/me/developer-profile')
       .set('Authorization', `Bearer ${developerAccessToken}`)
@@ -293,5 +303,205 @@ describe('Identity and profiles API (e2e)', () => {
       isPublicAdvisor: false,
     });
     expect(admin.body.data).not.toHaveProperty('userId');
+  });
+
+  it('consulta los cinco roles y conserva SUPER_ADMIN sin perfil especializado', async () => {
+    for (const [email, role] of [
+      [clientEmail, 'CLIENT'],
+      [developerEmail, 'DEVELOPER'],
+      [productOwnerEmail, 'PRODUCT_OWNER'],
+      [adminEmail, 'ADMIN'],
+      [superAdminEmail, 'SUPER_ADMIN'],
+    ]) {
+      const token = await login(email);
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/users/me/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(response.body.data.user).toEqual({
+        id: expect.any(Number),
+        name: expect.any(String),
+        email,
+        role,
+        isActive: true,
+      });
+      expect(JSON.stringify(response.body.data)).not.toContain('userId');
+      if (role === 'SUPER_ADMIN') {
+        expect(response.body.data.profile).toBeNull();
+        await request(app.getHttpServer())
+          .patch('/api/v1/users/me')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name: 'Super Admin actualizado' })
+          .expect(200);
+      } else {
+        expect(response.body.data.profile.type).toBe(role);
+      }
+    }
+    const token = await login(otherClientEmail);
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/users/me/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(response.body.data.profile).toBeNull();
+  });
+
+  it('aplica JWT y toda la matriz RBAC de perfiles', async () => {
+    const endpoints = [
+      'client-profile',
+      'developer-profile',
+      'product-owner-profile',
+      'admin-profile',
+    ];
+    await request(app.getHttpServer())
+      .get('/api/v1/users/me/profile')
+      .expect(401);
+    await request(app.getHttpServer())
+      .get('/api/v1/users/me/profile')
+      .set('Authorization', 'Bearer invalid')
+      .expect(401);
+    for (const endpoint of ['', ...endpoints]) {
+      await request(app.getHttpServer())
+        .patch(`/api/v1/users/me/${endpoint}`)
+        .send({})
+        .expect(401);
+    }
+    for (const [index, email] of [
+      clientEmail,
+      developerEmail,
+      productOwnerEmail,
+      adminEmail,
+      superAdminEmail,
+    ].entries()) {
+      const token = await login(email);
+      for (const [endpointIndex, endpoint] of endpoints.entries()) {
+        if (index === endpointIndex) continue;
+        await request(app.getHttpServer())
+          .patch(`/api/v1/users/me/${endpoint}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({})
+          .expect(403);
+      }
+    }
+  });
+
+  it('persiste tecnologías deduplicadas y ordenadas, conserva omisiones y rechaza inactivas sin cambios', async () => {
+    for (const [prefix, isActive] of [
+      ['Z', true],
+      ['A', true],
+      ['Inactive', false],
+    ] as const) {
+      const technology = await prisma.technology.create({
+        data: { name: `${prefix}-${suffix}`, isActive },
+      });
+      technologyIds.push(technology.id);
+    }
+    const patch = (body: object) =>
+      request(app.getHttpServer())
+        .patch('/api/v1/users/me/developer-profile')
+        .set('Authorization', `Bearer ${developerAccessToken}`)
+        .send(body);
+    const updated = await patch({
+      technologyIds: [technologyIds[0], technologyIds[1], technologyIds[0]],
+    }).expect(200);
+    expect(
+      updated.body.data.technologies.map((t: { id: number }) => t.id),
+    ).toEqual([technologyIds[1], technologyIds[0]]);
+    const saved = await prisma.developerProfile.findUniqueOrThrow({
+      where: {
+        userId: (
+          await prisma.user.findUniqueOrThrow({
+            where: { email: developerEmail },
+          })
+        ).id,
+      },
+      include: { technologies: true },
+    });
+    expect(saved.technologies).toHaveLength(2);
+    const omitted = await patch({ specialty: 'Backend' }).expect(200);
+    expect(omitted.body.data.technologies).toEqual(
+      updated.body.data.technologies,
+    );
+    await patch({
+      specialty: 'No guardar',
+      technologyIds: [technologyIds[2]],
+    }).expect(400);
+    await patch({ technologyIds: [2147483647] }).expect(400);
+    await patch({ technologyIds: null }).expect(400);
+    const read = await request(app.getHttpServer())
+      .get('/api/v1/users/me/profile')
+      .set('Authorization', `Bearer ${developerAccessToken}`)
+      .expect(200);
+    expect(read.body.data.profile.specialty).toBe('Backend');
+    expect(read.body.data.profile.technologies).toEqual(
+      updated.body.data.technologies,
+    );
+    expect(JSON.stringify(read.body.data.profile)).not.toContain(
+      'developerProfileId',
+    );
+    const cleared = await patch({ technologyIds: [] }).expect(200);
+    expect(cleared.body.data.technologies).toEqual([]);
+    expect(
+      await prisma.developerTechnology.count({
+        where: { developerProfileId: saved.id },
+      }),
+    ).toBe(0);
+  });
+
+  it('valida DNI/RUC y devuelve 409 ante duplicados reales en MySQL', async () => {
+    const client = await prisma.user.findUniqueOrThrow({
+      where: { email: clientEmail },
+    });
+    const dni = String(client.id).padStart(8, '0');
+    const ruc = String(client.id).padStart(11, '0');
+    const patch = (token: string, body: object) =>
+      request(app.getHttpServer())
+        .patch('/api/v1/users/me/client-profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send(body);
+    for (const body of [
+      { dni: '1234567' },
+      { dni: 'abcdefgh' },
+      { ruc: '1234567890' },
+      { ruc: '1234567890x' },
+    ]) {
+      await patch(clientAccessToken, body).expect(400);
+    }
+    await patch(clientAccessToken, { dni, ruc }).expect(200);
+    const token = await login(otherClientEmail);
+    for (const body of [{ dni }, { ruc }]) {
+      const conflict = await patch(token, body).expect(409);
+      expect(JSON.stringify(conflict.body)).toContain(
+        'El DNI o RUC ya está registrado',
+      );
+    }
+    expect(
+      await prisma.clientProfile.findUnique({ where: { userId: client.id } }),
+    ).toMatchObject({ dni, ruc });
+  });
+
+  it('valida todas las URLs de perfiles en HTTP', async () => {
+    for (const [endpoint, token, fields] of [
+      [
+        'developer-profile',
+        developerAccessToken,
+        ['cvUrl', 'photoUrl', 'linkedinUrl', 'githubUrl'],
+      ],
+      ['product-owner-profile', productOwnerAccessToken, ['photoUrl']],
+      ['admin-profile', adminAccessToken, ['photoUrl', 'calendlyUrl']],
+    ] as const) {
+      for (const field of fields) {
+        for (const value of [
+          'example.com',
+          'ftp://example.com',
+          'https://example.com/' + 'a'.repeat(482),
+        ]) {
+          await request(app.getHttpServer())
+            .patch(`/api/v1/users/me/${endpoint}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ [field]: value })
+            .expect(400);
+        }
+      }
+    }
   });
 });

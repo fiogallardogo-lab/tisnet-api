@@ -1,4 +1,10 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PLATFORM_ROLES } from '../common/constants/platform-roles';
 import { PrismaService } from '../prisma/prisma.service';
@@ -6,7 +12,8 @@ import { UsersService } from '../users/users.service';
 import { ProfilesService } from './profiles.service';
 
 describe('ProfilesService', () => {
-  const users = { updateOwnName: vi.fn() };
+  const users = { updateOwnUser: vi.fn() };
+  const config = { get: vi.fn() };
   const prisma = {
     user: { findUnique: vi.fn() },
     clientProfile: { upsert: vi.fn() },
@@ -21,6 +28,7 @@ describe('ProfilesService', () => {
     service = new ProfilesService(
       users as unknown as UsersService,
       prisma as unknown as PrismaService,
+      config as unknown as ConfigService,
     );
   });
 
@@ -121,6 +129,92 @@ describe('ProfilesService', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     await expect(service.getOwnProfile(7)).rejects.toBeInstanceOf(
       UnauthorizedException,
+    );
+  });
+
+  it('validates and persists renewed acceptance together with the name', async () => {
+    config.get.mockReturnValue('v2');
+    users.updateOwnUser.mockResolvedValue({
+      id: 7,
+      name: 'Nuevo',
+      role: { name: 'CLIENT' },
+    });
+    await service.updateOwnUser(7, {
+      name: 'Nuevo',
+      acceptedTerms: true,
+      termsVersion: 'v2',
+      privacyVersion: 'v2',
+    });
+    expect(users.updateOwnUser).toHaveBeenCalledWith(7, {
+      name: 'Nuevo',
+      termsVersion: 'v2',
+      privacyVersion: 'v2',
+      acceptedTermsAt: expect.any(Date),
+    });
+  });
+
+  it('preserves existing acceptance on name-only updates even without legal configuration', async () => {
+    users.updateOwnUser.mockResolvedValue({ id: 7, role: { name: 'CLIENT' } });
+    await service.updateOwnUser(7, { name: 'Nuevo' });
+    expect(users.updateOwnUser).toHaveBeenCalledWith(7, { name: 'Nuevo' });
+    expect(config.get).not.toHaveBeenCalled();
+  });
+
+  it('rejects unauthorized versions before writing the user', async () => {
+    config.get.mockReturnValue('v2');
+    await expect(
+      service.updateOwnUser(7, {
+        name: 'No guardar',
+        acceptedTerms: true,
+        termsVersion: 'old',
+        privacyVersion: 'v2',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(users.updateOwnUser).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty update or acceptance without consent', async () => {
+    for (const dto of [{}, { termsVersion: 'v2', privacyVersion: 'v2' }]) {
+      await expect(service.updateOwnUser(7, dto)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    }
+    expect(users.updateOwnUser).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['updateClientProfile', 'clientProfile'],
+    ['updateProductOwnerProfile', 'productOwnerProfile'],
+    ['updateAdminProfile', 'adminProfile'],
+  ] as const)(
+    '%s translates P2002 and preserves unrelated errors',
+    async (method, model) => {
+      prisma[model].upsert.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint', {
+          code: 'P2002',
+          clientVersion: '6.19.3',
+          meta: { target: `${model}_userId_key` },
+        }),
+      );
+      await expect(service[method](7, {})).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      const failure = new Error('Database unavailable');
+      prisma[model].upsert.mockRejectedValue(failure);
+      await expect(service[method](7, {})).rejects.toBe(failure);
+    },
+  );
+
+  it('translates a developer transaction unique conflict', async () => {
+    prisma.$transaction.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint', {
+        code: 'P2002',
+        clientVersion: '6.19.3',
+        meta: { target: 'DeveloperProfile_userId_key' },
+      }),
+    );
+    await expect(service.updateDeveloperProfile(7, {})).rejects.toBeInstanceOf(
+      ConflictException,
     );
   });
 

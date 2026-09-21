@@ -47,11 +47,24 @@ describe('TechnologiesService', () => {
         expect(service).toBeDefined();
     });
 
+    it('catalog selects only active UI fields in stable order', async () => {
+        const catalog = [{ id: 1, name: 'TypeScript', icon: 'typescript.svg' }];
+        prismaServiceMock.technology.findMany.mockResolvedValue(catalog);
+        expect(await service.catalog()).toEqual(catalog);
+        expect(prismaServiceMock.technology.findMany).toHaveBeenCalledWith({
+            where: { isActive: true },
+            select: { id: true, name: true, icon: true },
+            orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        });
+    });
+
     // ------------------------------------------------------------------ create
     describe('create()', () => {
         it('debe crear una tecnología cuando el nombre no existe', async () => {
             prismaServiceMock.technology.findUnique.mockResolvedValue(null);
-            prismaServiceMock.technology.create.mockResolvedValue(mockTechnology);
+            prismaServiceMock.technology.create.mockResolvedValue(
+                mockTechnology,
+            );
 
             const result = await service.create({
                 name: 'TypeScript',
@@ -64,7 +77,9 @@ describe('TechnologiesService', () => {
         });
 
         it('debe lanzar ConflictException si el nombre ya existe', async () => {
-            prismaServiceMock.technology.findUnique.mockResolvedValue(mockTechnology);
+            prismaServiceMock.technology.findUnique.mockResolvedValue(
+                mockTechnology,
+            );
 
             await expect(
                 service.create({ name: 'TypeScript' }),
@@ -77,12 +92,16 @@ describe('TechnologiesService', () => {
     // ---------------------------------------------------------------- findAll
     describe('findAll()', () => {
         it('debe retornar un array de tecnologías', async () => {
-            prismaServiceMock.technology.findMany.mockResolvedValue([mockTechnology]);
+            prismaServiceMock.technology.findMany.mockResolvedValue([
+                mockTechnology,
+            ]);
 
             const result = await service.findAll();
 
             expect(result).toEqual([mockTechnology]);
-            expect(prismaServiceMock.technology.findMany).toHaveBeenCalledOnce();
+            expect(
+                prismaServiceMock.technology.findMany,
+            ).toHaveBeenCalledOnce();
         });
 
         it('debe retornar un array vacío si no hay tecnologías', async () => {
@@ -94,7 +113,9 @@ describe('TechnologiesService', () => {
         });
 
         it('debe filtrar tecnologías activas cuando isActive es true', async () => {
-            prismaServiceMock.technology.findMany.mockResolvedValue([mockTechnology]);
+            prismaServiceMock.technology.findMany.mockResolvedValue([
+                mockTechnology,
+            ]);
 
             const result = await service.findAll(true);
 
@@ -109,7 +130,9 @@ describe('TechnologiesService', () => {
     // --------------------------------------------------------------- findOne
     describe('findOne()', () => {
         it('debe retornar una tecnología por id', async () => {
-            prismaServiceMock.technology.findUnique.mockResolvedValue(mockTechnology);
+            prismaServiceMock.technology.findUnique.mockResolvedValue(
+                mockTechnology,
+            );
 
             const result = await service.findOne(1);
 
@@ -119,7 +142,9 @@ describe('TechnologiesService', () => {
         it('debe lanzar NotFoundException si la tecnología no existe', async () => {
             prismaServiceMock.technology.findUnique.mockResolvedValue(null);
 
-            await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+            await expect(service.findOne(999)).rejects.toThrow(
+                NotFoundException,
+            );
         });
     });
 
@@ -128,7 +153,9 @@ describe('TechnologiesService', () => {
         it('debe actualizar una tecnología existente', async () => {
             const updated = { ...mockTechnology, description: 'Updated' };
 
-            prismaServiceMock.technology.findUnique.mockResolvedValueOnce(mockTechnology); // findOne
+            prismaServiceMock.technology.findUnique.mockResolvedValueOnce(
+                mockTechnology,
+            ); // findOne
             prismaServiceMock.technology.update.mockResolvedValue(updated);
 
             const result = await service.update(1, { description: 'Updated' });
@@ -152,7 +179,7 @@ describe('TechnologiesService', () => {
 
             prismaServiceMock.technology.findUnique
                 .mockResolvedValueOnce(mockTechnology) // findOne(id=1) → exists
-                .mockResolvedValueOnce(other);          // findUnique(name) → belongs to id=2
+                .mockResolvedValueOnce(other); // findUnique(name) → belongs to id=2
 
             await expect(
                 service.update(1, { name: 'JavaScript' }),
@@ -166,9 +193,11 @@ describe('TechnologiesService', () => {
 
             prismaServiceMock.technology.findUnique
                 .mockResolvedValueOnce(mockTechnology) // findOne(id=1)
-                .mockResolvedValueOnce(sameRecord);    // findUnique(name) → same id
+                .mockResolvedValueOnce(sameRecord); // findUnique(name) → same id
 
-            prismaServiceMock.technology.update.mockResolvedValue(mockTechnology);
+            prismaServiceMock.technology.update.mockResolvedValue(
+                mockTechnology,
+            );
 
             const result = await service.update(1, { name: 'TypeScript' });
 

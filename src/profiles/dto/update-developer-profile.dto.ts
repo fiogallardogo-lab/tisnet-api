@@ -1,6 +1,5 @@
 import { Transform } from 'class-transformer';
 import {
-  ArrayUnique,
   IsArray,
   IsInt,
   IsOptional,
@@ -9,6 +8,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -47,10 +47,10 @@ export class UpdateDeveloperProfileDto {
   specialty?: string;
 
   @ApiPropertyOptional({ type: [Number] })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
-  @ArrayUnique()
   @IsInt({ each: true })
+  @Min(1, { each: true })
   technologyIds?: number[];
 
   @Transform(trim)
