@@ -1,15 +1,11 @@
-import {
-  BadRequestException,
-  Injectable,
-  ServiceUnavailableException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { validateLegalVersions } from '../common/legal/legal-versions';
 
 interface RefreshTokenPayload {
   sub: number;
@@ -126,23 +122,10 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    const termsVersion = this.configService.get<string>('TERMS_VERSION');
-    const privacyVersion = this.configService.get<string>('PRIVACY_VERSION');
-
-    if (!termsVersion || !privacyVersion) {
-      throw new ServiceUnavailableException(
-        'Las versiones legales no están configuradas',
-      );
-    }
-
-    if (
-      registerDto.termsVersion !== termsVersion ||
-      registerDto.privacyVersion !== privacyVersion
-    ) {
-      throw new BadRequestException(
-        'Las versiones de términos o privacidad no son vigentes',
-      );
-    }
+    const { termsVersion, privacyVersion } = validateLegalVersions(
+      this.configService,
+      registerDto,
+    );
 
     const passwordHash = await bcrypt.hash(registerDto.password, 12);
     const user = await this.usersService.createClient({

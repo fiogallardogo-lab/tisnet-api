@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -9,6 +10,7 @@ import { ProfilesService } from './profiles.service';
 
 @Module({
   imports: [
+    ConfigModule,
     UsersModule,
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),

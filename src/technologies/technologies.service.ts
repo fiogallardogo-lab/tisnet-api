@@ -10,7 +10,7 @@ import { UpdateTechnologyDto } from './dto/update-technology.dto';
 
 @Injectable()
 export class TechnologiesService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     async create(createTechnologyDto: CreateTechnologyDto) {
         const existingTechnology = await this.prisma.technology.findUnique({
@@ -49,15 +49,24 @@ export class TechnologiesService {
         return technology;
     }
 
+    async catalog() {
+        return this.prisma.technology.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true, icon: true },
+            orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        });
+    }
+
     async update(id: number, updateTechnologyDto: UpdateTechnologyDto) {
         await this.findOne(id);
 
         if (updateTechnologyDto.name) {
-            const technologyWithSameName = await this.prisma.technology.findUnique({
-                where: {
-                    name: updateTechnologyDto.name,
-                },
-            });
+            const technologyWithSameName =
+                await this.prisma.technology.findUnique({
+                    where: {
+                        name: updateTechnologyDto.name,
+                    },
+                });
 
             if (technologyWithSameName && technologyWithSameName.id !== id) {
                 throw new ConflictException('La tecnología ya existe');

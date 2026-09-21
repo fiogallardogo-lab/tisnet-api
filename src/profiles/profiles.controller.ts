@@ -36,7 +36,9 @@ export class ProfilesController {
   }
 
   @Patch()
-  @ApiOperation({ summary: 'Actualizar el nombre del usuario autenticado' })
+  @ApiOperation({
+    summary: 'Actualizar el nombre o aceptación legal del usuario autenticado',
+  })
   updateOwnUser(
     @Request() request: ProfileRequest,
     @Body() dto: UpdateOwnUserDto,

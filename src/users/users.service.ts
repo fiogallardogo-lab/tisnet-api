@@ -87,11 +87,19 @@ export class UsersService {
     }
   }
 
-  async updateOwnName(id: number, name: string) {
+  async updateOwnUser(
+    id: number,
+    data: {
+      name?: string;
+      termsVersion?: string;
+      privacyVersion?: string;
+      acceptedTermsAt?: Date;
+    },
+  ) {
     try {
       return await this.prisma.user.update({
         where: { id },
-        data: { name },
+        data,
         include: { role: true },
       });
     } catch (error) {
