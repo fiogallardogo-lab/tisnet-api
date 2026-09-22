@@ -1,5 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -39,6 +41,7 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
   const superAdminCreatedDeveloperEmail = `super-admin-created-developer-${suffix}@example.test`;
 
   const technologyIds: number[] = [];
+  const extraEmails: string[] = [];
 
   const legal = {
     acceptedTerms: true,
@@ -83,6 +86,12 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
     app.useGlobalInterceptors(new TransformInterceptor());
 
     app.useGlobalFilters(new HttpExceptionFilter());
+
+    const document = SwaggerModule.createDocument(
+      app,
+      new DocumentBuilder().addBearerAuth().build(),
+    );
+    SwaggerModule.setup('/api/docs', app, document);
 
     await app.init();
 
@@ -142,6 +151,7 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
             email: {
               in: [
                 ...emails,
+                ...extraEmails,
                 registrationEmail,
                 adminCreatedClientEmail,
                 superAdminCreatedDeveloperEmail,
@@ -188,6 +198,43 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
 
   const register = (body: object) =>
     request(app.getHttpServer()).post('/api/v1/auth/register').send(body);
+
+  it('Swagger serves the real routes, legal responses and supported catalog search', async () => {
+    await request(app.getHttpServer()).get('/api/docs/').expect(200);
+    const response = await request(app.getHttpServer())
+      .get('/api/docs-json')
+      .expect(200);
+    const paths = response.body.paths;
+    for (const [method, path] of [
+      ['get', '/users/me/profile'],
+      ['patch', '/users/me'],
+      ['patch', '/users/me/client-profile'],
+      ['patch', '/users/me/developer-profile'],
+      ['patch', '/users/me/product-owner-profile'],
+      ['patch', '/users/me/admin-profile'],
+      ['post', '/users'],
+      ['get', '/technologies/catalog'],
+    ]) {
+      expect(paths[`/api/v1${path}`][method].security).toEqual([
+        { bearer: [] },
+      ]);
+    }
+    const create = paths['/api/v1/users'].post;
+    for (const status of ['201', '400', '401', '403', '409', '503'])
+      expect(create.responses[status]).toBeDefined();
+    const catalog = paths['/api/v1/technologies/catalog'].get;
+    expect(catalog.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'search', required: false }),
+      ]),
+    );
+    expect(catalog.description).toContain('categoryId');
+    expect(
+      catalog.parameters.some(
+        (parameter: { name: string }) => parameter.name === 'categoryId',
+      ),
+    ).toBe(false);
+  });
 
   it.each(roles)(
     '%s authenticates, reads, updates, rereads and persists its own profile',
@@ -377,21 +424,145 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
     }
   });
 
-  it('alta administrativa rechaza versiones legales obsoletas', async () => {
+  it.each(['termsVersion', 'privacyVersion'])(
+    'alta administrativa rechaza %s obsoleta',
+    async (field) => {
+      await request(app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${tokens.ADMIN}`)
+        .send({
+          name: 'Legal inválido',
+          email: `invalid-legal-${suffix}@example.test`,
+          password,
+          role: 'CLIENT',
+          acceptedTerms: true,
+          ...legal,
+          [field]: 'old',
+        })
+        .expect(400);
+    },
+  );
+
+  it.each([
+    ['PRODUCT_OWNER', 'productOwnerProfile'],
+    ['ADMIN', 'adminProfile'],
+  ] as const)(
+    'alta administrativa persiste %s y su perfil',
+    async (role, profile) => {
+      const email = `${role.toLowerCase()}-created-${suffix}@example.test`;
+      extraEmails.push(email);
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${tokens.ADMIN}`)
+        .send({ name: 'Alta administrativa', email, password, role, ...legal })
+        .expect(201);
+      const saved = await prisma.user.findUniqueOrThrow({
+        where: { email },
+        include: {
+          role: true,
+          clientProfile: true,
+          developerProfile: true,
+          productOwnerProfile: true,
+          adminProfile: true,
+        },
+      });
+      expect(saved.role.name).toBe(role);
+      for (const key of [
+        'clientProfile',
+        'developerProfile',
+        'productOwnerProfile',
+        'adminProfile',
+      ] as const) {
+        if (key === profile) expect(saved[key]).not.toBeNull();
+        else expect(saved[key]).toBeNull();
+      }
+      expect(saved.termsVersion).toBe(legal.termsVersion);
+      expect(saved.privacyVersion).toBe(legal.privacyVersion);
+      expect(saved.acceptedTermsAt?.toISOString()).toBe(
+        response.body.data.acceptedTermsAt,
+      );
+      expect(saved.acceptedTermsAt).toBeInstanceOf(Date);
+      expect(await bcrypt.compare(password, saved.passwordHash)).toBe(true);
+      expect(response.body.data).not.toHaveProperty('passwordHash');
+    },
+  );
+
+  it('alta administrativa devuelve 409 por email duplicado sin modificar el usuario', async () => {
+    const before = await prisma.user.findUniqueOrThrow({
+      where: { id: userIds.CLIENT },
+    });
     await request(app.getHttpServer())
       .post('/api/v1/users')
       .set('Authorization', `Bearer ${tokens.ADMIN}`)
       .send({
-        name: 'Legal inválido',
-        email: `invalid-legal-${suffix}@example.test`,
+        name: 'Duplicado',
+        email: before.email,
         password,
-        role: 'CLIENT',
-        acceptedTerms: true,
-        termsVersion: 'old',
-        privacyVersion: legal.privacyVersion,
+        role: 'ADMIN',
+        ...legal,
       })
-      .expect(400);
+      .expect(409);
+    expect(
+      await prisma.user.findUniqueOrThrow({ where: { id: before.id } }),
+    ).toEqual(before);
   });
+
+  it('ningún administrador puede crear SUPER_ADMIN', async () => {
+    const email = `forbidden-super-${suffix}@example.test`;
+    extraEmails.push(email);
+    for (const role of ['ADMIN', 'SUPER_ADMIN']) {
+      await request(app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${tokens[role]}`)
+        .send({
+          name: 'Prohibido',
+          email,
+          password,
+          role: 'SUPER_ADMIN',
+          ...legal,
+        })
+        .expect(400);
+    }
+    expect(await prisma.user.findUnique({ where: { email } })).toBeNull();
+  });
+
+  it.each(['TERMS_VERSION', 'PRIVACY_VERSION'])(
+    'sin %s devuelve 503 en alta y renovación sin escrituras',
+    async (missingKey) => {
+      const config = app.get(ConfigService);
+      const originalGet = config.get.bind(config);
+      const spy = vi
+        .spyOn(config, 'get')
+        .mockImplementation((key: string) =>
+          key === missingKey ? undefined : originalGet(key),
+        );
+      const email = `missing-${missingKey}-${suffix}@example.test`;
+      extraEmails.push(email);
+      const before = await prisma.user.findUniqueOrThrow({
+        where: { id: userIds.ADMIN },
+      });
+      try {
+        await request(app.getHttpServer())
+          .post('/api/v1/users')
+          .set('Authorization', `Bearer ${tokens.ADMIN}`)
+          .send({
+            name: 'Sin configuración',
+            email,
+            password,
+            role: 'CLIENT',
+            ...legal,
+          })
+          .expect(503);
+        await patchUser(legal, 'ADMIN').expect(503);
+        expect(await prisma.user.findUnique({ where: { email } })).toBeNull();
+        expect(
+          await prisma.user.findUniqueOrThrow({ where: { id: before.id } }),
+        ).toEqual(before);
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
 
   it('catalog requires JWT and allows every authenticated role with active UI fields in stable order', async () => {
     await request(app.getHttpServer())
@@ -401,11 +572,13 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
     const expected = await prisma.technology.findMany({
       where: {
         isActive: true,
+        id: { in: technologyIds },
       },
       select: {
         id: true,
         name: true,
         icon: true,
+        isActive: true,
       },
       orderBy: [
         {
@@ -423,11 +596,12 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
         .set('Authorization', `Bearer ${tokens[role]}`)
         .expect(200);
 
-      expect(response.body.data).toEqual(expected);
-
       const own = response.body.data.filter((item: { id: number }) =>
         technologyIds.includes(item.id),
       );
+
+      // Other suites create/delete their fixtures concurrently in the same test DB.
+      expect(own).toEqual(expected);
 
       expect(own.map((item: { id: number }) => item.id)).toEqual([
         technologyIds[1],
@@ -435,20 +609,64 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
       ]);
 
       for (const item of response.body.data) {
-        expect(Object.keys(item).sort()).toEqual(['icon', 'id', 'name']);
+        expect(item.isActive).toBe(true);
+        expect(Object.keys(item).sort()).toEqual([
+          'icon',
+          'id',
+          'isActive',
+          'name',
+        ]);
       }
     }
   });
 
-  it.each(['category=backend', 'category=', 'isActive=false', 'unknown=1'])(
-    'rejects unsupported catalog query %s',
-    async (query) => {
-      await request(app.getHttpServer())
-        .get(`/api/v1/technologies/catalog?${query}`)
-        .set('Authorization', `Bearer ${tokens.DEVELOPER}`)
-        .expect(400);
-    },
-  );
+  it.each([
+    'category=backend',
+    'category=',
+    'categoryId=2',
+    'categoryId=999999999',
+    'categoryId=2&search=react',
+    'categoryId=0',
+    'categoryId=-1',
+    'categoryId=1.5',
+    'categoryId=abc',
+    'isActive=false',
+    'unknown=1',
+    'search=' + 'a'.repeat(101),
+    'search=one&search=two',
+  ])('rejects unsupported catalog query %s', async (query) => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/technologies/catalog?${query}`)
+      .set('Authorization', `Bearer ${tokens.DEVELOPER}`)
+      .expect(400);
+  });
+
+  it('catalog search trims, filters active names and returns an empty array without matches', async () => {
+    const catalog = (search: string) =>
+      request(app.getHttpServer())
+        .get('/api/v1/technologies/catalog')
+        .set('Authorization', `Bearer ${tokens.CLIENT}`)
+        .query({ search });
+    const filtered = await catalog(`  ${suffix}  `).expect(200);
+    expect(filtered.body.data.map((item: { id: number }) => item.id)).toEqual([
+      technologyIds[1],
+      technologyIds[0],
+    ]);
+    const exact = await catalog(`A-${suffix}`).expect(200);
+    expect(exact.body.data).toHaveLength(1);
+    expect(exact.body.data[0].id).toBe(technologyIds[1]);
+    expect((await catalog(`Inactive-${suffix}`).expect(200)).body.data).toEqual(
+      [],
+    );
+    expect((await catalog(`missing-${suffix}`).expect(200)).body.data).toEqual(
+      [],
+    );
+    const blank = await catalog('   ').expect(200);
+    expect(blank.body.data.length).toBeGreaterThanOrEqual(2);
+    expect(
+      blank.body.data.every((item: { isActive: boolean }) => item.isActive),
+    ).toBe(true);
+  });
 
   it('keeps the complete administrative technology CRUD protected', async () => {
     for (const role of ['CLIENT', 'DEVELOPER', 'PRODUCT_OWNER']) {

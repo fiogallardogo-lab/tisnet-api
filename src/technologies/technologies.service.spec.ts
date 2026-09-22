@@ -48,12 +48,12 @@ describe('TechnologiesService', () => {
     });
 
     it('catalog selects only active UI fields in stable order', async () => {
-        const catalog = [{ id: 1, name: 'TypeScript', icon: 'typescript.svg' }];
+        const catalog = [{ id: 1, name: 'TypeScript', icon: 'typescript.svg', isActive: true }];
         prismaServiceMock.technology.findMany.mockResolvedValue(catalog);
         expect(await service.catalog()).toEqual(catalog);
         expect(prismaServiceMock.technology.findMany).toHaveBeenCalledWith({
             where: { isActive: true },
-            select: { id: true, name: true, icon: true },
+            select: { id: true, name: true, icon: true, isActive: true },
             orderBy: [{ name: 'asc' }, { id: 'asc' }],
         });
     });

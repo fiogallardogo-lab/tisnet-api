@@ -9,7 +9,15 @@ import {
     Query,
     UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+    ApiBearerAuth,
+    ApiQuery,
+    ApiTags,
+    ApiOperation,
+    ApiOkResponse,
+    ApiBadRequestResponse,
+    ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
 import { TechnologiesService } from './technologies.service';
 import { CreateTechnologyDto } from './dto/create-technology.dto';
@@ -44,8 +52,41 @@ export class TechnologiesController {
     }
 
     @Get('catalog')
-    catalog(@Query() _query: CatalogQueryDto) {
-        return this.technologiesService.catalog();
+    @ApiOperation({
+        summary: 'Catálogo activo para cualquier usuario autenticado',
+        description:
+            'Admite search por nombre. categoryId está bloqueado: Technology no tiene relación con Category. Enviar categoryId (solo o junto con search) devuelve 400; categoryId/categoryName no se incluyen en la respuesta.',
+    })
+    @ApiOkResponse({
+        description:
+            'Envelope success/message/data; data contiene id, name, icon (nullable), isActive=true. Orden name asc, id asc; sin resultados: [].',
+        schema: {
+            type: 'object',
+            properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' },
+                data: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            id: { type: 'integer' },
+                            name: { type: 'string' },
+                            icon: { type: 'string', nullable: true },
+                            isActive: { type: 'boolean', enum: [true] },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description:
+            'search inválido o query no soportada, incluido categoryId.',
+    })
+    @ApiUnauthorizedResponse({ description: 'JWT ausente o inválido.' })
+    catalog(@Query() query: CatalogQueryDto) {
+        return this.technologiesService.catalog(query.search);
     }
 
     @Get(':id')

@@ -49,10 +49,13 @@ export class TechnologiesService {
         return technology;
     }
 
-    async catalog() {
+    async catalog(search?: string) {
         return this.prisma.technology.findMany({
-            where: { isActive: true },
-            select: { id: true, name: true, icon: true },
+            where: {
+                isActive: true,
+                ...(search ? { name: { contains: search } } : {}),
+            },
+            select: { id: true, name: true, icon: true, isActive: true },
             orderBy: [{ name: 'asc' }, { id: 'asc' }],
         });
     }
