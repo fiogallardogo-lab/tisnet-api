@@ -1,14 +1,14 @@
 # Sprint 5 corregido — evidencias Responsable A
 
 Fecha: 22/09/2026. Rama: `feature/s5-profiles-catalog-hardening`.
-Incluye las partes 1 y 2; cambios sin commit ni push.
+Las partes 1 y 2 fueron publicadas en 40fbc08. Esta auditoría posterior no crea commit ni push.
 
 | Historia | Estado |
 | --- | --- |
 | BE1-01 | COMPLETO |
 | BE1-02 | COMPLETO |
 | BE1-03 | COMPLETO |
-| BE1-04 | PARCIAL — categoría bloqueada por modelo |
+| BE1-04 | BLOQUEADO — Esperando migración de Backend B |
 | BE1-05 | COMPLETO |
 | BE1-06 | COMPLETO — regresión y documentación; DoD global pendiente de bloqueos |
 
@@ -22,7 +22,7 @@ Incluye las partes 1 y 2; cambios sin commit ni push.
 - prisma/schema.prisma: Category (línea 249) tiene projects; Technology (línea 259) solo relaciones projects/developers. La relación a través de Project no define una categoría propia y única de Technology.
 - categoryId y categoryName no están implementados. categoryId solo o combinado devuelve 400. No se inventaron categorías ni se crearon migraciones. Requiere coordinación con Backend B.
 
-## Comandos y resultados
+## Comandos y resultados de la validación anterior (40fbc08)
 
 | Comando | Resultado final |
 | --- | --- |
@@ -76,3 +76,35 @@ POST /users; GET /technologies/catalog?search=react. POST /auth/register se cons
 Se revisaron git status, git diff --stat y git diff. Sin cambios finales en schema,
 migraciones, src/deliverables/** ni docs/contracts/deliverables-api.md.
 No se ejecutaron git add, commit, push, merge ni rebase.
+
+## Auditoría posterior para cierre al 100%
+
+Esperando migración de Backend B. La rama y el árbol limpio inicial se verificaron;
+TechnologyCategory, Technology.categoryId y Technology.category no están integrados.
+No hay migración de categorías de tecnologías. El único categoryId en migraciones
+corresponde a Project y no satisface el acuerdo.
+
+Se documentó el acuerdo futuro en la sección 13 del contrato, sin anunciarlo como
+funcionalidad disponible. No se cambiaron código, schema, seeds ni migraciones.
+La implementación y los tests de categoryId, combinación con search y mapping
+categoryName quedan pendientes de la dependencia externa. No se agregan tests
+omitidos o mocks que aparenten completar BE1-04.
+
+Validación ejecutada nuevamente en esta auditoría:
+- npm run lint: OK.
+- npm run build: OK.
+- npm test: 287/287, 40 archivos.
+- E2E users/users-profile: 38/38.
+- E2E identity-profiles: 13/13.
+- npm run test:e2e completo: 164/164, 5 archivos, MySQL real.
+- Swagger /api/docs/ y /api/docs-json comprobados por la suite users.
+- Prisma: auditoría de schema y migraciones; no se repitieron format/generate ni
+  se aplicaron migraciones, porque la migración requerida de Backend B no existe
+  en esta rama. Los resultados Prisma anteriores se mantienen como históricos.
+- Únicos archivos modificados en esta revisión: este informe y el contrato.
+- Sin cambios en deliverables, schema, seeds, migraciones ni código productivo.
+- Sin commit, push, PR, merge ni modificaciones a develop en esta revisión.
+
+Riesgo pendiente: no puede integrarse frontend con el contrato definitivo de
+categorías hasta recibir la dependencia y validar filtros y mapping en MySQL.
+Los 164 E2E verdes validan el comportamiento actual, no la funcionalidad bloqueada.

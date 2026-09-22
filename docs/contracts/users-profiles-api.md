@@ -197,7 +197,7 @@ Devuelve exclusivamente tecnologías con `isActive = true`, ordenadas por nombre
 
 `CatalogQueryDto` admite search opcional: string, trim y máximo 100 caracteres. GET /technologies/catalog?search=react filtra por name (contains, según collation de MySQL); search vacío equivale a no filtrar. Queries desconocidas devuelven 400, incluyendo isActive, category y categoryId. GET /catalog?categoryId=2 y GET /catalog?categoryId=2&search=react NO están implementados: devuelven 400. No se ignoran filtros silenciosamente.
 
-**BE1-04 PARCIAL/BLOQUEADO por categorías:** Technology no tiene campo ni relación con Category. Category pertenece a Project y no define la categoría de una tecnología. Para ofrecer ese filtro faltaría acordar una clasificación de tecnologías, su cardinalidad y asignación de datos existentes, y luego añadir schema, migración y validación. Esta entrega no inventa esa relación ni modifica otros dominios. categoryId y categoryName se omiten de la respuesta; no se fabrican valores null ni categorías. Backend B tiene prioridad sobre Prisma. Se requiere coordinar modelo, cardinalidad, asignación de datos y migración antes de implementar categoryId entero >= 1 y sus filtros combinados.
+**BE1-04 BLOQUEADO por dependencia externa — Esperando migración de Backend B:** Technology no tiene campo ni relación con Category. Category pertenece a Project y no define la categoría de una tecnología. El modelo independiente TechnologyCategory ya está acordado (sección 13); falta integrar el schema y la migración de Backend B. Esta entrega no inventa esa relación ni modifica otros dominios. categoryId y categoryName se omiten de la respuesta; no se fabrican valores null ni categorías. Backend B tiene prioridad sobre Prisma. Se requiere recibir esa migración antes de implementar categoryId entero >= 1 y sus filtros combinados.
 
 ## 8. Seguridad y persistencia
 
@@ -279,3 +279,27 @@ termsVersion y privacyVersion. No devuelve passwordHash ni inicia sesión.
 perfiles y alta administrativa, search y la limitación explícita de categoryId.
 categoryId no se anuncia como parámetro soportado mientras no exista el modelo.
 BE1-04 no está completo. Evidencias de comandos y regresión: `../sprint5-backend1-evidence.md`.
+
+## 13. Acuerdo de cierre pendiente de integración
+
+Auditoría de la rama feature/s5-profiles-catalog-hardening sobre 40fbc08:
+no existe TechnologyCategory ni Technology.categoryId/category en schema.prisma;
+las migraciones presentes solo relacionan Project.categoryId con Category.
+
+El equipo acordó un modelo independiente TechnologyCategory con id, name,
+description, isActive, createdAt y updatedAt. Backend B implementará el modelo,
+Technology.categoryId Int? y la relación con onDelete: Restrict, junto con su migración.
+No se reutilizará Category de proyectos. Backend A no crea schema, seed ni migración.
+
+Lo siguiente es un criterio de aceptación futuro, NO funcionalidad disponible:
+- categoryId opcional, entero >= 1; combinado con search y siempre isActive=true.
+- Respuesta con id, name, icon, categoryId, categoryName e isActive.
+- Tecnologías históricas sin asignación: categoryId/categoryName null.
+- Categoría inexistente o sin coincidencias: 200 con data [].
+- Categoría inactiva: se permite filtrar; se devuelven solo tecnologías activas.
+- Formato inválido y queries desconocidas, incluido isActive: 400.
+- No se amplía POST/PATCH administrativo para categoryId sin acuerdo explícito.
+
+Hasta integrar y probar esa dependencia, la respuesta real sigue siendo
+id/name/icon/isActive, search está disponible y categoryId devuelve 400.
+No se declara el cierre del Sprint al 100%.
