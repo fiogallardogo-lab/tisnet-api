@@ -276,11 +276,30 @@ model Technology {
   name        String                @unique @db.VarChar(100)
   description String?               @db.Text
   icon        String?               @db.VarChar(255)
+  categoryId  Int?
   isActive    Boolean               @default(true)
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
+  category    TechnologyCategory?   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   projects    ProjectTechnology[]
   developers  DeveloperTechnology[]
+
+  @@index([categoryId])
+  @@index([isActive, categoryId])
+}
+
+model TechnologyCategory {
+  id           Int          @id @default(autoincrement())
+  name         String       @unique @db.VarChar(100)
+  slug         String       @unique @db.VarChar(120)
+  description  String?      @db.Text
+  isActive     Boolean      @default(true)
+  displayOrder Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  technologies Technology[]
+
+  @@index([isActive, displayOrder])
 }
 
 model Project {
