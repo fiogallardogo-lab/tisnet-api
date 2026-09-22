@@ -41,6 +41,7 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
   const superAdminCreatedDeveloperEmail = `super-admin-created-developer-${suffix}@example.test`;
 
   const technologyIds: number[] = [];
+  const technologyCategoryIds: number[] = [];
   const extraEmails: string[] = [];
 
   const legal = {
@@ -126,17 +127,58 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
       tokens[role] = response.body.data.accessToken;
     }
 
-    for (const [name, isActive] of [
-      [`Z-${suffix}`, true],
-      [`A-${suffix}`, true],
-      [`Inactive-${suffix}`, false],
-    ] as const) {
+    const frontendCategory = await prisma.technologyCategory.create({
+      data: {
+        name: `Frontend-${suffix}`,
+        slug: `frontend-${suffix}`,
+        description: 'Categoría temporal E2E de frontend',
+        isActive: true,
+        displayOrder: 1,
+      },
+    });
+
+    const backendCategory = await prisma.technologyCategory.create({
+      data: {
+        name: `Backend-${suffix}`,
+        slug: `backend-${suffix}`,
+        description: 'Categoría temporal E2E de backend',
+        isActive: true,
+        displayOrder: 2,
+      },
+    });
+
+    technologyCategoryIds.push(frontendCategory.id, backendCategory.id);
+
+    const technologies = [
+      {
+        name: `Z-${suffix}`,
+        isActive: true,
+        icon: 'test.svg',
+        categoryId: frontendCategory.id,
+      },
+      {
+        name: `A-${suffix}`,
+        isActive: true,
+        icon: 'test.svg',
+        categoryId: backendCategory.id,
+      },
+      {
+        name: `Legacy-${suffix}`,
+        isActive: true,
+        icon: 'test.svg',
+        categoryId: null,
+      },
+      {
+        name: `Inactive-${suffix}`,
+        isActive: false,
+        icon: 'test.svg',
+        categoryId: frontendCategory.id,
+      },
+    ];
+
+    for (const data of technologies) {
       const technology = await prisma.technology.create({
-        data: {
-          name,
-          isActive,
-          icon: 'test.svg',
-        },
+        data,
       });
 
       technologyIds.push(technology.id);
@@ -164,6 +206,14 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
           where: {
             id: {
               in: technologyIds,
+            },
+          },
+        });
+
+        await prisma.technologyCategory.deleteMany({
+          where: {
+            id: {
+              in: technologyCategoryIds,
             },
           },
         });
@@ -225,15 +275,16 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
     const catalog = paths['/api/v1/technologies/catalog'].get;
     expect(catalog.parameters).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: 'search', required: false }),
+        expect.objectContaining({
+          name: 'search',
+          required: false,
+        }),
+        expect.objectContaining({
+          name: 'categoryId',
+          required: false,
+        }),
       ]),
     );
-    expect(catalog.description).toContain('categoryId');
-    expect(
-      catalog.parameters.some(
-        (parameter: { name: string }) => parameter.name === 'categoryId',
-      ),
-    ).toBe(false);
   });
 
   it.each(roles)(
@@ -563,20 +614,28 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
     },
   );
 
-  it('catalog requires JWT and allows every authenticated role with active UI fields in stable order', async () => {
+  it('catalog requires JWT and allows every authenticated role with active category fields in stable order', async () => {
     await request(app.getHttpServer())
       .get('/api/v1/technologies/catalog')
       .expect(401);
 
-    const expected = await prisma.technology.findMany({
+    const expectedFromDatabase = await prisma.technology.findMany({
       where: {
         isActive: true,
-        id: { in: technologyIds },
+        id: {
+          in: technologyIds,
+        },
       },
       select: {
         id: true,
         name: true,
         icon: true,
+        categoryId: true,
+        category: {
+          select: {
+            name: true,
+          },
+        },
         isActive: true,
       },
       orderBy: [
@@ -588,6 +647,15 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
         },
       ],
     });
+
+    const expected = expectedFromDatabase.map((technology) => ({
+      id: technology.id,
+      name: technology.name,
+      icon: technology.icon,
+      categoryId: technology.categoryId,
+      categoryName: technology.category?.name ?? null,
+      isActive: technology.isActive,
+    }));
 
     for (const role of roles) {
       const response = await request(app.getHttpServer())
@@ -604,27 +672,36 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
 
       expect(own.map((item: { id: number }) => item.id)).toEqual([
         technologyIds[1],
+        technologyIds[2],
         technologyIds[0],
       ]);
 
       for (const item of response.body.data) {
         expect(item.isActive).toBe(true);
         expect(Object.keys(item).sort()).toEqual([
+          'categoryId',
+          'categoryName',
           'icon',
           'id',
           'isActive',
           'name',
         ]);
       }
+
+      const legacy = own.find(
+        (item: { id: number }) => item.id === technologyIds[2],
+      );
+
+      expect(legacy).toMatchObject({
+        categoryId: null,
+        categoryName: null,
+      });
     }
   });
 
   it.each([
     'category=backend',
     'category=',
-    'categoryId=2',
-    'categoryId=999999999',
-    'categoryId=2&search=react',
     'categoryId=0',
     'categoryId=-1',
     'categoryId=1.5',
@@ -633,7 +710,7 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
     'unknown=1',
     'search=' + 'a'.repeat(101),
     'search=one&search=two',
-  ])('rejects unsupported catalog query %s', async (query) => {
+  ])('rejects invalid or unsupported catalog query %s', async (query) => {
     await request(app.getHttpServer())
       .get(`/api/v1/technologies/catalog?${query}`)
       .set('Authorization', `Bearer ${tokens.DEVELOPER}`)
@@ -646,25 +723,95 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
         .get('/api/v1/technologies/catalog')
         .set('Authorization', `Bearer ${tokens.CLIENT}`)
         .query({ search });
+
     const filtered = await catalog(`  ${suffix}  `).expect(200);
+
     expect(filtered.body.data.map((item: { id: number }) => item.id)).toEqual([
       technologyIds[1],
+      technologyIds[2],
       technologyIds[0],
     ]);
+
     const exact = await catalog(`A-${suffix}`).expect(200);
+
     expect(exact.body.data).toHaveLength(1);
     expect(exact.body.data[0].id).toBe(technologyIds[1]);
+
     expect((await catalog(`Inactive-${suffix}`).expect(200)).body.data).toEqual(
       [],
     );
+
     expect((await catalog(`missing-${suffix}`).expect(200)).body.data).toEqual(
       [],
     );
+
     const blank = await catalog('   ').expect(200);
-    expect(blank.body.data.length).toBeGreaterThanOrEqual(2);
+
+    expect(blank.body.data.length).toBeGreaterThanOrEqual(3);
+
     expect(
       blank.body.data.every((item: { isActive: boolean }) => item.isActive),
     ).toBe(true);
+  });
+
+  it('catalog filters active technologies by categoryId', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/technologies/catalog')
+      .set('Authorization', `Bearer ${tokens.DEVELOPER}`)
+      .query({
+        categoryId: technologyCategoryIds[0],
+      })
+      .expect(200);
+
+    const own = response.body.data.filter((item: { id: number }) =>
+      technologyIds.includes(item.id),
+    );
+
+    expect(own).toHaveLength(1);
+
+    expect(own[0]).toMatchObject({
+      id: technologyIds[0],
+      categoryId: technologyCategoryIds[0],
+      categoryName: `Frontend-${suffix}`,
+      isActive: true,
+    });
+
+    expect(
+      own.some((item: { id: number }) => item.id === technologyIds[3]),
+    ).toBe(false);
+  });
+
+  it('catalog combines search and categoryId filters', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/technologies/catalog')
+      .set('Authorization', `Bearer ${tokens.CLIENT}`)
+      .query({
+        search: `Z-${suffix}`,
+        categoryId: technologyCategoryIds[0],
+      })
+      .expect(200);
+
+    expect(response.body.data).toHaveLength(1);
+
+    expect(response.body.data[0]).toMatchObject({
+      id: technologyIds[0],
+      name: `Z-${suffix}`,
+      categoryId: technologyCategoryIds[0],
+      categoryName: `Frontend-${suffix}`,
+      isActive: true,
+    });
+  });
+
+  it('catalog returns an empty array when a valid categoryId has no matches', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/technologies/catalog')
+      .set('Authorization', `Bearer ${tokens.CLIENT}`)
+      .query({
+        categoryId: 999999999,
+      })
+      .expect(200);
+
+    expect(response.body.data).toEqual([]);
   });
 
   it('keeps the complete administrative technology CRUD protected', async () => {

@@ -1,11 +1,11 @@
-import { Transform } from 'class-transformer';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-/** categoryId is unsupported until Technology has an agreed category relation. */
 export class CatalogQueryDto {
   @ApiPropertyOptional({
-    description: 'Busca por nombre; trim. Vacío equivale a no filtrar.',
+    description:
+      'Busca tecnologías activas por nombre. Los espacios al inicio y final se eliminan.',
     maxLength: 100,
     example: 'react',
   })
@@ -16,4 +16,16 @@ export class CatalogQueryDto {
   @IsString()
   @MaxLength(100)
   search?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filtra tecnologías activas por categoría tecnológica.',
+    type: Number,
+    minimum: 1,
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  categoryId?: number;
 }

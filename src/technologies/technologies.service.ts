@@ -1,84 +1,115 @@
 import {
-    ConflictException,
-    Injectable,
-    NotFoundException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTechnologyDto } from './dto/create-technology.dto';
 import { UpdateTechnologyDto } from './dto/update-technology.dto';
+import { CatalogQueryDto } from './dto/catalog-query.dto';
 
 @Injectable()
 export class TechnologiesService {
-    constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-    async create(createTechnologyDto: CreateTechnologyDto) {
-        const existingTechnology = await this.prisma.technology.findUnique({
-            where: {
-                name: createTechnologyDto.name,
-            },
-        });
+  async create(createTechnologyDto: CreateTechnologyDto) {
+    const existingTechnology = await this.prisma.technology.findUnique({
+      where: {
+        name: createTechnologyDto.name,
+      },
+    });
 
-        if (existingTechnology) {
-            throw new ConflictException('La tecnología ya existe');
-        }
-
-        return this.prisma.technology.create({
-            data: createTechnologyDto,
-        });
+    if (existingTechnology) {
+      throw new ConflictException('La tecnología ya existe');
     }
 
-    async findAll(isActive?: boolean) {
-        return this.prisma.technology.findMany({
-            ...(isActive === undefined ? {} : { where: { isActive } }),
-            orderBy: {
-                name: 'asc',
-            },
-        });
+    return this.prisma.technology.create({
+      data: createTechnologyDto,
+    });
+  }
+
+  async findAll(isActive?: boolean) {
+    return this.prisma.technology.findMany({
+      ...(isActive === undefined ? {} : { where: { isActive } }),
+      orderBy: {
+        name: 'asc',
+      },
+    });
+  }
+
+  async findOne(id: number) {
+    const technology = await this.prisma.technology.findUnique({
+      where: { id },
+    });
+
+    if (!technology) {
+      throw new NotFoundException('Tecnología no encontrada');
     }
 
-    async findOne(id: number) {
-        const technology = await this.prisma.technology.findUnique({
-            where: { id },
-        });
+    return technology;
+  }
 
-        if (!technology) {
-            throw new NotFoundException('Tecnología no encontrada');
-        }
-
-        return technology;
-    }
-
-    async catalog(search?: string) {
-        return this.prisma.technology.findMany({
-            where: {
-                isActive: true,
-                ...(search ? { name: { contains: search } } : {}),
-            },
-            select: { id: true, name: true, icon: true, isActive: true },
-            orderBy: [{ name: 'asc' }, { id: 'asc' }],
-        });
-    }
-
-    async update(id: number, updateTechnologyDto: UpdateTechnologyDto) {
-        await this.findOne(id);
-
-        if (updateTechnologyDto.name) {
-            const technologyWithSameName =
-                await this.prisma.technology.findUnique({
-                    where: {
-                        name: updateTechnologyDto.name,
-                    },
-                });
-
-            if (technologyWithSameName && technologyWithSameName.id !== id) {
-                throw new ConflictException('La tecnología ya existe');
+  async catalog(query: CatalogQueryDto) {
+    const technologies = await this.prisma.technology.findMany({
+      where: {
+        isActive: true,
+        ...(query.search
+          ? {
+              name: {
+                contains: query.search,
+              },
             }
-        }
+          : {}),
+        ...(query.categoryId !== undefined
+          ? {
+              categoryId: query.categoryId,
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        icon: true,
+        categoryId: true,
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        isActive: true,
+      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
 
-        return this.prisma.technology.update({
-            where: { id },
-            data: updateTechnologyDto,
-        });
+    return technologies.map((technology) => ({
+      id: technology.id,
+      name: technology.name,
+      icon: technology.icon,
+      categoryId: technology.categoryId,
+      categoryName: technology.category?.name ?? null,
+      isActive: technology.isActive,
+    }));
+  }
+
+  async update(id: number, updateTechnologyDto: UpdateTechnologyDto) {
+    await this.findOne(id);
+
+    if (updateTechnologyDto.name) {
+      const technologyWithSameName = await this.prisma.technology.findUnique({
+        where: {
+          name: updateTechnologyDto.name,
+        },
+      });
+
+      if (technologyWithSameName && technologyWithSameName.id !== id) {
+        throw new ConflictException('La tecnología ya existe');
+      }
     }
+
+    return this.prisma.technology.update({
+      where: { id },
+      data: updateTechnologyDto,
+    });
+  }
 }
