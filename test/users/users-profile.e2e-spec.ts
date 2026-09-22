@@ -435,7 +435,6 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
           email: `invalid-legal-${suffix}@example.test`,
           password,
           role: 'CLIENT',
-          acceptedTerms: true,
           ...legal,
           [field]: 'old',
         })
