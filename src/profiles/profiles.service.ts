@@ -185,7 +185,11 @@ export class ProfilesService {
     return this.withoutUserId(PLATFORM_ROLES.PRODUCT_OWNER, profile);
   }
 
-  async updateAdminProfile(userId: number, dto: UpdateAdminProfileDto) {
+  async updateAdminProfile(
+    userId: number,
+    dto: UpdateAdminProfileDto,
+    role: string = PLATFORM_ROLES.ADMIN,
+  ) {
     const profile = await this.prisma.adminProfile
       .upsert({
         where: { userId },
@@ -193,7 +197,8 @@ export class ProfilesService {
         update: dto,
       })
       .catch((error: unknown) => this.rethrowProfileConflict(error));
-    return this.withoutUserId(PLATFORM_ROLES.ADMIN, profile);
+
+    return this.withoutUserId(role, profile);
   }
 
   private toOwnProfile(user: UserWithProfiles) {
@@ -245,13 +250,16 @@ export class ProfilesService {
       };
     }
 
-    if (user.role.name === PLATFORM_ROLES.ADMIN && user.adminProfile) {
+    if (
+      (user.role.name === PLATFORM_ROLES.ADMIN ||
+        user.role.name === PLATFORM_ROLES.SUPER_ADMIN) &&
+      user.adminProfile
+    ) {
       return {
         user: safeUser,
-        profile: this.withoutUserId(PLATFORM_ROLES.ADMIN, user.adminProfile),
+        profile: this.withoutUserId(user.role.name, user.adminProfile),
       };
     }
-
     return { user: safeUser, profile: null };
   }
 

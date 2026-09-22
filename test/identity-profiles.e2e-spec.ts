@@ -305,7 +305,7 @@ describe('Identity and profiles API (e2e)', () => {
     expect(admin.body.data).not.toHaveProperty('userId');
   });
 
-  it('consulta los cinco roles y conserva SUPER_ADMIN sin perfil especializado', async () => {
+  it('consulta los cinco roles y crea AdminProfile para SUPER_ADMIN sin perfil inicial', async () => {
     for (const [email, role] of [
       [clientEmail, 'CLIENT'],
       [developerEmail, 'DEVELOPER'],
@@ -328,6 +328,24 @@ describe('Identity and profiles API (e2e)', () => {
       expect(JSON.stringify(response.body.data)).not.toContain('userId');
       if (role === 'SUPER_ADMIN') {
         expect(response.body.data.profile).toBeNull();
+        const updated = await request(app.getHttpServer())
+          .patch('/api/v1/users/me/admin-profile')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ executiveTitle: 'Super Admin E2E' })
+          .expect(200);
+        const read = await request(app.getHttpServer())
+          .get('/api/v1/users/me/profile')
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+        expect(read.body.data.user.role).toBe(role);
+        expect(read.body.data.profile).toEqual(updated.body.data);
+        expect(read.body.data.profile.type).toBe(role);
+        expect(read.body.data.profile).not.toHaveProperty('userId');
+        expect(
+          await prisma.adminProfile.findUnique({
+            where: { userId: response.body.data.user.id },
+          }),
+        ).toMatchObject({ executiveTitle: 'Super Admin E2E' });
         await request(app.getHttpServer())
           .patch('/api/v1/users/me')
           .set('Authorization', `Bearer ${token}`)
@@ -374,7 +392,11 @@ describe('Identity and profiles API (e2e)', () => {
     ].entries()) {
       const token = await login(email);
       for (const [endpointIndex, endpoint] of endpoints.entries()) {
-        if (index === endpointIndex) continue;
+        if (
+          index === endpointIndex ||
+          (index === 4 && endpoint === 'admin-profile')
+        )
+          continue;
         await request(app.getHttpServer())
           .patch(`/api/v1/users/me/${endpoint}`)
           .set('Authorization', `Bearer ${token}`)

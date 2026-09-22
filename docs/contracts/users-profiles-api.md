@@ -1,10 +1,10 @@
 # TISNET - Contrato API de usuarios y perfiles
 
-Versión: 1.1 - Sprint 5, Backend 1, partes 1 y 2
+Versión: 1.2 - Sprint 5, Backend 1, partes 1 y 2
 
-Fecha: 21/09/2026
+Fecha: 22/09/2026
 
-Implementación: `feature/s5-users-profiles-api`. Se conserva la arquitectura y las rutas del Sprint 3.
+Implementación: `feature/s5-profiles-catalog-hardening`. Se conserva la arquitectura y las rutas del Sprint 3.
 
 Este contrato cubre identidad, perfiles, registro de Cliente y autorización por rol. El módulo Quote tiene un contrato independiente a cargo del Responsable B.
 
@@ -16,24 +16,24 @@ Este contrato cubre identidad, perfiles, registro de Cliente y autorización por
 - Roles: `CLIENT`, `DEVELOPER`, `PRODUCT_OWNER`, `ADMIN`, `SUPER_ADMIN`.
 - `SUPERADMIN` del documento SCRUM se implementa como `SUPER_ADMIN` para conservar guards y datos existentes.
 - Un visitante solo puede registrar una cuenta CLIENT. El body nunca acepta `role`, `roleId`, `isActive`, `tokenVersion` ni identificadores de otro usuario.
-- SUPER_ADMIN no necesita perfil extendido en este Sprint; su `profile` es `null`.
-- Cambiar roles y administrar usuarios ajenos quedan fuera hasta una historia administrativa explícita.
+- SUPER_ADMIN reutiliza AdminProfile; conserva su rol real en user.role y profile.type.
+- POST /users permite altas administrativas. Cambiar roles de usuarios existentes queda fuera de este contrato.
 
 ## 2. Convenciones
 
 Éxito: `{ "success": true, "message": "Operación realizada correctamente", "data": {} }`.
 Los errores mantienen el filtro HTTP global con `success`, `message` y `error`.
 
-| HTTP | Uso                                     |
-| ---- | --------------------------------------- |
-| 200  | Consulta o actualización correcta       |
-| 201  | Registro correcto                       |
-| 400  | DTO, consentimiento o versión inválidos |
-| 401  | Credenciales o sesión inválidas         |
-| 403  | Rol sin permiso para ese perfil         |
+| HTTP | Uso                                                                                                                      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------ |
+| 200  | Consulta o actualización correcta                                                                                        |
+| 201  | Registro correcto                                                                                                        |
+| 400  | DTO, consentimiento o versión inválidos                                                                                  |
+| 401  | Credenciales o sesión inválidas                                                                                          |
+| 403  | Rol sin permiso para ese perfil                                                                                          |
 | 404  | Tecnología inexistente en GET/PATCH administrativo; usuario eliminado entre autenticación y actualización de `/users/me` |
-| 409  | Email, DNI, RUC u otra clave única ya registrados |
-| 503  | Versiones legales del servidor ausentes, vacías o de más de 50 caracteres |
+| 409  | Email, DNI, RUC u otra clave única ya registrados                                                                        |
+| 503  | Versiones legales del servidor ausentes, vacías o de más de 50 caracteres                                                |
 
 Nunca se devuelven `passwordHash`, `tokenVersion`, secretos o tokens en recursos de usuario. Las fechas usan ISO 8601. En PATCH, un campo omitido conserva su valor; `null` limpia campos escalares opcionales del perfil especializado. `technologyIds` y los campos de aceptación legal no aceptan `null`. `name` no se puede borrar: un `name: null` no actualiza el nombre y, sin una renovación legal válida, devuelve 400.
 
@@ -41,21 +41,22 @@ Nunca se devuelven `passwordHash`, `tokenVersion`, secretos o tokens en recursos
 
 Todas las rutas de esta tabla tienen el prefijo `/api/v1`.
 
-| Método | Ruta                              | Permiso       | Estado                                   |
-| ------ | --------------------------------- | ------------- | ---------------------------------------- |
-| GET    | `/auth/me`                        | Autenticado   | Existente, sin cambios                   |
-| POST   | `/auth/register`                  | Público       | Crea exclusivamente CLIENT               |
-| PATCH  | `/users/me`                       | Autenticado   | Actualiza nombre y/o aceptación legal    |
-| GET    | `/users/me/profile`               | Autenticado   | Devuelve usuario seguro y perfil del rol |
-| PATCH  | `/users/me/client-profile`        | CLIENT        | Upsert del perfil propio                 |
-| PATCH  | `/users/me/developer-profile`     | DEVELOPER     | Upsert del perfil propio                 |
-| PATCH  | `/users/me/product-owner-profile` | PRODUCT_OWNER | Upsert del perfil propio                 |
-| PATCH  | `/users/me/admin-profile`         | ADMIN         | Upsert del perfil propio                 |
-| GET    | `/technologies/catalog`          | Autenticado, cualquier rol | Tecnologías activas para selector |
-| POST   | `/technologies`                  | ADMIN, SUPER_ADMIN | Crear tecnología |
-| GET    | `/technologies`                  | ADMIN, SUPER_ADMIN | Listado administrativo; admite `isActive` |
-| GET    | `/technologies/:id`              | ADMIN, SUPER_ADMIN | Detalle administrativo |
-| PATCH  | `/technologies/:id`              | ADMIN, SUPER_ADMIN | Actualización administrativa |
+| Método | Ruta                              | Permiso                    | Estado                                    |
+| ------ | --------------------------------- | -------------------------- | ----------------------------------------- |
+| GET    | `/auth/me`                        | Autenticado                | Existente, sin cambios                    |
+| POST   | `/auth/register`                  | Público                    | Crea exclusivamente CLIENT                |
+| POST   | `/users`                          | ADMIN, SUPER_ADMIN         | Alta administrativa con perfil y versiones legales |
+| PATCH  | `/users/me`                       | Autenticado                | Actualiza nombre y/o aceptación legal     |
+| GET    | `/users/me/profile`               | Autenticado                | Devuelve usuario seguro y perfil del rol  |
+| PATCH  | `/users/me/client-profile`        | CLIENT                     | Upsert del perfil propio                  |
+| PATCH  | `/users/me/developer-profile`     | DEVELOPER                  | Upsert del perfil propio                  |
+| PATCH  | `/users/me/product-owner-profile` | PRODUCT_OWNER              | Upsert del perfil propio                  |
+| PATCH  | `/users/me/admin-profile`         | ADMIN, SUPER_ADMIN         | Upsert del perfil propio                  |
+| GET    | `/technologies/catalog`           | Autenticado, cualquier rol | Tecnologías activas para selector         |
+| POST   | `/technologies`                   | ADMIN, SUPER_ADMIN         | Crear tecnología                          |
+| GET    | `/technologies`                   | ADMIN, SUPER_ADMIN         | Listado administrativo; admite `isActive` |
+| GET    | `/technologies/:id`               | ADMIN, SUPER_ADMIN         | Detalle administrativo                    |
+| PATCH  | `/technologies/:id`               | ADMIN, SUPER_ADMIN         | Actualización administrativa              |
 
 El usuario se obtiene siempre del JWT. Ninguna ruta personal recibe `userId` por path, query o body.
 
@@ -134,7 +135,7 @@ La respuesta `data` de PATCH contiene `id`, `name`, `email`, `role`, `isActive`,
 
 El ejemplo muestra un extracto del perfil. En la respuesta real cada perfil incluye `id`, `type`, sus campos persistidos y `createdAt`/`updatedAt`, sin `userId`. El usuario de GET mantiene exactamente `id`, `name`, `email`, `role` e `isActive`; los datos de aceptación legal se devuelven en registro y PATCH `/users/me`.
 
-Si aún no existe el perfil correspondiente, `profile` es `null`, no 404. SUPER_ADMIN siempre recibe `profile: null`, puede actualizar su nombre y aceptación legal, y recibe 403 en PATCH `admin-profile`. No comparte AdminProfile ni se crea un modelo adicional. Una cuenta inexistente, inactiva o con token revocado recibe 401 por el guard JWT.
+Si aún no existe el perfil correspondiente, `profile` es `null`, no 404. SUPER_ADMIN comparte AdminProfile: si falta inicialmente devuelve null; PATCH admin-profile lo crea y devuelve 200, y GET posterior lo devuelve con type SUPER_ADMIN, sin userId. No existe SuperAdminProfile. Una cuenta inexistente, inactiva o con token revocado recibe 401 por el guard JWT.
 
 ## 6. Payloads de perfiles
 
@@ -162,7 +163,7 @@ Todas las URLs de perfiles requieren `http://` o `https://` y tienen máximo 500
 Campos: `bio`, `specialty`, `availabilityNotes`, `photoUrl`.
 Límites: `bio` 5000, `specialty` 120, `availabilityNotes` 500 y `photoUrl` 500 caracteres. La URL sigue la regla HTTP(S).
 
-### ADMIN - `PATCH /users/me/admin-profile`
+### ADMIN y SUPER_ADMIN - `PATCH /users/me/admin-profile`
 
 Campos: `executiveTitle`, `specialty`, `photoUrl`, `calendlyUrl`.
 Límites: título y especialidad 120 caracteres; ambas URLs HTTP(S), máximo 500.
@@ -181,17 +182,22 @@ Respuesta:
   "success": true,
   "message": "Operación realizada correctamente",
   "data": [
-    { "id": 2, "name": "Node.js", "icon": null },
-    { "id": 1, "name": "TypeScript", "icon": "typescript.svg" }
+    { "id": 2, "name": "Node.js", "icon": null, "isActive": true },
+    {
+      "id": 1,
+      "name": "TypeScript",
+      "icon": "typescript.svg",
+      "isActive": true
+    }
   ]
 }
 ```
 
-Devuelve exclusivamente tecnologías con `isActive = true`, ordenadas por nombre ascendente y luego ID. Solo incluye `id`, `name` e `icon`; no expone descripción, estado ni fechas. Sin resultados devuelve `data: []`.
+Devuelve exclusivamente tecnologías con `isActive = true`, ordenadas por nombre ascendente y luego ID. Incluye `id`, `name`, `icon` e `isActive`; no expone descripción ni fechas. Sin resultados devuelve `data: []`.
 
-`CatalogQueryDto` no admite parámetros en esta versión. La validación global rechaza cualquier query desconocida con 400, incluyendo `?isActive=false` y `?category=backend` (también una categoría vacía). No se ignoran filtros silenciosamente.
+`CatalogQueryDto` admite search opcional: string, trim y máximo 100 caracteres. GET /technologies/catalog?search=react filtra por name (contains, según collation de MySQL); search vacío equivale a no filtrar. Queries desconocidas devuelven 400, incluyendo isActive, category y categoryId. GET /catalog?categoryId=2 y GET /catalog?categoryId=2&search=react NO están implementados: devuelven 400. No se ignoran filtros silenciosamente.
 
-**Limitación de categorías:** Technology no tiene campo ni relación con Category. Category pertenece a Project y no define la categoría de una tecnología. Para ofrecer ese filtro faltaría acordar una clasificación de tecnologías, su cardinalidad y asignación de datos existentes, y luego añadir schema, migración y validación. Esta entrega no inventa esa relación ni modifica otros dominios.
+**BE1-04 BLOQUEADO por dependencia externa — Esperando migración de Backend B:** Technology no tiene campo ni relación con Category. Category pertenece a Project y no define la categoría de una tecnología. El modelo independiente TechnologyCategory ya está acordado (sección 13); falta integrar el schema y la migración de Backend B. Esta entrega no inventa esa relación ni modifica otros dominios. categoryId y categoryName se omiten de la respuesta; no se fabrican valores null ni categorías. Backend B tiene prioridad sobre Prisma. Se requiere recibir esa migración antes de implementar categoryId entero >= 1 y sus filtros combinados.
 
 ## 8. Seguridad y persistencia
 
@@ -223,7 +229,7 @@ Devuelve exclusivamente tecnologías con `isActive = true`, ordenadas por nombre
 - Regresión de login, refresh, logout, Projects y Services.
 - E2E en base aislada, nunca en la base compartida de desarrollo.
 
-Suites de integración: `test/identity-profiles.e2e-spec.ts` (Parte 1) y `test/users/users-profile.e2e-spec.ts` (Parte 2). Ambas usan Nest, JWT, validación y Prisma/MySQL reales; no sustituyen servicios productivos por mocks. Eliminan únicamente fixtures propios al finalizar.
+Suites de integración: `test/identity-profiles.e2e-spec.ts` y `test/users/users-profile.e2e-spec.ts`. Ambas usan Nest, JWT, validación y Prisma/MySQL reales. Solo los casos 503 simulan una clave legal ausente mediante ConfigService; la persistencia sigue siendo real. Eliminan únicamente fixtures propios al finalizar.
 
 Validación de entrega:
 
@@ -239,34 +245,61 @@ npm run test:e2e -- test/identity-profiles.e2e-spec.ts test/users/users-profile.
 
 El Responsable A comparte contrato, rama/commit, Swagger y ejemplos reales sin secretos. El frontend puede usar mocks equivalentes, pero la integración final se prueba contra la API real.
 
-## 11. Inventario de entrega Sprint 5 (partes 1 y 2)
+## 11. Alta administrativa
 
-Archivos modificados:
+`POST /api/v1/users`, JWT obligatorio, exclusivamente ADMIN y SUPER_ADMIN.
 
-- `.env.example`
-- `docs/contracts/users-profiles-api.md`
-- `src/auth/auth.service.ts`
-- `src/profiles/dto/update-developer-profile.dto.ts`
-- `src/profiles/dto/update-own-user.dto.ts`
-- `src/profiles/profiles.controller.ts`
-- `src/profiles/profiles.module.ts`
-- `src/profiles/profiles.service.ts`
-- `src/profiles/profiles.service.spec.ts`
-- `src/technologies/technologies.controller.ts`
-- `src/technologies/technologies.service.ts`
-- `src/technologies/technologies.service.spec.ts`
-- `src/users/users.service.ts`
-- `test/identity-profiles.e2e-spec.ts`
+```json
+{
+  "name": "Developer de ejemplo",
+  "email": "developer@example.test",
+  "password": "PasswordSegura123!",
+  "role": "DEVELOPER",
+  "acceptedTerms": true,
+  "termsVersion": "v1.0",
+  "privacyVersion": "v1.0"
+}
+```
 
-Archivos nuevos:
+Roles creados: CLIENT -> ClientProfile, DEVELOPER -> DeveloperProfile,
+PRODUCT_OWNER -> ProductOwnerProfile, ADMIN -> AdminProfile. No permite SUPER_ADMIN.
+Crea User y perfil en una transacción; contraseña hasheada con bcrypt (costo 12).
+Las reglas de name/email/password/consentimiento/versiones son las del registro.
+validateLegalVersions() es compartida por alta administrativa, registro y renovación.
+Persiste acceptedTermsAt del servidor, termsVersion y privacyVersion.
+Respuesta 201: data contiene id, name, email, role, isActive, acceptedTermsAt,
+termsVersion y privacyVersion. No devuelve passwordHash ni inicia sesión.
+400: DTO/rol/consentimiento/versiones obsoletas; 401: sin JWT válido;
+403: CLIENT/DEVELOPER/PRODUCT_OWNER; 409: email duplicado;
+503: configuración legal ausente o inválida. Los errores no crean el usuario.
 
-- `src/common/legal/legal-versions.ts`
-- `src/common/legal/legal-versions.spec.ts`
-- `src/profiles/dto/profile-validation.spec.ts`
-- `src/profiles/dto/update-own-user.dto.spec.ts`
-- `src/technologies/dto/catalog-query.dto.ts`
-- `test/users/users-profile.e2e-spec.ts`
+## 12. Swagger y cierre
 
-No se modifican schema, archivos de migraciones ni entregables de Backend 2. Para la regresión completa se aplicaron a `tisnet_test` las dos migraciones existentes pendientes (`20260918120000_add_prospects_meetings` y `20260918170000_public_quotes_team_applications`), sin reset ni modificaciones a sus archivos.
+`/api/docs` expone las rutas con base `/api/v1`, autorización Bearer, los DTO de
+perfiles y alta administrativa, search y la limitación explícita de categoryId.
+categoryId no se anuncia como parámetro soportado mientras no exista el modelo.
+BE1-04 no está completo. Evidencias de comandos y regresión: `../sprint5-backend1-evidence.md`.
 
-Resultado de regresión del 21/09/2026: Prisma generate, lint y build correctos; 279 pruebas unitarias aprobadas (40 archivos), 142 E2E aprobadas (5 archivos), incluidas 29 pruebas de las dos suites de usuarios/perfiles. Las nuevas pruebas cubren selección de tecnologías activas, orden, campos mínimos, rechazo de filtros no soportados, permisos administrativos, validación legal central, renovación atómica y persistencia MySQL.
+## 13. Acuerdo de cierre pendiente de integración
+
+Auditoría de la rama feature/s5-profiles-catalog-hardening sobre 40fbc08:
+no existe TechnologyCategory ni Technology.categoryId/category en schema.prisma;
+las migraciones presentes solo relacionan Project.categoryId con Category.
+
+El equipo acordó un modelo independiente TechnologyCategory con id, name,
+description, isActive, createdAt y updatedAt. Backend B implementará el modelo,
+Technology.categoryId Int? y la relación con onDelete: Restrict, junto con su migración.
+No se reutilizará Category de proyectos. Backend A no crea schema, seed ni migración.
+
+Lo siguiente es un criterio de aceptación futuro, NO funcionalidad disponible:
+- categoryId opcional, entero >= 1; combinado con search y siempre isActive=true.
+- Respuesta con id, name, icon, categoryId, categoryName e isActive.
+- Tecnologías históricas sin asignación: categoryId/categoryName null.
+- Categoría inexistente o sin coincidencias: 200 con data [].
+- Categoría inactiva: se permite filtrar; se devuelven solo tecnologías activas.
+- Formato inválido y queries desconocidas, incluido isActive: 400.
+- No se amplía POST/PATCH administrativo para categoryId sin acuerdo explícito.
+
+Hasta integrar y probar esa dependencia, la respuesta real sigue siendo
+id/name/icon/isActive, search está disponible y categoryId devuelve 400.
+No se declara el cierre del Sprint al 100%.

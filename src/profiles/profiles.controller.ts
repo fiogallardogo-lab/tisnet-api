@@ -7,10 +7,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PLATFORM_ROLES } from '../common/constants/platform-roles';
+
 import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
 import { UpdateClientProfileDto } from './dto/update-client-profile.dto';
 import { UpdateDeveloperProfileDto } from './dto/update-developer-profile.dto';
@@ -19,7 +21,11 @@ import { UpdateProductOwnerProfileDto } from './dto/update-product-owner-profile
 import { ProfilesService } from './profiles.service';
 
 interface ProfileRequest {
-  user: { id: number; email: string; role: string };
+  user: {
+    id: number;
+    email: string;
+    role: string;
+  };
 }
 
 @ApiTags('Profiles')
@@ -30,7 +36,9 @@ export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
 
   @Get('profile')
-  @ApiOperation({ summary: 'Consultar el usuario y perfil del rol actual' })
+  @ApiOperation({
+    summary: 'Consultar el usuario y perfil del rol actual',
+  })
   getOwnProfile(@Request() request: ProfileRequest) {
     return this.profilesService.getOwnProfile(request.user.id);
   }
@@ -49,7 +57,9 @@ export class ProfilesController {
   @Patch('client-profile')
   @UseGuards(RolesGuard)
   @Roles(PLATFORM_ROLES.CLIENT)
-  @ApiOperation({ summary: 'Crear o actualizar el perfil CLIENT propio' })
+  @ApiOperation({
+    summary: 'Crear o actualizar el perfil CLIENT propio',
+  })
   updateClientProfile(
     @Request() request: ProfileRequest,
     @Body() dto: UpdateClientProfileDto,
@@ -60,7 +70,9 @@ export class ProfilesController {
   @Patch('developer-profile')
   @UseGuards(RolesGuard)
   @Roles(PLATFORM_ROLES.DEVELOPER)
-  @ApiOperation({ summary: 'Crear o actualizar el perfil DEVELOPER propio' })
+  @ApiOperation({
+    summary: 'Crear o actualizar el perfil DEVELOPER propio',
+  })
   updateDeveloperProfile(
     @Request() request: ProfileRequest,
     @Body() dto: UpdateDeveloperProfileDto,
@@ -83,12 +95,18 @@ export class ProfilesController {
 
   @Patch('admin-profile')
   @UseGuards(RolesGuard)
-  @Roles(PLATFORM_ROLES.ADMIN)
-  @ApiOperation({ summary: 'Crear o actualizar el perfil ADMIN propio' })
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Crear o actualizar el perfil ADMIN o SUPER_ADMIN propio',
+  })
   updateAdminProfile(
     @Request() request: ProfileRequest,
     @Body() dto: UpdateAdminProfileDto,
   ) {
-    return this.profilesService.updateAdminProfile(request.user.id, dto);
+    return this.profilesService.updateAdminProfile(
+      request.user.id,
+      dto,
+      request.user.role,
+    );
   }
 }
