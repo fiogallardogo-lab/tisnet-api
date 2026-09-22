@@ -48,6 +48,19 @@ enum MeetingStatus {
   COMPLETED
 }
 
+enum ProjectMemberRole {
+  CLIENT
+  DEVELOPER
+  PRODUCT_OWNER
+}
+
+enum DeliverableStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  OBSERVED
+}
+
 model Role {
   id        Int      @id @default(autoincrement())
   name      String   @unique @db.VarChar(30)
@@ -57,24 +70,26 @@ model Role {
 }
 
 model User {
-  id                  Int                  @id @default(autoincrement())
-  name                String               @db.VarChar(100)
-  email               String               @unique @db.VarChar(150)
-  passwordHash        String               @db.VarChar(255)
-  roleId              Int
-  isActive            Boolean              @default(true)
-  acceptedTermsAt     DateTime?
-  termsVersion        String?              @db.VarChar(50)
-  privacyVersion      String?              @db.VarChar(50)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  tokenVersion        Int                  @default(0)
-  role                Role                 @relation(fields: [roleId], references: [id])
-  clientProfile       ClientProfile?
-  developerProfile    DeveloperProfile?
-  productOwnerProfile ProductOwnerProfile?
-  adminProfile        AdminProfile?
-  prospect            Prospect?
+  id                   Int                  @id @default(autoincrement())
+  name                 String               @db.VarChar(100)
+  email                String               @unique @db.VarChar(150)
+  passwordHash         String               @db.VarChar(255)
+  roleId               Int
+  isActive             Boolean              @default(true)
+  acceptedTermsAt      DateTime?
+  termsVersion         String?              @db.VarChar(50)
+  privacyVersion       String?              @db.VarChar(50)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  tokenVersion         Int                  @default(0)
+  role                 Role                 @relation(fields: [roleId], references: [id])
+  clientProfile        ClientProfile?
+  developerProfile     DeveloperProfile?
+  productOwnerProfile  ProductOwnerProfile?
+  adminProfile         AdminProfile?
+  prospect             Prospect?
+  projectMemberships   ProjectMember[]
+  reviewedDeliverables ProjectDeliverable[] @relation("DeliverableReviewer")
 
   @@index([roleId, isActive])
 }
@@ -261,41 +276,101 @@ model Technology {
   name        String                @unique @db.VarChar(100)
   description String?               @db.Text
   icon        String?               @db.VarChar(255)
+  categoryId  Int?
   isActive    Boolean               @default(true)
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
+  category    TechnologyCategory?   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   projects    ProjectTechnology[]
   developers  DeveloperTechnology[]
+
+  @@index([categoryId])
+  @@index([isActive, categoryId])
+}
+
+model TechnologyCategory {
+  id           Int          @id @default(autoincrement())
+  name         String       @unique @db.VarChar(100)
+  slug         String       @unique @db.VarChar(120)
+  description  String?      @db.Text
+  isActive     Boolean      @default(true)
+  displayOrder Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  technologies Technology[]
+
+  @@index([isActive, displayOrder])
 }
 
 model Project {
-  id               Int                 @id @default(autoincrement())
-  name             String              @db.VarChar(150)
-  slug             String              @unique @db.VarChar(180)
-  shortDescription String              @db.VarChar(300)
-  description      String              @db.Text
-  problem          String?             @db.Text
-  solution         String?             @db.Text
-  objective        String?             @db.Text
+  id               Int                  @id @default(autoincrement())
+  name             String               @db.VarChar(150)
+  slug             String               @unique @db.VarChar(180)
+  shortDescription String               @db.VarChar(300)
+  description      String               @db.Text
+  problem          String?              @db.Text
+  solution         String?              @db.Text
+  objective        String?              @db.Text
   features         Json?
   categoryId       Int
-  status           ProjectStatus       @default(DRAFT)
-  developmentDate  DateTime?           @db.Date
-  clientName       String?             @db.VarChar(150)
-  demoUrl          String?             @db.VarChar(500)
-  externalUrl      String?             @db.VarChar(500)
-  coverImageUrl    String?             @db.VarChar(500)
-  isFeatured       Boolean             @default(false)
-  isPublished      Boolean             @default(false)
-  displayOrder     Int                 @default(0)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  category         Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  status           ProjectStatus        @default(DRAFT)
+  developmentDate  DateTime?            @db.Date
+  clientName       String?              @db.VarChar(150)
+  demoUrl          String?              @db.VarChar(500)
+  externalUrl      String?              @db.VarChar(500)
+  coverImageUrl    String?              @db.VarChar(500)
+  isFeatured       Boolean              @default(false)
+  isPublished      Boolean              @default(false)
+  displayOrder     Int                  @default(0)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  category         Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   technologies     ProjectTechnology[]
+  members          ProjectMember[]
+  deliverables     ProjectDeliverable[]
 
   @@index([categoryId])
   @@index([status])
   @@index([isPublished, displayOrder])
+}
+
+model ProjectMember {
+  id         Int               @id @default(autoincrement())
+  projectId  Int
+  userId     Int
+  memberRole ProjectMemberRole
+  isActive   Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId, isActive])
+  @@index([projectId, memberRole, isActive])
+}
+
+model ProjectDeliverable {
+  id             Int               @id @default(autoincrement())
+  projectId      Int
+  title          String            @db.VarChar(150)
+  description    String            @db.Text
+  milestoneOrder Int
+  dueDate        DateTime          @db.Date
+  status         DeliverableStatus @default(DRAFT)
+  fileUrl        String?           @db.VarChar(500)
+  externalLink   String?           @db.VarChar(500)
+  feedbackNotes  String?           @db.VarChar(2000)
+  submittedAt    DateTime?
+  reviewedAt     DateTime?
+  reviewedById   Int?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewedBy     User?             @relation("DeliverableReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, milestoneOrder])
+  @@index([projectId, status, dueDate])
+  @@index([reviewedById])
 }
 
 model ProjectTechnology {
@@ -327,18 +402,18 @@ model Service {
 }
 
 model PublicQuote {
-  id               Int      @id @default(autoincrement())
-  code             String   @unique @db.VarChar(100)
-  solutionType     String   @db.VarChar(40)
-  deliveryMode     String   @db.VarChar(20)
-  contact          Json
-  notes            String?  @db.Text
-  snapshot         Json
-  pricingStatus    String   @db.VarChar(30)
-  amountMinor      Int?
-  currency         String?  @db.VarChar(3)
-  pricingVersion   String?  @db.VarChar(30)
-  createdAt        DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  code           String   @unique @db.VarChar(100)
+  solutionType   String   @db.VarChar(40)
+  deliveryMode   String   @db.VarChar(20)
+  contact        Json
+  notes          String?  @db.Text
+  snapshot       Json
+  pricingStatus  String   @db.VarChar(30)
+  amountMinor    Int?
+  currency       String?  @db.VarChar(3)
+  pricingVersion String?  @db.VarChar(30)
+  createdAt      DateTime @default(now())
 }
 
 model TeamApplication {
