@@ -44,6 +44,56 @@ interface AuthenticatedRequest {
 export class TeamApplicationsController {
   constructor(private readonly service: TeamApplicationsService) {}
 
+  @Get('my-interviews')
+  @Roles(PLATFORM_ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Listar entrevistas asignadas al administrador autenticado',
+  })
+  findMyInterviews(@Request() request: AuthenticatedRequest) {
+    return this.service.findAssignedInterviews(request.user.id);
+  }
+
+  @Get('my-interviews/:id/photo')
+  @Roles(PLATFORM_ROLES.ADMIN)
+  async getMyInterviewPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const file = await this.service.getAssignedPhoto(request.user.id, id);
+    response.set({
+      'Content-Type': file.mimeType,
+      'Cache-Control': 'private, no-store',
+    });
+    return new StreamableFile(file.content);
+  }
+
+  @Get('my-interviews/:id/cv')
+  @Roles(PLATFORM_ROLES.ADMIN)
+  async getMyInterviewCv(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const file = await this.service.getAssignedCv(request.user.id, id);
+    const safeName = file.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Cache-Control': 'private, no-store',
+      'Content-Disposition': `attachment; filename="${safeName}"`,
+    });
+    return new StreamableFile(file.content);
+  }
+
+  @Get('my-interviews/:id')
+  @Roles(PLATFORM_ROLES.ADMIN)
+  findMyInterview(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.service.findAssignedInterview(request.user.id, id);
+  }
+
   @Get()
   @ApiOperation({
     summary: 'Listar postulaciones para revisión administrativa',

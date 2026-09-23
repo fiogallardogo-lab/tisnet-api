@@ -144,6 +144,37 @@ export class TeamApplicationsService {
     }));
   }
 
+  async findAssignedInterviews(userId: number) {
+    const adminProfileId = await this.assignedAdminProfileId(userId);
+    const items = await this.prisma.teamApplication.findMany({
+      where: { assignedAdminProfileId: adminProfileId },
+      select: summarySelect,
+      orderBy: [{ interviewAssignedAt: 'desc' }, { id: 'desc' }],
+    });
+    return items.map((item) => this.toSummary(item));
+  }
+
+  async findAssignedInterview(userId: number, id: number) {
+    const adminProfileId = await this.assignedAdminProfileId(userId);
+    const application = await this.prisma.teamApplication.findFirst({
+      where: { id, assignedAdminProfileId: adminProfileId },
+      select: detailSelect,
+    });
+    if (!application)
+      throw new NotFoundException('Entrevista asignada no encontrada');
+    return this.toDetail(application);
+  }
+
+  async getAssignedPhoto(userId: number, id: number) {
+    await this.findAssignedInterview(userId, id);
+    return this.getPhoto(id);
+  }
+
+  async getAssignedCv(userId: number, id: number) {
+    await this.findAssignedInterview(userId, id);
+    return this.getCv(id);
+  }
+
   async findOne(id: number) {
     const application = await this.prisma.teamApplication.findUnique({
       where: { id },
@@ -365,6 +396,16 @@ export class TeamApplicationsService {
     if (status !== TEAM_APPLICATION_STATUS.PENDING_REVIEW) {
       throw new ConflictException('La postulación ya fue procesada');
     }
+  }
+
+  private async assignedAdminProfileId(userId: number) {
+    const profile = await this.prisma.adminProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!profile)
+      throw new NotFoundException('Perfil administrativo no encontrado');
+    return profile.id;
   }
 
   private profileObject(value: Prisma.JsonValue): Record<string, unknown> {
