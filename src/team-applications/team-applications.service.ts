@@ -182,11 +182,6 @@ export class TeamApplicationsService {
     reason?: string,
   ) {
     const adminProfileId = await this.assignedAdminProfileId(userId);
-    if (decision === 'REJECTED' && (!reason || reason.trim().length < 20)) {
-      throw new ConflictException(
-        'El rechazo requiere un motivo de al menos 20 caracteres',
-      );
-    }
     const application = await this.prisma.teamApplication.findFirst({
       where: { id, assignedAdminProfileId: adminProfileId },
       select: { email: true, profile: true, status: true },
@@ -206,7 +201,8 @@ export class TeamApplicationsService {
       },
       data: {
         status: decision,
-        rejectionReason: decision === 'REJECTED' ? reason!.trim() : null,
+        rejectionReason:
+          decision === 'REJECTED' ? reason?.trim() || null : null,
         rejectedAt: decision === 'REJECTED' ? new Date() : null,
       },
     });
@@ -225,7 +221,7 @@ export class TeamApplicationsService {
       text:
         decision === 'ACCEPTED'
           ? `Hola ${fullName}. Tu entrevista fue aprobada. TISNET se comunicará contigo para los siguientes pasos.`
-          : `Hola ${fullName}. Gracias por participar en la entrevista. En esta oportunidad no continuaremos. Motivo: ${reason}`,
+          : `Hola ${fullName}. Gracias por participar en la entrevista. En esta oportunidad no continuaremos con el proceso.`,
       metadata: {
         applicationId: String(id),
         event: `TEAM_APPLICATION_${decision}`,
