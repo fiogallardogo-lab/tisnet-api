@@ -30,6 +30,7 @@ import { PLATFORM_ROLES } from '../common/constants/platform-roles.js';
 import { AssignInterviewDto } from './dto/assign-interview.dto.js';
 import { ListTeamApplicationsQueryDto } from './dto/list-team-applications-query.dto.js';
 import { RejectTeamApplicationDto } from './dto/reject-team-application.dto.js';
+import { InterviewDecisionDto } from './dto/interview-decision.dto.js';
 import { TeamApplicationsService } from './team-applications.service.js';
 
 interface AuthenticatedRequest {
@@ -92,6 +93,24 @@ export class TeamApplicationsController {
     @Request() request: AuthenticatedRequest,
   ) {
     return this.service.findAssignedInterview(request.user.id, id);
+  }
+
+  @Patch('my-interviews/:id/decision')
+  @Roles(PLATFORM_ROLES.ADMIN)
+  @ApiOperation({
+    summary: 'Registrar el resultado de una entrevista asignada',
+  })
+  decideMyInterview(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: InterviewDecisionDto,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.service.completeAssignedInterview(
+      request.user.id,
+      id,
+      dto.decision,
+      dto.reason,
+    );
   }
 
   @Get()
