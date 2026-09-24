@@ -1,3 +1,4 @@
+import { ClientPortalModule } from './client-portal/client-portal.module';
 import { IntakeModule } from './public-intake/intake.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -44,6 +45,7 @@ import { DeliverablesModule } from './deliverables/deliverables.module.js';
     DocumentsModule,
     MeetingsModule,
     DeliverablesModule,
+    ClientPortalModule,
   ],
   controllers: [AppController],
   providers: [AppService],
