@@ -124,6 +124,73 @@ export class TeamApplicationsController {
     return this.service.findAll(query);
   }
 
+
+  @Get('my-interviews')
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Listar entrevistas asignadas al administrador' })
+  findMyInterviews(@Request() request: AuthenticatedRequest) {
+    return this.service.findMyInterviews(request.user.id);
+  }
+
+  @Get('my-interviews/:id')
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Detalle de la entrevista asignada' })
+  findMyInterviewDetail(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.service.findMyInterviewDetail(id, request.user.id);
+  }
+
+  @Get('my-interviews/:id/photo')
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Consultar fotografía del postulante asignado' })
+  async getMyInterviewPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const file = await this.service.getPhoto(id);
+    response.set({
+      'Content-Type': file.mimeType,
+      'Cache-Control': 'private, no-store',
+      'Content-Disposition': 'inline',
+    });
+    return new StreamableFile(file.content);
+  }
+
+  @Get('my-interviews/:id/cv')
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Descargar el CV del postulante asignado' })
+  async getMyInterviewCv(
+    @Param('id', ParseIntPipe) id: number,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const file = await this.service.getCv(id);
+    const safeName = file.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Cache-Control': 'private, no-store',
+      'Content-Disposition': `attachment; filename="${safeName}"`,
+    });
+    return new StreamableFile(file.content);
+  }
+
+  @Patch('my-interviews/:id/decision')
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Registrar decisión sobre la entrevista asignada' })
+  decideMyInterview(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { decision: 'ACCEPTED' | 'REJECTED'; reason?: string },
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.service.decideMyInterview(
+      id,
+      body.decision,
+      body.reason,
+      request.user.id,
+    );
+  }
+
   @Get('interviewers')
   @ApiOperation({ summary: 'Listar administradores activos para entrevistas' })
   @ApiOkResponse({ description: 'Administradores entrevistadores disponibles' })
@@ -177,6 +244,7 @@ export class TeamApplicationsController {
   }
 
   @Patch(':id/assign-interview')
+  @Roles(PLATFORM_ROLES.SUPER_ADMIN)
   @ApiConsumes('application/json')
   @ApiOperation({ summary: 'Asignar un administrador para la entrevista' })
   @ApiOkResponse({
@@ -195,6 +263,7 @@ export class TeamApplicationsController {
   }
 
   @Patch(':id/reject')
+  @Roles(PLATFORM_ROLES.SUPER_ADMIN)
   @ApiConsumes('application/json')
   @ApiOperation({ summary: 'Rechazar una postulación con motivo' })
   @ApiOkResponse({

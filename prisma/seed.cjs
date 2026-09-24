@@ -48,14 +48,47 @@ async function main() {
     roleId: roles.SUPER_ADMIN.id,
   });
 
-  await upsertUser({
-    name: 'Developer TISNET',
+  const developer = await upsertUser({
+    name: 'Developer de prueba TISNET',
     email: process.env.SEED_DEVELOPER_EMAIL,
     password: process.env.SEED_DEVELOPER_PASSWORD,
     roleId: roles.DEVELOPER.id,
   });
 
-  console.log('Roles y usuarios de desarrollo creados correctamente.');
+  await prisma.developerProfile.upsert({
+    where: { userId: developer.id },
+    update: {
+      specialty: 'Desarrollo de software y arquitectura web',
+      experienceYears: 3,
+    },
+    create: {
+      userId: developer.id,
+      specialty: 'Desarrollo de software y arquitectura web',
+      experienceYears: 3,
+    },
+  });
+
+  // Meeting.advisorProfile apunta a AdminProfile. En desarrollo, este perfil
+  // adicional permite elegir al developer semilla como asesor técnico sin
+  // cambiar su rol DEVELOPER ni alterar el modelo productivo.
+  await prisma.adminProfile.upsert({
+    where: { userId: developer.id },
+    update: {
+      executiveTitle: 'Developer · Asesor técnico',
+      specialty: 'Desarrollo de software y arquitectura web',
+      isPublicAdvisor: true,
+    },
+    create: {
+      userId: developer.id,
+      executiveTitle: 'Developer · Asesor técnico',
+      specialty: 'Desarrollo de software y arquitectura web',
+      isPublicAdvisor: true,
+    },
+  });
+
+  console.log(
+    'Roles, usuarios y asesor técnico de desarrollo creados correctamente.',
+  );
 }
 
 main()
