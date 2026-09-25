@@ -1,9 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { AuditService } from '../../audit/audit.service';
 import { CulqiProcessedEvent, CulqiWebhookPayload } from './culqi-webhook.types';
 
 @Injectable()
 export class CulqiWebhookService {
   private readonly logger = new Logger(CulqiWebhookService.name);
+
+  constructor(@Optional() private readonly auditService?: AuditService) {}
 
   /**
    * Process Culqi webhook payload.
@@ -36,7 +39,14 @@ export class CulqiWebhookService {
           this.logger.log(
             `[CulqiWebhook] Payment SUCCEEDED: charge=${data.id}, amount=${data.amount} ${data.currency_code}, email=${data.email}`,
           );
-          // TODO (Sprint 9/10): Update quote status or trigger project kickoff
+          await this.auditService?.logPaymentEvent({
+            paymentId: data.id,
+            amount: data.amount,
+            currency: data.currency_code,
+            status: 'SUCCEEDED',
+            email: data.email,
+            metadata: data.metadata,
+          });
           break;
         }
 
@@ -51,6 +61,14 @@ export class CulqiWebhookService {
           this.logger.warn(
             `[CulqiWebhook] Payment FAILED: charge=${data.id}, outcome=${data.outcome?.user_message}`,
           );
+          await this.auditService?.logPaymentEvent({
+            paymentId: data.id,
+            amount: data.amount,
+            currency: data.currency_code,
+            status: 'FAILED',
+            email: data.email,
+            metadata: data.metadata,
+          });
           break;
         }
 

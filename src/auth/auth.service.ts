@@ -1,4 +1,5 @@
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
+import { AuditService } from '../audit/audit.service';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -27,6 +28,8 @@ export class AuthService {
     private readonly configService: ConfigService,
     @Inject(NOTIFICATION_PROVIDER)
     private readonly notificationProvider: NotificationProvider,
+    @Optional()
+    private readonly auditService?: AuditService,
   ) {}
 
   async validateUser(email: string, pass: string) {
@@ -201,6 +204,12 @@ export class AuthService {
     });
 
     try {
+      void this.auditService?.logAuthEvent({
+        action: 'PASSWORD_RESET_REQUESTED',
+        email: user.email,
+        userId: user.id,
+      });
+
       await this.notificationProvider.send({
         recipient: user.email,
         subject,
@@ -249,6 +258,12 @@ export class AuthService {
 
     const newHash = await bcrypt.hash(dto.newPassword, 12);
     await this.usersService.updatePassword(user.id, newHash);
+
+    void this.auditService?.logAuthEvent({
+      action: 'PASSWORD_RESET_SUCCESS',
+      email: user.email,
+      userId: user.id,
+    });
 
     return {
       success: true,

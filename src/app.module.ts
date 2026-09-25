@@ -23,6 +23,7 @@ import { DeliverablesModule } from './deliverables/deliverables.module.js';
 import { TeamApplicationsModule } from './team-applications/team-applications.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { BusinessDaysModule } from './common/business-days/business-days.module.js';
+import { AuditModule } from './audit/audit.module.js';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { BusinessDaysModule } from './common/business-days/business-days.module.
     TeamApplicationsModule,
     PaymentsModule,
     BusinessDaysModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],
