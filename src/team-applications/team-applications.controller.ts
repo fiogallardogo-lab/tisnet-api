@@ -215,7 +215,8 @@ export class TeamApplicationsController {
   @Roles(PLATFORM_ROLES.SUPER_ADMIN)
   @ApiConsumes('application/json')
   @ApiOperation({
-    summary: 'Registrar decisión sobre una postulación en entrevista por SUPER_ADMIN',
+    summary:
+      'Registrar decisión sobre una postulación en entrevista por SUPER_ADMIN',
   })
   decideApplication(
     @Param('id', ParseIntPipe) id: number,
@@ -233,7 +234,9 @@ export class TeamApplicationsController {
 
   @Patch(':id/accept')
   @Roles(PLATFORM_ROLES.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Aceptar una postulación en entrevista por SUPER_ADMIN' })
+  @ApiOperation({
+    summary: 'Aceptar una postulación en entrevista por SUPER_ADMIN',
+  })
   accept(
     @Param('id', ParseIntPipe) id: number,
     @Request() request: AuthenticatedRequest,
