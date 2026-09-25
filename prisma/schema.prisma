@@ -70,26 +70,27 @@ model Role {
 }
 
 model User {
-  id                   Int                  @id @default(autoincrement())
-  name                 String               @db.VarChar(100)
-  email                String               @unique @db.VarChar(150)
-  passwordHash         String               @db.VarChar(255)
-  roleId               Int
-  isActive             Boolean              @default(true)
-  acceptedTermsAt      DateTime?
-  termsVersion         String?              @db.VarChar(50)
-  privacyVersion       String?              @db.VarChar(50)
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  tokenVersion         Int                  @default(0)
-  role                 Role                 @relation(fields: [roleId], references: [id])
-  clientProfile        ClientProfile?
-  developerProfile     DeveloperProfile?
-  productOwnerProfile  ProductOwnerProfile?
-  adminProfile         AdminProfile?
-  prospect             Prospect?
-  projectMemberships   ProjectMember[]
-  reviewedDeliverables ProjectDeliverable[] @relation("DeliverableReviewer")
+  id                       Int                  @id @default(autoincrement())
+  name                     String               @db.VarChar(100)
+  email                    String               @unique @db.VarChar(150)
+  passwordHash             String               @db.VarChar(255)
+  roleId                   Int
+  isActive                 Boolean              @default(true)
+  acceptedTermsAt          DateTime?
+  termsVersion             String?              @db.VarChar(50)
+  privacyVersion           String?              @db.VarChar(50)
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  tokenVersion             Int                  @default(0)
+  role                     Role                 @relation(fields: [roleId], references: [id])
+  clientProfile            ClientProfile?
+  developerProfile         DeveloperProfile?
+  productOwnerProfile      ProductOwnerProfile?
+  adminProfile             AdminProfile?
+  prospect                 Prospect?
+  projectMemberships       ProjectMember[]
+  reviewedDeliverables     ProjectDeliverable[] @relation("DeliverableReviewer")
+  reviewedTeamApplications TeamApplication[]    @relation("TeamApplicationReviewer")
 
   @@index([roleId, isActive])
 }
@@ -151,17 +152,18 @@ model ProductOwnerProfile {
 }
 
 model AdminProfile {
-  id              Int       @id @default(autoincrement())
-  userId          Int       @unique
-  executiveTitle  String?   @db.VarChar(120)
-  specialty       String?   @db.VarChar(120)
-  photoUrl        String?   @db.VarChar(500)
-  calendlyUrl     String?   @db.VarChar(500)
-  isPublicAdvisor Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  advisedMeetings Meeting[] @relation("MeetingAdvisor")
+  id                       Int               @id @default(autoincrement())
+  userId                   Int               @unique
+  executiveTitle           String?           @db.VarChar(120)
+  specialty                String?           @db.VarChar(120)
+  photoUrl                 String?           @db.VarChar(500)
+  calendlyUrl              String?           @db.VarChar(500)
+  isPublicAdvisor          Boolean           @default(false)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  user                     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  advisedMeetings          Meeting[]         @relation("MeetingAdvisor")
+  assignedTeamApplications TeamApplication[] @relation("TeamApplicationInterviewer")
 }
 
 model Quote {
@@ -417,17 +419,30 @@ model PublicQuote {
 }
 
 model TeamApplication {
-  id            Int      @id @default(autoincrement())
-  code          String   @unique @db.VarChar(100)
-  email         String   @unique @db.VarChar(150)
-  dni           String   @unique @db.VarChar(8)
-  requestedRole String   @db.VarChar(30)
-  profile       Json
-  cv            Bytes    @db.LongBlob
-  cvName        String   @db.VarChar(255)
-  photo         Bytes    @db.LongBlob
-  photoMime     String   @db.VarChar(30)
-  consent       Boolean
-  status        String   @default("PENDING_REVIEW") @db.VarChar(30)
-  createdAt     DateTime @default(now())
+  id                     Int           @id @default(autoincrement())
+  code                   String        @unique @db.VarChar(100)
+  email                  String        @unique @db.VarChar(150)
+  dni                    String        @unique @db.VarChar(8)
+  requestedRole          String        @db.VarChar(30)
+  profile                Json
+  cv                     Bytes         @db.LongBlob
+  cvName                 String        @db.VarChar(255)
+  photo                  Bytes         @db.LongBlob
+  photoMime              String        @db.VarChar(30)
+  consent                Boolean
+  status                 String        @default("PENDING_REVIEW") @db.VarChar(30)
+  assignedAdminProfileId Int?
+  reviewedByUserId       Int?
+  interviewAssignedAt    DateTime?
+  rejectionReason        String?       @db.VarChar(1000)
+  rejectedAt             DateTime?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  assignedAdminProfile   AdminProfile? @relation("TeamApplicationInterviewer", fields: [assignedAdminProfileId], references: [id], onDelete: SetNull)
+  reviewedByUser         User?         @relation("TeamApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([requestedRole, status, createdAt])
+  @@index([assignedAdminProfileId, status])
+  @@index([reviewedByUserId])
 }
