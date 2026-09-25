@@ -4,6 +4,8 @@ import { NotificationDeliveryError } from './notification-provider.interface';
 import {
   renderInterviewAssigned,
   renderRejectedApplication,
+  renderApplicationReceived,
+  renderApplicationAccepted,
 } from './templates/application-notifications';
 import { escapeHtml } from './templates/escape-html';
 
@@ -111,6 +113,41 @@ describe('Application notification templates', () => {
       expect(message.html).toContain('&quot;x&quot; &amp; &#39;y&#39;');
       expect(message.text).toContain(hostile);
     }
+  });
+
+
+  it('renders application received confirmation in both formats', () => {
+    const message = renderApplicationReceived({
+      ...candidate,
+      confirmationNotes: 'Revisaremos tu postulación en un plazo de 48 horas.',
+    });
+    expect(message.subject).toBe('Postulación recibida — TEAM-12345678');
+    for (const value of ['Ana', 'TEAM-12345678', 'DEVELOPER', '48 horas']) {
+      expect(message.text).toContain(value);
+      expect(message.html).toContain(value);
+    }
+    expect(message.metadata).toEqual({
+      type: 'APPLICATION_RECEIVED',
+      applicationCode: candidate.applicationCode,
+    });
+  });
+
+  it('renders application accepted confirmation in both formats with optional onboarding url', () => {
+    const message = renderApplicationAccepted({
+      ...candidate,
+      onboardingUrl: 'https://tisnet.pe/onboarding?token=xyz',
+      nextSteps: 'Por favor completa el formulario de bienvenida.',
+    });
+    expect(message.subject).toBe('¡Bienvenido al equipo! — Postulación TEAM-12345678');
+    for (const value of ['Ana', 'TEAM-12345678', 'DEVELOPER', 'formulario de bienvenida']) {
+      expect(message.text).toContain(value);
+      expect(message.html).toContain(value);
+    }
+    expect(message.html).toContain('href="https://tisnet.pe/onboarding?token=xyz"');
+    expect(message.metadata).toEqual({
+      type: 'APPLICATION_ACCEPTED',
+      applicationCode: candidate.applicationCode,
+    });
   });
 
   it('escapes HTML metacharacters and safely retains rejection line breaks', () => {

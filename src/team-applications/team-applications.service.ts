@@ -15,6 +15,7 @@ import {
 import {
   renderInterviewAssigned,
   renderRejectedApplication,
+  renderApplicationAccepted,
 } from '../notifications/templates/application-notifications.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ListTeamApplicationsQueryDto } from './dto/list-team-applications-query.dto.js';
@@ -246,15 +247,12 @@ export class TeamApplicationsService {
             requestedRole: application.requestedRole,
             rejectionReason: rejectionReason!,
           })
-        : {
+        : renderApplicationAccepted({
             recipient: application.email,
-            subject: 'TISNET: entrevista aprobada',
-            text: `Hola ${fullName}. Tu entrevista fue aprobada. TISNET se comunicará contigo para los siguientes pasos.`,
-            metadata: {
-              applicationId: String(id),
-              event: 'TEAM_APPLICATION_ACCEPTED',
-            },
-          };
+            candidateName: fullName,
+            applicationCode: application.code,
+            requestedRole: application.requestedRole,
+          });
     const notificationStatus = await this.notifySafely(notification);
     return {
       ...(await this.findAssignedInterview(userId, id)),

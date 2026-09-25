@@ -1,7 +1,10 @@
 import type { SendNotificationInput } from './notification-provider.interface';
 
 export type ApplicationNotificationType =
-  'INTERVIEW_ASSIGNED' | 'APPLICATION_REJECTED';
+  | 'INTERVIEW_ASSIGNED'
+  | 'APPLICATION_REJECTED'
+  | 'APPLICATION_RECEIVED'
+  | 'APPLICATION_ACCEPTED';
 
 interface ApplicationNotification {
   recipient: string;
@@ -17,6 +20,15 @@ export interface InterviewAssignedNotification extends ApplicationNotification {
 
 export interface RejectedApplicationNotification extends ApplicationNotification {
   rejectionReason: string;
+}
+
+export interface ApplicationReceivedNotification extends ApplicationNotification {
+  confirmationNotes?: string;
+}
+
+export interface ApplicationAcceptedNotification extends ApplicationNotification {
+  nextSteps?: string;
+  onboardingUrl?: string | null;
 }
 
 export interface ApplicationNotificationMessage extends SendNotificationInput {
