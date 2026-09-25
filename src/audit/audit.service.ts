@@ -1,62 +1,158 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import {
-  AUDIT_PROVIDER,
-  AuditEvent,
-  AuditProvider,
-  AuditQueryFilters,
-  AuditQueryResult,
-  CreateAuditEventInput,
-} from './audit-provider.interface';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuditQuery } from './audit.dto';
+
+// Strict allowlist. Do not recursively store caller-provided bodies, URLs or headers.
+export function safeAuditMetadata(value: Record<string, unknown> = {}) {
+  const safe: Record<string, string | number | boolean> = {};
+  for (const key of [
+    'method',
+    'status',
+    'version',
+    'quoteId',
+    'scheduleId',
+    'memberCount',
+    'count',
+    'amount',
+    'currency',
+    'remainingBusinessDays',
+    'deadline',
+    'role',
+    'resultingUserId',
+    'fileType',
+  ]) {
+    const v = value[key];
+    if (
+      (typeof v === 'number' && Number.isFinite(v)) ||
+      typeof v === 'boolean' ||
+      (typeof v === 'string' && /^[A-Za-z0-9_\-\.:]+$/.test(v) && v.length <= 80)
+    )
+      safe[key] = v as string | number | boolean;
+  }
+  return safe;
+}
+
+export function auditRecord(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorId?: number;
+    action: string;
+    entityType: string;
+    entityId: string;
+    metadata?: Record<string, unknown>;
+  },
+) {
+  return tx.auditEvent.create({
+    data: { ...input, metadata: safeAuditMetadata(input.metadata) },
+  });
+}
+
+export function csvCell(value: unknown) {
+  let text = String(value);
+  if (/^[=+\-@\t\r\n]/.test(text)) text = "'" + text;
+  return '"' + text.replaceAll('"', '""') + '"';
+}
 
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
-  constructor(
-    @Inject(AUDIT_PROVIDER)
-    private readonly auditProvider: AuditProvider,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
+
+  private where(query: AuditQuery): Prisma.AuditEventWhereInput {
+    const from = query.from
+        ? new Date(query.from)
+        : new Date(Date.now() - 30 * 86400000),
+      to = query.to ? new Date(query.to) : new Date();
+    if (from > to || to.getTime() - from.getTime() > 366 * 86400000)
+      throw new BadRequestException(
+        'El rango de auditoría debe ser de hasta 366 días.',
+      );
+    return {
+      ...(query.entityType ? { entityType: query.entityType } : {}),
+      ...(query.actorId ? { actorId: query.actorId } : {}),
+      createdAt: { gte: from, lte: to },
+      ...(query.cursor ? { id: { lt: query.cursor } } : {}),
+    };
+  }
+
+  async list(query: AuditQuery) {
+    const rows = await this.prisma.auditEvent.findMany({
+      where: this.where(query),
+      orderBy: { id: 'desc' },
+      take: query.limit + 1,
+    });
+    const hasMore = rows.length > query.limit;
+    const items = rows.slice(0, query.limit);
+    return { items, nextCursor: hasMore ? items.at(-1)?.id : null };
+  }
+
+  async report(query: AuditQuery) {
+    return this.prisma.auditEvent.groupBy({
+      by: ['entityType', 'action'],
+      where: this.where(query),
+      _count: { _all: true },
+      orderBy: [{ entityType: 'asc' }, { action: 'asc' }],
+    });
+  }
+
+  async export(query: AuditQuery) {
+    const result = await this.list(query);
+    const lines = [
+      'id,actor,action,entityType,entityId,timestamp',
+      ...result.items.map((e) =>
+        [
+          e.id,
+          e.actorId ?? '',
+          e.action,
+          e.entityType,
+          e.entityId,
+          e.createdAt.toISOString(),
+        ]
+          .map(csvCell)
+          .join(','),
+      ),
+    ];
+    return { content: lines.join('\r\n'), nextCursor: result.nextCursor };
+  }
+
+  financialSummary() {
+    return this.prisma.payment.groupBy({
+      by: ['currency', 'status'],
+      _sum: { amountMinor: true },
+      _count: { _all: true },
+    });
+  }
 
   /**
-   * General record method
+   * Helper method for recording arbitrary audit events into database
    */
-  async record(input: CreateAuditEventInput): Promise<AuditEvent> {
+  async record(input: {
+    actorId?: number;
+    actorEmail?: string;
+    action: string;
+    entityType: string;
+    entityId: string | number;
+    severity?: string;
+    metadata?: Record<string, unknown>;
+  }) {
     try {
-      return await this.auditProvider.record(input);
+      return await this.prisma.auditEvent.create({
+        data: {
+          actorId: input.actorId,
+          action: input.action,
+          entityType: input.entityType,
+          entityId: String(input.entityId),
+          metadata: safeAuditMetadata(input.metadata),
+        },
+      });
     } catch (err: any) {
-      // Audit recording should never crash the main transaction
-      this.logger.error(`Failed to record audit event: ${err.message}`, err.stack);
-      return {
-        id: 'aud_fallback',
-        action: input.action,
-        entityType: input.entityType,
-        entityId: String(input.entityId),
-        severity: input.severity ?? 'ERROR',
-        timestamp: new Date(),
-      };
+      this.logger.warn(`Failed to record audit event: ${err.message}`);
+      return null as any;
     }
   }
 
-  /**
-   * Query audit events
-   */
-  async query(filters: AuditQueryFilters): Promise<AuditQueryResult> {
-    return this.auditProvider.query(filters);
-  }
-
-  /**
-   * Get entity history
-   */
-  async getEntityHistory(
-    entityType: string,
-    entityId: string | number,
-  ): Promise<AuditEvent[]> {
-    return this.auditProvider.getEntityHistory(entityType, entityId);
-  }
-
-  /**
-   * Dedicated helper for payment transactions
-   */
   async logPaymentEvent(opts: {
     paymentId: string;
     amount: number;
@@ -64,25 +160,20 @@ export class AuditService {
     status: 'SUCCEEDED' | 'FAILED' | 'PENDING';
     email?: string;
     metadata?: Record<string, unknown>;
-  }): Promise<AuditEvent> {
+  }) {
     return this.record({
       action: `PAYMENT_${opts.status}`,
       entityType: 'Payment',
       entityId: opts.paymentId,
-      actorEmail: opts.email,
-      severity: opts.status === 'FAILED' ? 'WARN' : 'INFO',
       metadata: {
+        status: opts.status,
         amount: opts.amount,
         currency: opts.currency,
-        status: opts.status,
         ...(opts.metadata ?? {}),
       },
     });
   }
 
-  /**
-   * Dedicated helper for quote lifecycle
-   */
   async logQuoteStatusChange(opts: {
     quoteId: number | string;
     publicCode: string;
@@ -90,44 +181,28 @@ export class AuditService {
     toStatus: string;
     actorId?: number;
     actorEmail?: string;
-  }): Promise<AuditEvent> {
+  }) {
     return this.record({
       action: 'QUOTE_STATUS_CHANGED',
       entityType: 'Quote',
       entityId: opts.quoteId,
       actorId: opts.actorId,
       actorEmail: opts.actorEmail,
-      previousState: { status: opts.fromStatus },
-      newState: { status: opts.toStatus },
-      metadata: { publicCode: opts.publicCode },
+      metadata: { status: opts.toStatus, quoteId: opts.publicCode },
     });
   }
 
-  /**
-   * Dedicated helper for auth & security events
-   */
   async logAuthEvent(opts: {
-    action:
-      | 'LOGIN_SUCCESS'
-      | 'LOGIN_FAILED'
-      | 'PASSWORD_RESET_REQUESTED'
-      | 'PASSWORD_RESET_SUCCESS'
-      | 'LOGOUT';
+    action: string;
     email: string;
     userId?: number;
-    ipAddress?: string;
-  }): Promise<AuditEvent> {
-    const isSecurity =
-      opts.action === 'PASSWORD_RESET_SUCCESS' || opts.action === 'LOGIN_FAILED';
-
+  }) {
     return this.record({
       action: opts.action,
       entityType: 'User',
-      entityId: opts.userId ?? opts.email,
+      entityId: String(opts.userId ?? opts.email),
       actorId: opts.userId,
       actorEmail: opts.email,
-      ipAddress: opts.ipAddress,
-      severity: isSecurity ? 'SECURITY' : 'INFO',
     });
   }
 }

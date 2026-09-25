@@ -1,3 +1,5 @@
+import { KickoffModule } from './kickoff/kickoff.module';
+import { ClientPortalModule } from './client-portal/client-portal.module';
 import { IntakeModule } from './public-intake/intake.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -31,7 +33,7 @@ import { SlaAlertsModule } from './common/sla-alerts/sla-alerts.module.js';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      cache: true,
+    cache: true,
     }),
     PrismaModule,
     UsersModule,
@@ -44,16 +46,18 @@ import { SlaAlertsModule } from './common/sla-alerts/sla-alerts.module.js';
     ProfilesModule,
     QuotesModule.register({ catalog: quotesCatalogV1 }),
     ProspectsModule,
+    PaymentsModule,
+    KickoffModule,
+    AuditModule,
     StorageModule,
     NotificationsModule,
     SchedulingModule,
     DocumentsModule,
     MeetingsModule,
     DeliverablesModule,
+    ClientPortalModule,
     TeamApplicationsModule,
-    PaymentsModule,
     BusinessDaysModule,
-    AuditModule,
     SignedUrlModule,
     SlaAlertsModule,
   ],

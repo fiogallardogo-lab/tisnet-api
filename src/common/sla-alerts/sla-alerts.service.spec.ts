@@ -89,7 +89,7 @@ describe('SlaAlertsService', () => {
       id: 10,
       code: 'TEAM-EXP',
       createdAt: new Date(2026, 8, 15, 10, 0, 0),
-      status: 'PENDING',
+      status: 'PENDING_REVIEW',
     };
 
     prismaMock.teamApplication.findMany.mockResolvedValue([expiredApp]);

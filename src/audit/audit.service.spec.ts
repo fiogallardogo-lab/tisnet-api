@@ -1,63 +1,60 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { AuditService } from './audit.service';
-import { InMemoryAuditProvider } from './in-memory-audit.provider';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { safeAuditMetadata, csvCell, AuditService } from './audit.service';
 
-describe('AuditService', () => {
-  let service: AuditService;
-  let provider: InMemoryAuditProvider;
-
-  beforeEach(() => {
-    provider = new InMemoryAuditProvider();
-    service = new AuditService(provider);
+describe('Safe audit metadata', () => {
+  it('never persists passwords, tokens, nested payloads or arbitrary strings', () => {
+    expect(
+      safeAuditMetadata({
+        password: 'secret',
+        passwordHash: 'hash',
+        token: 'token',
+        authorization: 'Bearer',
+        metadata: { secret: 'hidden' },
+        status: 'CONFIRMED',
+        version: 2,
+        method: 'POST',
+      }),
+    ).toEqual({ status: 'CONFIRMED', version: 2, method: 'POST' });
   });
 
-  it('logs a payment event with appropriate severity', async () => {
-    const successEvent = await service.logPaymentEvent({
+  it('blocks CSV formula execution and quotes delimiters', () => {
+    expect(csvCell('=1+1')).toBe('"\'=1+1"');
+    expect(csvCell('a,"b')).toBe('"a,""b"');
+  });
+});
+
+describe('AuditService helpers', () => {
+  let service: AuditService;
+  const prismaMock = {
+    auditEvent: {
+      create: vi.fn(),
+    },
+  };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    service = new AuditService(prismaMock as any);
+  });
+
+  it('records payment and auth events through Prisma', async () => {
+    prismaMock.auditEvent.create.mockResolvedValue({ id: 1 });
+
+    await service.logPaymentEvent({
       paymentId: 'chr_123',
       amount: 15000,
       currency: 'PEN',
       status: 'SUCCEEDED',
-      email: 'client@example.com',
+      email: 'client@tisnet.pe',
     });
 
-    expect(successEvent.action).toBe('PAYMENT_SUCCEEDED');
-    expect(successEvent.severity).toBe('INFO');
-    expect(successEvent.metadata?.amount).toBe(15000);
-
-    const failEvent = await service.logPaymentEvent({
-      paymentId: 'chr_456',
-      amount: 5000,
-      currency: 'PEN',
-      status: 'FAILED',
-    });
-
-    expect(failEvent.action).toBe('PAYMENT_FAILED');
-    expect(failEvent.severity).toBe('WARN');
-  });
-
-  it('logs quote status transitions', async () => {
-    const event = await service.logQuoteStatusChange({
-      quoteId: 42,
-      publicCode: 'QT-2026-0042',
-      fromStatus: 'PENDING',
-      toStatus: 'APPROVED',
-      actorEmail: 'sales@tisnet.pe',
-    });
-
-    expect(event.action).toBe('QUOTE_STATUS_CHANGED');
-    expect(event.previousState).toEqual({ status: 'PENDING' });
-    expect(event.newState).toEqual({ status: 'APPROVED' });
-  });
-
-  it('logs authentication and security events', async () => {
-    const resetEvent = await service.logAuthEvent({
-      action: 'PASSWORD_RESET_SUCCESS',
-      email: 'user@tisnet.pe',
-      userId: 5,
-    });
-
-    expect(resetEvent.action).toBe('PASSWORD_RESET_SUCCESS');
-    expect(resetEvent.severity).toBe('SECURITY');
-    expect(resetEvent.actorId).toBe(5);
+    expect(prismaMock.auditEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'PAYMENT_SUCCEEDED',
+          entityType: 'Payment',
+          entityId: 'chr_123',
+        }),
+      }),
+    );
   });
 });

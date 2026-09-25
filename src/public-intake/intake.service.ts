@@ -4,10 +4,12 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { QuotesService } from '../quotes/quotes.service';
+import { QuoteDeliveryMode } from '../quotes/domain/quote.enums';
+import { Optional } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
-import { approvedQuoteCatalog, QUOTE_CATALOG_VERSION } from './catalog';
 import { CreateQuoteDto, TeamApplicationDto } from './intake.dto';
 export interface IntakeFile {
   buffer: Buffer;
@@ -60,95 +62,18 @@ export function validateFiles(cv?: IntakeFile, photo?: IntakeFile) {
       'Adjunta una foto JPG, PNG o WebP válida de hasta 5 MB.',
     );
 }
-export function calculateQuote(input: CreateQuoteDto) {
-  const solution = approvedQuoteCatalog.solutions.find(
-    (item) => item.id === input.solutionType,
-  );
-  if (!solution) throw new BadRequestException('Tipo de proyecto inválido.');
-  const codes = input.options.map((item) => item.code);
-  if (
-    codes.length > 8 ||
-    new Set(codes).size !== codes.length ||
-    codes.some((code) => !solution.features.some((item) => item.id === code))
-  )
-    throw new BadRequestException('Extras inválidos o duplicados.');
-  if (!['NORMAL', 'URGENT', 'FLEXIBLE'].includes(input.deliveryMode))
-    throw new BadRequestException('Entrega inválida.');
-  if (solution.baseMinor === undefined)
-    return {
-      amountMinor: null,
-      currency: null,
-      pricingVersion: null,
-      pricingStatus: 'PENDING_RULES',
-      snapshot: {
-        solution: solution.name,
-        options: [],
-        deliveryMode: input.deliveryMode,
-      },
-    };
-  const extras = solution.features.filter((item) => codes.includes(item.id));
-  const subtotal =
-    solution.baseMinor +
-    extras.reduce((sum, item) => sum + item.priceMinor!, 0);
-  const rate =
-    input.deliveryMode === 'URGENT'
-      ? 30
-      : input.deliveryMode === 'FLEXIBLE'
-        ? -10
-        : 0;
-  const adjustment =
-    Math.sign(rate) * Math.round((subtotal * Math.abs(rate)) / 100);
-  return {
-    amountMinor: subtotal + adjustment,
-    currency: 'PEN',
-    pricingVersion: QUOTE_CATALOG_VERSION,
-    pricingStatus: 'CALCULATED',
-    snapshot: {
-      included: solution.included!,
-      businessDays: solution.businessDays!,
-      taxTreatment: 'TO_CONFIRM',
-      lines: [
-        { type: 'BASE', code: solution.id, amountMinor: solution.baseMinor },
-        ...extras.map((item) => ({
-          type: 'EXTRA',
-          code: item.id,
-          amountMinor: item.priceMinor!,
-        })),
-        {
-          type: 'DELIVERY_ADJUSTMENT',
-          code: input.deliveryMode,
-          amountMinor: adjustment,
-        },
-      ],
-    },
-  };
-}
 @Injectable()
 export class IntakeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly quotes?: QuotesService,
+  ) {}
   async createQuote(input: CreateQuoteDto) {
-    if (!/^\d{7,15}$/.test(input.contact.phone.replace(/\D/g, '')))
-      throw new BadRequestException('Teléfono inválido.');
-    const pricing = calculateQuote(input);
-    const quote = await this.prisma.publicQuote.create({
-      data: {
-        code: `QUOTE-${randomUUID()}`,
-        solutionType: input.solutionType,
-        deliveryMode: input.deliveryMode,
-        contact: { ...input.contact, email: input.contact.email.toLowerCase() },
-        notes: input.notes,
-        ...pricing,
-      },
+    if (!this.quotes) throw new Error('QuotesService no disponible');
+    return this.quotes.createPublic({
+      ...input,
+      deliveryMode: input.deliveryMode as QuoteDeliveryMode,
     });
-    return {
-      code: quote.code,
-      status: 'RECEIVED',
-      createdAt: quote.createdAt,
-      pricingStatus: quote.pricingStatus,
-      amountMinor: quote.amountMinor,
-      currency: quote.currency,
-      pricingVersion: quote.pricingVersion,
-    };
   }
   async apply(
     input: TeamApplicationDto,

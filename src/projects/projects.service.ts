@@ -1,5 +1,8 @@
+import { PaymentsService } from '../payments/payments.service';
+import { Optional } from '@nestjs/common';
 import {
   BadRequestException,
+  ForbiddenException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -37,9 +40,16 @@ type ProjectWithRelations = Prisma.ProjectGetPayload<{
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly payments?: PaymentsService,
+  ) {}
 
   async create(dto: CreateProjectDto) {
+    if (dto.status && dto.status !== 'DRAFT')
+      throw new ConflictException(
+        'Crea el proyecto en borrador y vincula una cotización oficial con pago inicial.',
+      );
     const { technologyIds = [], developmentDate, features = [], ...data } = dto;
 
     await this.ensureSlugAvailable(dto.slug);
@@ -118,10 +128,47 @@ export class ProjectsService {
     return this.toAdminProject(project);
   }
 
-  async update(id: number, dto: UpdateProjectDto) {
+  async update(
+    id: number,
+    dto: UpdateProjectDto,
+    actor?: { id: number; role: string },
+  ) {
+    if (actor && !['ADMIN', 'SUPER_ADMIN'].includes(actor.role)) {
+      const member = await this.prisma.projectMember.findUnique({
+        where: { projectId_userId: { projectId: id, userId: actor.id } },
+      });
+      if (!member?.isActive || member.memberRole !== actor.role)
+        throw new ForbiddenException(
+          'No tienes membresía activa en este proyecto.',
+        );
+      if (dto.status !== undefined || dto.isFeatured !== undefined)
+        throw new ForbiddenException(
+          'Solo administración cambia el estado y publicación.',
+        );
+    }
     await this.ensureProjectExists(id);
+    if (
+      dto.status &&
+      ['IN_DEVELOPMENT', 'IN_REVIEW', 'COMPLETED'].includes(dto.status)
+    ) {
+      const current = await this.prisma.project.findUniqueOrThrow({
+        where: { id },
+      });
+      if (!current.quoteId || !this.payments)
+        throw new ConflictException(
+          'Se requiere cotización oficial y pago inicial confirmado.',
+        );
+      await this.payments.assertInitialPayment(current.quoteId);
+    }
 
-    const { technologyIds, developmentDate, features, categoryId, slug, ...data } = dto;
+    const {
+      technologyIds,
+      developmentDate,
+      features,
+      categoryId,
+      slug,
+      ...data
+    } = dto;
 
     if (slug !== undefined) {
       await this.ensureSlugAvailable(slug, id);
@@ -139,7 +186,9 @@ export class ProjectsService {
         data: {
           ...data,
           ...(slug === undefined ? {} : { slug }),
-          ...(categoryId === undefined ? {} : { category: { connect: { id: categoryId } } }),
+          ...(categoryId === undefined
+            ? {}
+            : { category: { connect: { id: categoryId } } }),
           ...(developmentDate === undefined
             ? {}
             : { developmentDate: this.toDatabaseDate(developmentDate) }),
@@ -151,7 +200,9 @@ export class ProjectsService {
             : {
                 technologies: {
                   deleteMany: {},
-                  create: technologyIds.map((technologyId) => ({ technologyId })),
+                  create: technologyIds.map((technologyId) => ({
+                    technologyId,
+                  })),
                 },
               }),
         },
@@ -175,7 +226,9 @@ export class ProjectsService {
       throw new NotFoundException('Proyecto no encontrado');
     }
     if (project.status === ProjectStatus.ARCHIVED) {
-      throw new BadRequestException('Un proyecto archivado no puede publicarse');
+      throw new BadRequestException(
+        'Un proyecto archivado no puede publicarse',
+      );
     }
     if (
       !project.name.trim() ||
@@ -183,7 +236,9 @@ export class ProjectsService {
       !project.shortDescription.trim() ||
       !project.description.trim()
     ) {
-      throw new BadRequestException('El proyecto no contiene la información mínima para publicarse');
+      throw new BadRequestException(
+        'El proyecto no contiene la información mínima para publicarse',
+      );
     }
     if (!project.category.isActive) {
       throw new BadRequestException('La categoría del proyecto está inactiva');
@@ -226,9 +281,7 @@ export class ProjectsService {
           }
         : {}),
       ...(categoryId ? { categoryId } : {}),
-      ...(technologyId
-        ? { technologies: { some: { technologyId } } }
-        : {}),
+      ...(technologyId ? { technologies: { some: { technologyId } } } : {}),
       ...(isFeatured === undefined ? {} : { isFeatured }),
     };
 
@@ -347,7 +400,9 @@ export class ProjectsService {
     });
 
     if (technologies.length !== technologyIds.length) {
-      throw new BadRequestException('Una o más tecnologías no existen o están inactivas');
+      throw new BadRequestException(
+        'Una o más tecnologías no existen o están inactivas',
+      );
     }
   }
 
@@ -365,7 +420,8 @@ export class ProjectsService {
       category: project.category,
       technologies: project.technologies.map(({ technology }) => technology),
       status: project.status,
-      developmentDate: project.developmentDate?.toISOString().slice(0, 10) ?? null,
+      developmentDate:
+        project.developmentDate?.toISOString().slice(0, 10) ?? null,
       clientName: project.clientName,
       demoUrl: project.demoUrl,
       externalUrl: project.externalUrl,
@@ -394,7 +450,9 @@ export class ProjectsService {
 
   private toStringArray(features: Prisma.JsonValue): string[] {
     if (!Array.isArray(features)) return [];
-    return features.filter((feature): feature is string => typeof feature === 'string');
+    return features.filter(
+      (feature): feature is string => typeof feature === 'string',
+    );
   }
 
   private toDatabaseDate(value?: string | null): Date | null {
@@ -402,7 +460,10 @@ export class ProjectsService {
   }
 
   private handleUniqueSlugError(error: unknown): void {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
       throw new ConflictException('El slug ya está registrado');
     }
   }

@@ -1,3 +1,9 @@
+import { SchedulingModule } from '../scheduling/scheduling.module';
+import { MeetingPersistenceService } from './meeting-persistence.service';
+import {
+  CommercialMeetingsController,
+  CommercialMeetingsPublicController,
+} from './meeting-persistence.controller';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -9,13 +15,24 @@ import { PublicAdvisorsController } from './public-advisors.controller';
 import { AdvisorsAdminController } from './advisors-admin.controller';
 
 @Module({
-  imports: [PrismaModule, PassportModule.register({ defaultStrategy: 'jwt' })],
+  imports: [
+    SchedulingModule,
+    PrismaModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+  ],
   controllers: [
     ProspectsController,
+    CommercialMeetingsController,
+    CommercialMeetingsPublicController,
     PublicAdvisorsController,
     AdvisorsAdminController,
   ],
-  providers: [ProspectsService, JwtAuthGuard, RolesGuard],
-  exports: [ProspectsService],
+  providers: [
+    MeetingPersistenceService,
+    ProspectsService,
+    JwtAuthGuard,
+    RolesGuard,
+  ],
+  exports: [ProspectsService, MeetingPersistenceService],
 })
 export class ProspectsModule {}

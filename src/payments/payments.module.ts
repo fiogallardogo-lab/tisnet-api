@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
+import { PrismaModule } from '../prisma/prisma.module';
 import { paymentsConfig, validatePaymentsConfig } from '../config/payments.config';
 import type { PaymentsConfig } from '../config/payments.config';
 
@@ -9,11 +11,18 @@ import { FakePaymentProvider } from './fake-payment.provider';
 import { CulqiPaymentProvider } from './culqi/culqi-payment.provider';
 import { CulqiWebhookController } from './culqi/culqi-webhook.controller';
 import { CulqiWebhookService } from './culqi/culqi-webhook.service';
+import { PaymentsService } from './payments.service';
+import { PaymentsController } from './payments.controller';
 
 @Module({
-  imports: [ConfigModule.forFeature(paymentsConfig)],
-  controllers: [CulqiWebhookController],
+  imports: [
+    PrismaModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    ConfigModule.forFeature(paymentsConfig),
+  ],
+  controllers: [PaymentsController, CulqiWebhookController],
   providers: [
+    PaymentsService,
     FakePaymentProvider,
     CulqiWebhookService,
     {
@@ -42,6 +51,11 @@ import { CulqiWebhookService } from './culqi/culqi-webhook.service';
       },
     },
   ],
-  exports: [PAYMENT_PROVIDER, FakePaymentProvider, CulqiWebhookService],
+  exports: [
+    PaymentsService,
+    PAYMENT_PROVIDER,
+    FakePaymentProvider,
+    CulqiWebhookService,
+  ],
 })
 export class PaymentsModule {}

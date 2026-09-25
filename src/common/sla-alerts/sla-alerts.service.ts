@@ -119,7 +119,7 @@ export class SlaAlertsService {
 
     const pendingApps = await this.prisma.teamApplication.findMany({
       where: {
-        status: 'PENDING',
+        status: 'PENDING_REVIEW',
       },
       take: 100,
     });

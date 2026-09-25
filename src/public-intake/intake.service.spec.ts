@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { calculateQuote, IntakeService, validateFiles } from './intake.service';
+import { IntakeService, validateFiles } from './intake.service';
 import { CreateQuoteDto, TeamApplicationDto } from './intake.dto';
 import type { PrismaService } from '../prisma/prisma.service';
 const quote = {
@@ -17,60 +17,17 @@ const quote = {
   },
 };
 describe('Public intake', () => {
-  it.each([
-    ['NORMAL', 400000],
-    ['URGENT', 520000],
-    ['FLEXIBLE', 360000],
-  ])('calculates %s on the server', (mode, total) => {
-    expect(calculateQuote({ ...quote, deliveryMode: mode }).amountMinor).toBe(
-      total,
+  it('delegates portal submissions to the canonical QuotesService', async () => {
+    const createPublic = vi
+      .fn()
+      .mockResolvedValue({ code: 'Q-ABCDEFGH', amountMinor: 520000 });
+    const service = new IntakeService(
+      {} as PrismaService,
+      { createPublic } as never,
     );
-  });
-  it('supports base-only packages and commercial evaluation', () => {
-    expect(
-      calculateQuote({ ...quote, solutionType: 'LANDING_PAGE', options: [] })
-        .amountMinor,
-    ).toBe(85000);
-    expect(
-      calculateQuote({ ...quote, solutionType: 'LANDING_PAGE' }).amountMinor,
-    ).toBe(165000);
-    expect(
-      calculateQuote({ ...quote, solutionType: 'MOBILE_APP', options: [] })
-        .pricingStatus,
-    ).toBe('PENDING_RULES');
-  });
-  it('rejects duplicate, incompatible extras and unknown types', () => {
-    expect(() =>
-      calculateQuote({
-        ...quote,
-        options: [{ code: 'SEO_ADVANCED' }, { code: 'SEO_ADVANCED' }],
-      }),
-    ).toThrow(BadRequestException);
-    expect(() =>
-      calculateQuote({ ...quote, solutionType: 'MOBILE_APP' }),
-    ).toThrow(BadRequestException);
-    expect(() => calculateQuote({ ...quote, solutionType: 'UNKNOWN' })).toThrow(
-      BadRequestException,
-    );
-  });
-  it('persists the server total and complete immutable scope and price snapshot', async () => {
-    const create = vi.fn(async ({ data }) => ({
-      ...data,
-      createdAt: new Date(),
-    }));
-    const service = new IntakeService({
-      publicQuote: { create },
-    } as unknown as PrismaService);
-    const receipt = await service.createQuote({
-      ...quote,
-      deliveryMode: 'URGENT',
-    });
-    expect(receipt.amountMinor).toBe(520000);
-    expect(receipt).not.toHaveProperty('contact');
-    const data = create.mock.calls[0][0].data;
-    expect(data.contact.email).toBe('prueba@example.test');
-    expect(data.snapshot.lines).toHaveLength(4);
-    expect(data.snapshot.included).toContain('Inventario');
+    const result = await service.createQuote(quote);
+    expect(createPublic).toHaveBeenCalledWith(quote);
+    expect(result.code).toBe('Q-ABCDEFGH');
   });
   it('validates multipart numbers, identity, role and consent', async () => {
     const valid = {
@@ -135,14 +92,12 @@ describe('Public intake', () => {
   it('maps database duplicate constraints to 409', async () => {
     const cv = Buffer.from('%PDF-1.4\n%%EOF');
     const photo = Buffer.from([255, 216, 255, 0, 255, 217]);
-    const create = vi
-      .fn()
-      .mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('duplicate', {
-          code: 'P2002',
-          clientVersion: '6.19.3',
-        }),
-      );
+    const create = vi.fn().mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('duplicate', {
+        code: 'P2002',
+        clientVersion: '6.19.3',
+      }),
+    );
     const service = new IntakeService({
       teamApplication: { create },
     } as unknown as PrismaService);

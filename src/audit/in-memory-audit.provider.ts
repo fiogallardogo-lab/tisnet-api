@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   AuditEvent,
   AuditProvider,
@@ -13,8 +13,8 @@ export class InMemoryAuditProvider implements AuditProvider {
   private readonly events: AuditEvent[] = [];
   private readonly maxEvents: number;
 
-  constructor(maxEvents = 10000) {
-    this.maxEvents = maxEvents;
+  constructor(@Optional() maxEvents?: number) {
+    this.maxEvents = typeof maxEvents === 'number' ? maxEvents : 10000;
   }
 
   async record(input: CreateAuditEventInput): Promise<AuditEvent> {
