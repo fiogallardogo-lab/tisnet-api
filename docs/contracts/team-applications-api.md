@@ -8,7 +8,9 @@ La postulación no crea una cuenta, no asigna permisos y no convierte automátic
 
 ## Seguridad y envoltorio
 
-Todas las rutas de este documento requieren un JWT válido y el rol `SUPER_ADMIN`. Un usuario autenticado con otro rol recibe HTTP `403`.
+Todas las rutas requieren un JWT válido. La bandeja general, el detalle administrativo, la asignación y el rechazo directo son exclusivos de `SUPER_ADMIN`. Las rutas bajo `/my-interviews` son exclusivas de `ADMIN` y siempre filtran por el perfil administrativo del usuario autenticado.
+
+Un `ADMIN` no puede consultar el detalle, CV, fotografía ni registrar la decisión de una entrevista asignada a otro administrador. Para no revelar la existencia de una postulación ajena, ese acceso responde HTTP `404`.
 
 Las respuestas JSON utilizan el envoltorio global:
 
@@ -24,11 +26,12 @@ El CV y la fotografía son recursos privados. Nunca se incluyen como Base64 en e
 
 ## Estados y transiciones
 
-| Estado               | Descripción                       | Acciones admitidas                      |
-| -------------------- | --------------------------------- | --------------------------------------- |
-| `PENDING_REVIEW`     | Postulación pendiente de decisión | Asignar entrevista o rechazar           |
-| `INTERVIEW_ASSIGNED` | Un administrador fue asignado     | Sin transición adicional en este Sprint |
-| `REJECTED`           | Postulación rechazada con motivo  | Ninguna                                 |
+| Estado               | Descripción                       | Acciones admitidas                        |
+| -------------------- | --------------------------------- | ----------------------------------------- |
+| `PENDING_REVIEW`     | Postulación pendiente de decisión | Asignar entrevista o rechazar             |
+| `INTERVIEW_ASSIGNED` | Un administrador fue asignado     | Aceptar o rechazar después de entrevistar |
+| `ACCEPTED`           | Entrevista aprobada               | Ninguna                                   |
+| `REJECTED`           | Postulación rechazada con motivo  | Ninguna                                   |
 
 Solo `PENDING_REVIEW` puede cambiar de estado. Una repetición o transición incompatible responde HTTP `409`.
 
@@ -173,19 +176,41 @@ Respuestas: `200`, `400`, `404` o `409` según la validación y el estado de la 
 - El motivo se envía al correo del postulante, pero no aparece en el listado general.
 - La decisión persiste aunque falle la notificación.
 
+## Rutas del administrador entrevistador
+
+Estas rutas requieren el rol `ADMIN`:
+
+| Método  | Ruta                                                   | Uso                                                                      |
+| ------- | ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `GET`   | `/api/v1/team-applications/my-interviews`              | Lista únicamente las entrevistas asignadas al administrador autenticado. |
+| `GET`   | `/api/v1/team-applications/my-interviews/:id`          | Consulta una entrevista propia.                                          |
+| `GET`   | `/api/v1/team-applications/my-interviews/:id/photo`    | Consulta la fotografía privada de una entrevista propia.                 |
+| `GET`   | `/api/v1/team-applications/my-interviews/:id/cv`       | Descarga el CV privado de una entrevista propia.                         |
+| `PATCH` | `/api/v1/team-applications/my-interviews/:id/decision` | Registra la decisión final.                                              |
+
+El cuerpo de la decisión es:
+
+```json
+{
+  "decision": "REJECTED",
+  "reason": "El perfil todavía no acredita la experiencia mínima requerida."
+}
+```
+
+`reason` es obligatorio para `REJECTED`, se recorta y debe contener entre 20 y 1000 caracteres. Para `ACCEPTED` puede omitirse. La decisión se persiste aunque falle el proveedor de correo y la respuesta devuelve `notificationStatus: "FAILED"` sin exponer el error del proveedor.
+
 ## Códigos de error
 
-| HTTP  | Uso                                                                   |
-| ----- | --------------------------------------------------------------------- |
-| `400` | DTO, filtro, ID o motivo inválido                                     |
-| `401` | JWT ausente o inválido                                                |
-| `403` | El actor no es SUPER_ADMIN                                            |
-| `404` | Postulación o administrador no encontrado                             |
-| `409` | Estado incompatible, decisión repetida o administrador inactivo       |
+| HTTP  | Uso                                                             |
+| ----- | --------------------------------------------------------------- |
+| `400` | DTO, filtro, ID o motivo inválido                               |
+| `401` | JWT ausente o inválido                                          |
+| `403` | El actor no posee el rol exigido por la ruta                    |
+| `404` | Postulación, administrador o entrevista propia no encontrados   |
+| `409` | Estado incompatible, decisión repetida o administrador inactivo |
 
 ## Fuera del alcance
 
-- Aprobar o contratar al postulante.
 - Crear automáticamente un usuario.
 - Convertir el consentimiento de postulación en aceptación de términos de una cuenta.
 - Reprogramar o cancelar entrevistas.

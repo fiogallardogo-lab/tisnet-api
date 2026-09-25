@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { TeamApplicationsService } from './team-applications.service.js';
 
@@ -40,6 +44,7 @@ function createService() {
       findMany: vi.fn(),
       count: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       updateMany: vi.fn(),
     },
     adminProfile: {
@@ -153,7 +158,11 @@ describe('TeamApplicationsService', () => {
     expect(notifications.send).toHaveBeenCalledWith(
       expect.objectContaining({
         recipient: 'andrea@example.com',
-        subject: 'TISNET: entrevista asignada',
+        subject: 'Entrevista asignada — Postulación TEAM-12345678',
+        metadata: {
+          type: 'INTERVIEW_ASSIGNED',
+          applicationCode: 'TEAM-12345678',
+        },
       }),
     );
     expect(result.notificationStatus).toBe('SENT');
@@ -195,6 +204,47 @@ describe('TeamApplicationsService', () => {
       }),
     });
     expect(result.notificationStatus).toBe('FAILED');
+  });
+
+  it('only returns interviews assigned to the authenticated admin profile', async () => {
+    const { service, prisma } = createService();
+    prisma.adminProfile.findUnique.mockResolvedValue({ id: 4 });
+    prisma.teamApplication.findMany.mockResolvedValue([
+      application({
+        status: 'INTERVIEW_ASSIGNED',
+        assignedAdminProfile: {
+          id: 4,
+          user: { id: 8, name: 'Admin', email: 'admin@tisnet.test' },
+        },
+      }),
+    ]);
+
+    const result = await service.findAssignedInterviews(8);
+
+    expect(prisma.teamApplication.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { assignedAdminProfileId: 4 } }),
+    );
+    expect(result).toHaveLength(1);
+  });
+
+  it('does not expose files from an interview assigned to another admin', async () => {
+    const { service, prisma } = createService();
+    prisma.adminProfile.findUnique.mockResolvedValue({ id: 4 });
+    prisma.teamApplication.findFirst.mockResolvedValue(null);
+
+    await expect(service.getAssignedCv(8, 99)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(prisma.teamApplication.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('requires a rejection reason even when the service is called directly', async () => {
+    const { service, prisma } = createService();
+
+    await expect(
+      service.completeAssignedInterview(8, 1, 'REJECTED'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.adminProfile.findUnique).not.toHaveBeenCalled();
   });
 
   it('blocks a second decision for an already processed application', async () => {

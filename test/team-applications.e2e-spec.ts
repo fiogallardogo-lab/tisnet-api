@@ -19,6 +19,7 @@ describe('Team applications API (e2e, base aislada)', () => {
   const password = 'PasswordSegura123!';
   const superAdminEmail = `team-super-${suffix}@example.test`;
   const adminEmail = `team-admin-${suffix}@example.test`;
+  const otherAdminEmail = `team-admin-other-${suffix}@example.test`;
   const firstApplicantEmail = `team-applicant-a-${suffix}@example.test`;
   const secondApplicantEmail = `team-applicant-b-${suffix}@example.test`;
   const firstCode = `TEAM-E2E-A-${suffix}`;
@@ -27,6 +28,7 @@ describe('Team applications API (e2e, base aislada)', () => {
 
   let superAdminToken: string;
   let adminToken: string;
+  let otherAdminToken: string;
   let adminProfileId: number;
   let firstApplicationId: number;
   let secondApplicationId: number;
@@ -94,6 +96,20 @@ describe('Team applications API (e2e, base aislada)', () => {
       include: { adminProfile: true },
     });
     adminProfileId = admin.adminProfile!.id;
+    await prisma.user.create({
+      data: {
+        name: 'Otro entrevistador Team E2E',
+        email: otherAdminEmail,
+        passwordHash,
+        roleId: adminRole.id,
+        adminProfile: {
+          create: {
+            executiveTitle: 'Asesor alterno',
+            specialty: 'Producto digital',
+          },
+        },
+      },
+    });
 
     const applications = await Promise.all([
       prisma.teamApplication.create({
@@ -150,6 +166,7 @@ describe('Team applications API (e2e, base aislada)', () => {
 
     superAdminToken = await login(superAdminEmail);
     adminToken = await login(adminEmail);
+    otherAdminToken = await login(otherAdminEmail);
   });
 
   afterAll(async () => {
@@ -158,7 +175,9 @@ describe('Team applications API (e2e, base aislada)', () => {
         where: { code: { in: [firstCode, secondCode] } },
       });
       await prisma.user.deleteMany({
-        where: { email: { in: [superAdminEmail, adminEmail] } },
+        where: {
+          email: { in: [superAdminEmail, adminEmail, otherAdminEmail] },
+        },
       });
     }
     notifications?.clear();
@@ -252,7 +271,10 @@ describe('Team applications API (e2e, base aislada)', () => {
     });
     expect(notifications.getLastNotification()).toMatchObject({
       recipient: firstApplicantEmail,
-      metadata: { event: 'TEAM_APPLICATION_INTERVIEW_ASSIGNED' },
+      metadata: {
+        type: 'INTERVIEW_ASSIGNED',
+        applicationCode: firstCode,
+      },
     });
 
     await request(app.getHttpServer())
@@ -260,6 +282,44 @@ describe('Team applications API (e2e, base aislada)', () => {
       .set('Authorization', `Bearer ${superAdminToken}`)
       .send({ adminProfileId })
       .expect(409);
+  });
+
+  it('keeps an assigned interview and its files private to its interviewer', async () => {
+    const ownInterviews = await request(app.getHttpServer())
+      .get('/api/v1/team-applications/my-interviews')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(ownInterviews.body.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: firstApplicationId }),
+      ]),
+    );
+
+    const otherInterviews = await request(app.getHttpServer())
+      .get('/api/v1/team-applications/my-interviews')
+      .set('Authorization', `Bearer ${otherAdminToken}`)
+      .expect(200);
+    expect(otherInterviews.body.data).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: firstApplicationId }),
+      ]),
+    );
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/team-applications/my-interviews/${firstApplicationId}/cv`)
+      .set('Authorization', `Bearer ${otherAdminToken}`)
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .patch(
+        `/api/v1/team-applications/my-interviews/${firstApplicationId}/decision`,
+      )
+      .set('Authorization', `Bearer ${otherAdminToken}`)
+      .send({
+        decision: 'REJECTED',
+        reason: 'La entrevista pertenece a otro administrador.',
+      })
+      .expect(404);
   });
 
   it('rejects with a reason and records a notification', async () => {
@@ -279,7 +339,10 @@ describe('Team applications API (e2e, base aislada)', () => {
     });
     expect(notifications.getLastNotification()).toMatchObject({
       recipient: secondApplicantEmail,
-      metadata: { event: 'TEAM_APPLICATION_REJECTED' },
+      metadata: {
+        type: 'APPLICATION_REJECTED',
+        applicationCode: secondCode,
+      },
     });
   });
 });

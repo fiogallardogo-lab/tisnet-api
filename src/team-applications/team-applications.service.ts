@@ -1,14 +1,21 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { describeNotificationFailure } from '../notifications/notification-errors.js';
 import {
   NOTIFICATION_PROVIDER,
   NotificationProvider,
 } from '../notifications/notification-provider.interface.js';
+import {
+  renderInterviewAssigned,
+  renderRejectedApplication,
+} from '../notifications/templates/application-notifications.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ListTeamApplicationsQueryDto } from './dto/list-team-applications-query.dto.js';
 import { TEAM_APPLICATION_STATUS } from './team-application.constants.js';
@@ -63,6 +70,8 @@ type DetailRecord = Prisma.TeamApplicationGetPayload<{
 
 @Injectable()
 export class TeamApplicationsService {
+  private readonly logger = new Logger(TeamApplicationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(NOTIFICATION_PROVIDER)
@@ -114,7 +123,6 @@ export class TeamApplicationsService {
       },
     };
   }
-
 
   async findInterviewers() {
     const profiles = await this.prisma.adminProfile.findMany({
@@ -182,10 +190,27 @@ export class TeamApplicationsService {
     decision: 'ACCEPTED' | 'REJECTED',
     reason?: string,
   ) {
+    const rejectionReason = reason?.trim();
+    if (
+      decision === 'REJECTED' &&
+      (!rejectionReason ||
+        rejectionReason.length < 20 ||
+        rejectionReason.length > 1000)
+    ) {
+      throw new BadRequestException(
+        'El motivo de rechazo debe tener entre 20 y 1000 caracteres',
+      );
+    }
     const adminProfileId = await this.assignedAdminProfileId(userId);
     const application = await this.prisma.teamApplication.findFirst({
       where: { id, assignedAdminProfileId: adminProfileId },
-      select: { email: true, profile: true, status: true },
+      select: {
+        code: true,
+        email: true,
+        requestedRole: true,
+        profile: true,
+        status: true,
+      },
     });
     if (!application)
       throw new NotFoundException('Entrevista asignada no encontrada');
@@ -202,8 +227,7 @@ export class TeamApplicationsService {
       },
       data: {
         status: decision,
-        rejectionReason:
-          decision === 'REJECTED' ? reason?.trim() || null : null,
+        rejectionReason: decision === 'REJECTED' ? rejectionReason : null,
         rejectedAt: decision === 'REJECTED' ? new Date() : null,
       },
     });
@@ -213,21 +237,25 @@ export class TeamApplicationsService {
       this.profileObject(application.profile),
       'fullName',
     );
-    const notificationStatus = await this.notifySafely({
-      recipient: application.email,
-      subject:
-        decision === 'ACCEPTED'
-          ? 'TISNET: entrevista aprobada'
-          : 'TISNET: resultado de entrevista',
-      text:
-        decision === 'ACCEPTED'
-          ? `Hola ${fullName}. Tu entrevista fue aprobada. TISNET se comunicará contigo para los siguientes pasos.`
-          : `Hola ${fullName}. Gracias por participar en la entrevista. En esta oportunidad no continuaremos con el proceso.`,
-      metadata: {
-        applicationId: String(id),
-        event: `TEAM_APPLICATION_${decision}`,
-      },
-    });
+    const notification =
+      decision === 'REJECTED'
+        ? renderRejectedApplication({
+            recipient: application.email,
+            candidateName: fullName,
+            applicationCode: application.code,
+            requestedRole: application.requestedRole,
+            rejectionReason: rejectionReason!,
+          })
+        : {
+            recipient: application.email,
+            subject: 'TISNET: entrevista aprobada',
+            text: `Hola ${fullName}. Tu entrevista fue aprobada. TISNET se comunicará contigo para los siguientes pasos.`,
+            metadata: {
+              applicationId: String(id),
+              event: 'TEAM_APPLICATION_ACCEPTED',
+            },
+          };
+    const notificationStatus = await this.notifySafely(notification);
     return {
       ...(await this.findAssignedInterview(userId, id)),
       notificationStatus,
@@ -283,6 +311,7 @@ export class TeamApplicationsService {
         where: { id },
         select: {
           id: true,
+          code: true,
           email: true,
           requestedRole: true,
           profile: true,
@@ -334,15 +363,19 @@ export class TeamApplicationsService {
       throw new ConflictException('La postulación ya fue procesada');
     }
 
-    const notificationStatus = await this.notifySafely({
-      recipient: application.email,
-      subject: 'TISNET: entrevista asignada',
-      text: this.interviewMessage(application, admin),
-      metadata: {
-        applicationId: String(id),
-        event: 'TEAM_APPLICATION_INTERVIEW_ASSIGNED',
-      },
-    });
+    const notificationStatus = await this.notifySafely(
+      renderInterviewAssigned({
+        recipient: application.email,
+        candidateName: this.profileString(
+          this.profileObject(application.profile),
+          'fullName',
+        ),
+        applicationCode: application.code,
+        requestedRole: application.requestedRole,
+        interviewerName: admin.user.name,
+        calendlyUrl: admin.calendlyUrl,
+      }),
+    );
 
     return {
       ...(await this.findOne(id)),
@@ -355,6 +388,7 @@ export class TeamApplicationsService {
       where: { id },
       select: {
         id: true,
+        code: true,
         email: true,
         requestedRole: true,
         profile: true,
@@ -381,15 +415,18 @@ export class TeamApplicationsService {
       throw new ConflictException('La postulación ya fue procesada');
     }
 
-    const notificationStatus = await this.notifySafely({
-      recipient: application.email,
-      subject: 'TISNET: resultado de tu postulación',
-      text: this.rejectionMessage(application, reason),
-      metadata: {
-        applicationId: String(id),
-        event: 'TEAM_APPLICATION_REJECTED',
-      },
-    });
+    const notificationStatus = await this.notifySafely(
+      renderRejectedApplication({
+        recipient: application.email,
+        candidateName: this.profileString(
+          this.profileObject(application.profile),
+          'fullName',
+        ),
+        applicationCode: application.code,
+        requestedRole: application.requestedRole,
+        rejectionReason: reason,
+      }),
+    );
 
     return {
       ...(await this.findOne(id)),
@@ -483,33 +520,17 @@ export class TeamApplicationsService {
     try {
       await this.notifications.send(input);
       return 'SENT';
-    } catch {
+    } catch (error) {
+      const failure = describeNotificationFailure(error);
+      const event = input.metadata?.type ?? input.metadata?.event ?? 'UNKNOWN';
+      const applicationReference =
+        input.metadata?.applicationCode ??
+        input.metadata?.applicationId ??
+        'UNKNOWN';
+      this.logger.warn(
+        `Notification delivery failed event=${event} application=${applicationReference} code=${failure.code} retryable=${failure.retryable}`,
+      );
       return 'FAILED';
     }
-  }
-
-  private interviewMessage(
-    application: { requestedRole: string; profile: Prisma.JsonValue },
-    admin: { user: { name: string }; calendlyUrl: string | null },
-  ) {
-    const name = this.profileString(
-      this.profileObject(application.profile),
-      'fullName',
-    );
-    const calendly = admin.calendlyUrl
-      ? ` Puedes coordinar el horario en ${admin.calendlyUrl}.`
-      : ' El entrevistador se comunicará contigo para coordinar el horario.';
-    return `Hola ${name}. Tu postulación como ${application.requestedRole} avanzó a entrevista. ${admin.user.name} fue asignado como entrevistador.${calendly}`;
-  }
-
-  private rejectionMessage(
-    application: { requestedRole: string; profile: Prisma.JsonValue },
-    reason: string,
-  ) {
-    const name = this.profileString(
-      this.profileObject(application.profile),
-      'fullName',
-    );
-    return `Hola ${name}. Gracias por postular como ${application.requestedRole} en TISNET. En esta oportunidad no continuaremos con el proceso. Motivo: ${reason}`;
   }
 }
