@@ -21,6 +21,7 @@ import { DocumentsModule } from './documents/documents.module.js';
 import { MeetingsModule } from './meetings/meetings.module.js';
 import { DeliverablesModule } from './deliverables/deliverables.module.js';
 import { TeamApplicationsModule } from './team-applications/team-applications.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { TeamApplicationsModule } from './team-applications/team-applications.mo
     MeetingsModule,
     DeliverablesModule,
     TeamApplicationsModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
