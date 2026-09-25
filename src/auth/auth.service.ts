@@ -1,11 +1,18 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { validateLegalVersions } from '../common/legal/legal-versions';
+import {
+  NOTIFICATION_PROVIDER,
+  type NotificationProvider,
+} from '../notifications/notification-provider.interface';
+import { renderPasswordResetEmail } from '../notifications/templates/password-reset-notification';
 
 interface RefreshTokenPayload {
   sub: number;
@@ -18,6 +25,8 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    @Inject(NOTIFICATION_PROVIDER)
+    private readonly notificationProvider: NotificationProvider,
   ) {}
 
   async validateUser(email: string, pass: string) {
@@ -145,6 +154,106 @@ export class AuthService {
       acceptedTermsAt: user.acceptedTermsAt,
       termsVersion: user.termsVersion,
       privacyVersion: user.privacyVersion,
+    };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ success: boolean; message: string }> {
+    const genericResponse = {
+      success: true,
+      message:
+        'Si el correo electrónico está registrado, se han enviado las instrucciones para restablecer la contraseña.',
+    };
+
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user || !user.isActive) {
+      return genericResponse;
+    }
+
+    const resetSecret =
+      this.configService.get<string>('JWT_RESET_PASSWORD_SECRET') ??
+      this.configService.getOrThrow<string>('JWT_SECRET');
+
+    const resetToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        tokenVersion: user.tokenVersion,
+        purpose: 'password_reset',
+      },
+      {
+        secret: resetSecret,
+        expiresIn: '15m',
+      },
+    );
+
+    const frontendBaseUrl = (
+      this.configService.get<string>('FRONTEND_URL') ??
+      'https://tisnet.pe'
+    ).replace(/\/+$/, '');
+
+    const resetUrl = `${frontendBaseUrl}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+    const { subject, html, text } = renderPasswordResetEmail({
+      recipientEmail: user.email,
+      recipientName: user.name,
+      resetUrl,
+      expiresInMinutes: 15,
+    });
+
+    try {
+      await this.notificationProvider.send({
+        recipient: user.email,
+        subject,
+        html,
+        text,
+      });
+    } catch {
+      // Resilient: do not break generic response if notification transport fails
+    }
+
+    return genericResponse;
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ success: boolean; message: string }> {
+    const resetSecret =
+      this.configService.get<string>('JWT_RESET_PASSWORD_SECRET') ??
+      this.configService.getOrThrow<string>('JWT_SECRET');
+
+    let payload: {
+      sub: number;
+      email: string;
+      tokenVersion: number;
+      purpose: string;
+    };
+
+    try {
+      payload = this.jwtService.verify(dto.token, {
+        secret: resetSecret,
+      });
+    } catch {
+      throw new BadRequestException('El enlace de recuperación es inválido o ha expirado.');
+    }
+
+    if (payload.purpose !== 'password_reset') {
+      throw new BadRequestException('Token de tipo inválido.');
+    }
+
+    const user = await this.usersService.findById(payload.sub);
+    if (!user || !user.isActive) {
+      throw new BadRequestException('Usuario no válido o inactivo.');
+    }
+
+    if (user.tokenVersion !== payload.tokenVersion) {
+      throw new BadRequestException('Este enlace ya fue utilizado o ha sido invalidado.');
+    }
+
+    const newHash = await bcrypt.hash(dto.newPassword, 12);
+    await this.usersService.updatePassword(user.id, newHash);
+
+    return {
+      success: true,
+      message:
+        'Contraseña actualizada correctamente. Ya puedes iniciar sesión con tu nueva contraseña.',
     };
   }
 }

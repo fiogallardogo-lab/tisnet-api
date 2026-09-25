@@ -193,6 +193,32 @@ export class UsersService {
     }
   }
 
+  async updatePassword(id: number, passwordHash: string) {
+    try {
+      return await this.prisma.user.update({
+        where: { id },
+        data: {
+          passwordHash,
+          tokenVersion: {
+            increment: 1,
+          },
+        },
+        include: {
+          role: true,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+
+      throw error;
+    }
+  }
+
   async updateOwnUser(
     id: number,
     data: {

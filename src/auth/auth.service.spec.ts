@@ -10,16 +10,23 @@ import {
 } from '@nestjs/common';
 
 import { AuthService } from './auth.service';
+import { NOTIFICATION_PROVIDER } from '../notifications/notification-provider.interface';
+
 import { UsersService } from '../users/users.service';
 
 describe('AuthService', () => {
   let service: AuthService;
+
+    const notificationProviderMock = {
+    send: vi.fn().mockResolvedValue({ messageId: 'msg_1', recipient: 'test@example.com', sentAt: new Date() }),
+  };
 
   const usersServiceMock = {
     findByEmail: vi.fn(),
     findById: vi.fn(),
     incrementTokenVersion: vi.fn(),
     createClient: vi.fn(),
+    updatePassword: vi.fn(),
   };
 
   const jwtServiceMock = {
@@ -48,6 +55,10 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: configServiceMock,
+        },
+        {
+          provide: NOTIFICATION_PROVIDER,
+          useValue: notificationProviderMock,
         },
       ],
     }).compile();
@@ -205,5 +216,153 @@ describe('AuthService', () => {
         privacyVersion: 'v1.0',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  describe('forgotPassword', () => {
+    it('envía correo con enlace firmado cuando el usuario existe y está activo', async () => {
+      usersServiceMock.findByEmail.mockResolvedValue({
+        id: 10,
+        email: 'cliente@tisnet.pe',
+        name: 'Cliente Activo',
+        tokenVersion: 2,
+        isActive: true,
+      });
+
+      configServiceMock.get.mockImplementation((key: string) => {
+        if (key === 'FRONTEND_URL') return 'https://tisnet.pe';
+        if (key === 'JWT_RESET_PASSWORD_SECRET') return 'reset-secret';
+        return null;
+      });
+      configServiceMock.getOrThrow.mockReturnValue('default-secret');
+      jwtServiceMock.sign.mockReturnValue('jwt_reset_token_xyz');
+
+      const res = await service.forgotPassword({ email: 'cliente@tisnet.pe' });
+
+      expect(res.success).toBe(true);
+      expect(jwtServiceMock.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: 10,
+          email: 'cliente@tisnet.pe',
+          tokenVersion: 2,
+          purpose: 'password_reset',
+        }),
+        expect.objectContaining({ expiresIn: '15m' }),
+      );
+      expect(notificationProviderMock.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipient: 'cliente@tisnet.pe',
+          subject: expect.stringContaining('Restablecimiento de contraseña'),
+          html: expect.stringContaining('https://tisnet.pe/auth/reset-password?token=jwt_reset_token_xyz'),
+        }),
+      );
+    });
+
+    it('devuelve éxito genérico sin enviar correo cuando el usuario no existe', async () => {
+      usersServiceMock.findByEmail.mockResolvedValue(null);
+
+      const res = await service.forgotPassword({ email: 'inexistente@tisnet.pe' });
+
+      expect(res.success).toBe(true);
+      expect(notificationProviderMock.send).not.toHaveBeenCalled();
+    });
+
+    it('devuelve éxito genérico sin enviar correo cuando el usuario está inactivo', async () => {
+      usersServiceMock.findByEmail.mockResolvedValue({
+        id: 11,
+        email: 'inactivo@tisnet.pe',
+        isActive: false,
+      });
+
+      const res = await service.forgotPassword({ email: 'inactivo@tisnet.pe' });
+
+      expect(res.success).toBe(true);
+      expect(notificationProviderMock.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('restablece la contraseña exitosamente cuando el token es válido y no ha sido usado', async () => {
+      configServiceMock.get.mockReturnValue('reset-secret');
+      configServiceMock.getOrThrow.mockReturnValue('reset-secret');
+
+      jwtServiceMock.verify.mockReturnValue({
+        sub: 5,
+        email: 'usuario@tisnet.pe',
+        tokenVersion: 3,
+        purpose: 'password_reset',
+      });
+
+      usersServiceMock.findById.mockResolvedValue({
+        id: 5,
+        email: 'usuario@tisnet.pe',
+        isActive: true,
+        tokenVersion: 3,
+      });
+      usersServiceMock.updatePassword.mockResolvedValue({ id: 5 });
+
+      const res = await service.resetPassword({
+        token: 'valid_token_abc',
+        newPassword: 'NuevaPassword123!',
+      });
+
+      expect(res.success).toBe(true);
+      expect(usersServiceMock.updatePassword).toHaveBeenCalledWith(
+        5,
+        expect.any(String),
+      );
+    });
+
+    it('lanza BadRequestException si el token está expirado o corrupto', async () => {
+      configServiceMock.get.mockReturnValue('reset-secret');
+      jwtServiceMock.verify.mockImplementation(() => {
+        throw new Error('jwt expired');
+      });
+
+      await expect(
+        service.resetPassword({
+          token: 'expired_token',
+          newPassword: 'NuevaPassword123!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('lanza BadRequestException si el tokenVersion no coincide (token ya usado)', async () => {
+      configServiceMock.get.mockReturnValue('reset-secret');
+      jwtServiceMock.verify.mockReturnValue({
+        sub: 5,
+        email: 'usuario@tisnet.pe',
+        tokenVersion: 1, // outdated
+        purpose: 'password_reset',
+      });
+
+      usersServiceMock.findById.mockResolvedValue({
+        id: 5,
+        isActive: true,
+        tokenVersion: 2, // current is 2
+      });
+
+      await expect(
+        service.resetPassword({
+          token: 'already_used_token',
+          newPassword: 'NuevaPassword123!',
+        }),
+      ).rejects.toThrow('Este enlace ya fue utilizado o ha sido invalidado.');
+    });
+
+    it('lanza BadRequestException si el purpose del token no es password_reset', async () => {
+      configServiceMock.get.mockReturnValue('reset-secret');
+      jwtServiceMock.verify.mockReturnValue({
+        sub: 5,
+        tokenVersion: 1,
+        purpose: 'login', // wrong purpose
+      });
+
+      await expect(
+        service.resetPassword({
+          token: 'wrong_purpose_token',
+          newPassword: 'NuevaPassword123!',
+        }),
+      ).rejects.toThrow('Token de tipo inválido.');
+    });
   });
 });
