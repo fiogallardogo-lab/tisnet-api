@@ -87,14 +87,17 @@ export class BusinessDaysService {
    * Cuenta cuántos días hábiles hay entre dos fechas (excluyendo la fecha de inicio, incluyendo la de fin).
    */
   countBusinessDaysBetween(startDate: Date, endDate: Date): number {
-    if (startDate >= endDate) return 0;
+    const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
 
-    const current = new Date(startDate.getTime());
+    if (start >= end) return 0;
+
+    const current = new Date(start.getTime());
     let count = 0;
 
-    while (current < endDate) {
+    while (current < end) {
       current.setDate(current.getDate() + 1);
-      if (this.isBusinessDay(current) && current <= endDate) {
+      if (this.isBusinessDay(current) && current <= end) {
         count++;
       }
     }

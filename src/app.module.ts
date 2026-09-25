@@ -24,6 +24,8 @@ import { TeamApplicationsModule } from './team-applications/team-applications.mo
 import { PaymentsModule } from './payments/payments.module.js';
 import { BusinessDaysModule } from './common/business-days/business-days.module.js';
 import { AuditModule } from './audit/audit.module.js';
+import { SignedUrlModule } from './common/signed-urls/signed-url.module.js';
+import { SlaAlertsModule } from './common/sla-alerts/sla-alerts.module.js';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { AuditModule } from './audit/audit.module.js';
     PaymentsModule,
     BusinessDaysModule,
     AuditModule,
+    SignedUrlModule,
+    SlaAlertsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

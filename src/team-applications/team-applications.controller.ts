@@ -10,6 +10,9 @@ import {
   Res,
   StreamableFile,
   UseGuards,
+  BadRequestException,
+  ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -32,6 +35,8 @@ import { ListTeamApplicationsQueryDto } from './dto/list-team-applications-query
 import { RejectTeamApplicationDto } from './dto/reject-team-application.dto.js';
 import { InterviewDecisionDto } from './dto/interview-decision.dto.js';
 import { TeamApplicationsService } from './team-applications.service.js';
+import { SignedUrlService } from '../common/signed-urls/signed-url.service.js';
+import { AuditService } from '../audit/audit.service.js';
 
 interface AuthenticatedRequest {
   user: { id: number; email: string; role: string };
@@ -43,7 +48,11 @@ interface AuthenticatedRequest {
 @Roles(PLATFORM_ROLES.SUPER_ADMIN)
 @Controller('team-applications')
 export class TeamApplicationsController {
-  constructor(private readonly service: TeamApplicationsService) {}
+  constructor(
+    private readonly service: TeamApplicationsService,
+    @Optional() private readonly signedUrlService?: SignedUrlService,
+    @Optional() private readonly auditService?: AuditService,
+  ) {}
 
   @Get('my-interviews')
   @Roles(PLATFORM_ROLES.ADMIN)
@@ -210,4 +219,86 @@ export class TeamApplicationsController {
   ) {
     return this.service.reject(id, dto.reason, request.user.id);
   }
+
+  @Get(':id/signed-url')
+  @ApiOperation({ summary: 'Generar URL firmada temporal para descarga segura de CV o fotografía' })
+  getSignedUrl(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('fileType') fileType: 'cv' | 'photo',
+    @Request() request: any,
+  ) {
+    if (fileType !== 'cv' && fileType !== 'photo') {
+      throw new BadRequestException('fileType debe ser "cv" o "photo"');
+    }
+
+    if (!this.signedUrlService) {
+      throw new BadRequestException('SignedUrlService no está configurado');
+    }
+
+    const host = request.get ? request.get('host') : 'localhost:3000';
+    const protocol = request.protocol ?? 'https';
+    const baseUrl = `${protocol}://${host}`;
+
+    const { signedUrl, expiresAt } = this.signedUrlService.generateSignedUrl(
+      baseUrl,
+      id,
+      fileType,
+      900,
+    );
+
+    return {
+      signedUrl,
+      expiresAt,
+      expiresInSeconds: 900,
+    };
+  }
+
+  @Get(':id/secure-download')
+  @ApiOperation({ summary: 'Descargar archivo mediante token firmado temporal con expiración' })
+  async downloadSecureFile(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('token') token: string,
+    @Query('fileType') fileType: 'cv' | 'photo',
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    if (fileType !== 'cv' && fileType !== 'photo') {
+      throw new BadRequestException('fileType debe ser "cv" o "photo"');
+    }
+
+    if (!this.signedUrlService) {
+      throw new BadRequestException('SignedUrlService no está disponible');
+    }
+
+    const verification = this.signedUrlService.verifyToken(token, id, fileType);
+    if (!verification.valid) {
+      throw new ForbiddenException(verification.error ?? 'Enlace de descarga no autorizado o expirado.');
+    }
+
+    void this.auditService?.record({
+      action: 'SECURE_FILE_DOWNLOADED',
+      entityType: 'TeamApplication',
+      entityId: id,
+      metadata: { fileType },
+    });
+
+    if (fileType === 'photo') {
+      const file = await this.service.getPhoto(id);
+      response.set({
+        'Content-Type': file.mimeType,
+        'Cache-Control': 'private, no-store',
+        'Content-Disposition': 'inline',
+      });
+      return new StreamableFile(file.content);
+    } else {
+      const file = await this.service.getCv(id);
+      const safeName = file.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      response.set({
+        'Content-Type': 'application/pdf',
+        'Cache-Control': 'private, no-store',
+        'Content-Disposition': `attachment; filename="${safeName}"`,
+      });
+      return new StreamableFile(file.content);
+    }
+  }
+
 }
