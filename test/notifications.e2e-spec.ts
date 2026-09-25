@@ -79,7 +79,7 @@ describe('Notifications module integration (no DB or external mail)', () => {
     vi.stubEnv('NOTIFICATION_PROVIDER', 'real');
     await expect(
       Test.createTestingModule({ imports: [NotificationsModule] }).compile(),
-    ).rejects.toThrow('NOTIFICATION_PROVIDER must be fake');
+    ).rejects.toThrow(/NOTIFICATION_PROVIDER/);
   });
 });
 

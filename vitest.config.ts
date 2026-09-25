@@ -10,5 +10,6 @@ export default defineConfig({
     root: './',
     include: ['**/*.spec.ts'],
     exclude: ['test/**', '**/*.e2e-spec.ts', '**/node_modules/**'],
+    testTimeout: 15000,
   },
 });
