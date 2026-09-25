@@ -61,7 +61,8 @@ export class CreateQuoteDto {
   @IsOptional() @Transform(trim) @IsString() @MaxLength(1000) notes?: string;
 }
 export class TeamApplicationDto {
-  @IsIn(['DEVELOPER', 'PRODUCT_OWNER']) requestedRole: string;
+  @IsIn(['DEVELOPER', 'PRODUCT_OWNER']) requestedRole:
+    'DEVELOPER' | 'PRODUCT_OWNER';
   @Transform(trim) @IsString() @MinLength(2) @MaxLength(100) fullName: string;
   @Type(() => Number) @IsInt() @Min(1) @Max(130) age: number;
   @Transform(trim) @IsString() @IsNotEmpty() @MaxLength(100) district: string;

@@ -75,6 +75,7 @@ describe('QuotesService', () => {
     const result = await service.createPublic(dto);
 
     expect(repository.create).toHaveBeenCalledWith({
+      deliveryMode: 'NORMAL',
       publicCode: 'Q-AAAAAAAA',
       status: QuoteStatus.RECEIVED,
       solutionType: 'WEB_APP',

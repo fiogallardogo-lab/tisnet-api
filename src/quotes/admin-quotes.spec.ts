@@ -12,8 +12,9 @@ describe('PublicQuote administrative API', () => {
   let app: INestApplication;
   const quote = {
     id: 1,
-    code: 'QUOTE-test',
-    contact: { fullName: 'Cliente', email: 'client@example.test' },
+    publicCode: 'Q-ABCDEFGH',
+    contactName: 'Cliente',
+    contactEmail: 'client@example.test',
     solutionType: 'CORPORATE_SITE',
     deliveryMode: 'NORMAL',
     pricingStatus: 'CALCULATED',
@@ -24,14 +25,14 @@ describe('PublicQuote administrative API', () => {
     snapshot: {},
   };
   const db = {
-    publicQuote: { findMany: vi.fn(), count: vi.fn(), findUnique: vi.fn() },
+    quote: { findMany: vi.fn(), count: vi.fn(), findUnique: vi.fn() },
     $transaction: vi.fn((queries) => Promise.all(queries)),
   };
   beforeEach(async () => {
     vi.clearAllMocks();
-    db.publicQuote.findMany.mockResolvedValue([quote]);
-    db.publicQuote.count.mockResolvedValue(1);
-    db.publicQuote.findUnique.mockResolvedValue(quote);
+    db.quote.findMany.mockResolvedValue([quote]);
+    db.quote.count.mockResolvedValue(1);
+    db.quote.findUnique.mockResolvedValue(quote);
     const module = await Test.createTestingModule({
       controllers: [AdminQuotesController],
       providers: [
@@ -64,8 +65,8 @@ describe('PublicQuote administrative API', () => {
         .set('x-test-role', role)
         .expect(200);
       expect(result.body.items[0]).toMatchObject({
-        publicCode: quote.code,
-        email: quote.contact.email,
+        publicCode: quote.publicCode,
+        email: quote.contactEmail,
         estimatedAmount: 292500,
       });
       expect(result.body.meta).toEqual({
@@ -91,7 +92,7 @@ describe('PublicQuote administrative API', () => {
         .get('/api/v1/admin/quotes/1')
         .set('x-test-role', role)
         .expect(403);
-      expect(db.publicQuote.findMany).not.toHaveBeenCalled();
+      expect(db.quote.findMany).not.toHaveBeenCalled();
     },
   );
   it('uses MySQL JSON paths for contact searches, a real pricing filter and pagination', async () => {
@@ -101,24 +102,24 @@ describe('PublicQuote administrative API', () => {
       )
       .set('x-test-role', 'ADMIN')
       .expect(200);
-    expect(db.publicQuote.findMany).toHaveBeenCalledWith(
+    expect(db.quote.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         skip: 5,
         take: 5,
         where: {
           pricingStatus: 'CALCULATED',
           OR: [
-            { code: { contains: 'Cliente' } },
-            { contact: { path: '$.fullName', string_contains: 'Cliente' } },
-            { contact: { path: '$.email', string_contains: 'Cliente' } },
-            { contact: { path: '$.company', string_contains: 'Cliente' } },
+            { publicCode: { contains: 'Cliente' } },
+            { contactName: { contains: 'Cliente' } },
+            { contactEmail: { contains: 'Cliente' } },
+            { contactCompany: { contains: 'Cliente' } },
           ],
         },
       }),
     );
   });
   it('returns 404 for a missing quote', async () => {
-    db.publicQuote.findUnique.mockResolvedValue(null);
+    db.quote.findUnique.mockResolvedValue(null);
     await request(app.getHttpServer())
       .get('/api/v1/admin/quotes/999')
       .set('x-test-role', 'ADMIN')

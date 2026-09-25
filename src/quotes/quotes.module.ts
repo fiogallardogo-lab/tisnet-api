@@ -1,3 +1,8 @@
+import { DocumentsModule } from '../documents/documents.module';
+import {
+  QuoteLookupController,
+  QuotePdfController,
+} from './quote-lookup.controller';
 import { DynamicModule, Module, Provider } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 
@@ -27,11 +32,17 @@ export interface QuotesModuleOptions {
 @Module({
   imports: [
     PrismaModule,
+    DocumentsModule,
     PassportModule.register({
       defaultStrategy: 'jwt',
     }),
   ],
-  controllers: [PublicQuotesController, AdminQuotesController],
+  controllers: [
+    PublicQuotesController,
+    AdminQuotesController,
+    QuoteLookupController,
+    QuotePdfController,
+  ],
   providers: [
     QuotesService,
     PrismaQuoteRepository,

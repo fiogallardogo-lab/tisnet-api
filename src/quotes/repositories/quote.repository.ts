@@ -16,6 +16,7 @@ export interface CreateQuoteItemRecord {
 }
 
 export interface CreateQuoteRecord {
+  deliveryMode?: string;
   publicCode: string;
   status: QuoteStatus;
   solutionType: string;
