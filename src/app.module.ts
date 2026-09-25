@@ -1,3 +1,6 @@
+import { AuditModule } from './audit/audit.module';
+import { KickoffModule } from './kickoff/kickoff.module';
+import { PaymentsModule } from './payments/payments.module';
 import { ClientPortalModule } from './client-portal/client-portal.module';
 import { IntakeModule } from './public-intake/intake.module';
 import { Module } from '@nestjs/common';
@@ -40,6 +43,9 @@ import { TeamApplicationsModule } from './team-applications/team-applications.mo
     ProfilesModule,
     QuotesModule.register({ catalog: quotesCatalogV1 }),
     ProspectsModule,
+    PaymentsModule,
+    KickoffModule,
+    AuditModule,
     StorageModule,
     NotificationsModule,
     SchedulingModule,
