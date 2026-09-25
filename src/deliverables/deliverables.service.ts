@@ -50,10 +50,34 @@ export class DeliverablesService {
     this.requirePermission(actor, membership?.memberRole, [
       ProjectMemberRole.PRODUCT_OWNER,
     ]);
+    const commercialProject = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { quoteId: true },
+    });
+    const milestone = commercialProject?.quoteId
+      ? await this.prisma.projectMilestone.findUnique({
+          where: {
+            projectId_sequence: { projectId, sequence: dto.milestoneOrder },
+          },
+        })
+      : null;
+    if (commercialProject?.quoteId && !milestone)
+      throw new BadRequestException(
+        'El hito debe existir en el acuerdo comercial oficial.',
+      );
+    if (
+      milestone &&
+      (dto.title.trim() !== milestone.title ||
+        new Date(dto.dueDate).getTime() !== milestone.dueDate.getTime())
+    )
+      throw new BadRequestException(
+        'El título y la fecha deben coincidir con el hito acordado.',
+      );
     try {
       return await this.prisma.projectDeliverable.create({
         data: {
           projectId,
+          ...(milestone ? { milestoneId: milestone.id } : {}),
           title: dto.title.trim(),
           description: dto.description.trim(),
           milestoneOrder: dto.milestoneOrder,

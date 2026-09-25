@@ -46,7 +46,7 @@ export class TeamApplicationsController {
   constructor(private readonly service: TeamApplicationsService) {}
 
   @Get('my-interviews')
-  @Roles(PLATFORM_ROLES.ADMIN)
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Listar entrevistas asignadas al administrador autenticado',
   })
@@ -55,7 +55,7 @@ export class TeamApplicationsController {
   }
 
   @Get('my-interviews/:id/photo')
-  @Roles(PLATFORM_ROLES.ADMIN)
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
   async getMyInterviewPhoto(
     @Param('id', ParseIntPipe) id: number,
     @Request() request: AuthenticatedRequest,
@@ -70,7 +70,7 @@ export class TeamApplicationsController {
   }
 
   @Get('my-interviews/:id/cv')
-  @Roles(PLATFORM_ROLES.ADMIN)
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
   async getMyInterviewCv(
     @Param('id', ParseIntPipe) id: number,
     @Request() request: AuthenticatedRequest,
@@ -87,7 +87,7 @@ export class TeamApplicationsController {
   }
 
   @Get('my-interviews/:id')
-  @Roles(PLATFORM_ROLES.ADMIN)
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
   findMyInterview(
     @Param('id', ParseIntPipe) id: number,
     @Request() request: AuthenticatedRequest,
@@ -96,7 +96,7 @@ export class TeamApplicationsController {
   }
 
   @Patch('my-interviews/:id/decision')
-  @Roles(PLATFORM_ROLES.ADMIN)
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Registrar el resultado de una entrevista asignada',
   })
@@ -107,6 +107,7 @@ export class TeamApplicationsController {
   ) {
     return this.service.completeAssignedInterview(
       request.user.id,
+      request.user.role,
       id,
       dto.decision,
       dto.reason,
@@ -123,7 +124,6 @@ export class TeamApplicationsController {
   findAll(@Query() query: ListTeamApplicationsQueryDto) {
     return this.service.findAll(query);
   }
-
 
   @Get('interviewers')
   @ApiOperation({ summary: 'Listar administradores activos para entrevistas' })
@@ -209,5 +209,45 @@ export class TeamApplicationsController {
     @Request() request: AuthenticatedRequest,
   ) {
     return this.service.reject(id, dto.reason, request.user.id);
+  }
+
+  @Patch(':id/decision')
+  @Roles(PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiConsumes('application/json')
+  @ApiOperation({
+    summary:
+      'Registrar decisión sobre una postulación en entrevista por SUPER_ADMIN',
+  })
+  decideApplication(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: InterviewDecisionDto,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.service.completeAssignedInterview(
+      request.user.id,
+      request.user.role,
+      id,
+      dto.decision,
+      dto.reason,
+    );
+  }
+
+  @Patch(':id/accept')
+  @Roles(PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Aceptar una postulación en entrevista por SUPER_ADMIN',
+  })
+  accept(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() request: AuthenticatedRequest,
+    @Body() body?: { reason?: string },
+  ) {
+    return this.service.completeAssignedInterview(
+      request.user.id,
+      request.user.role,
+      id,
+      'ACCEPTED',
+      body?.reason,
+    );
   }
 }

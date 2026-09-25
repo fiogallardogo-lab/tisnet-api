@@ -1,10 +1,15 @@
+import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 import {
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { PLATFORM_ROLES } from '../common/constants/platform-roles.js';
 import {
   NOTIFICATION_PROVIDER,
   NotificationProvider,
@@ -21,6 +26,8 @@ const summarySelect = {
   requestedRole: true,
   profile: true,
   status: true,
+  resultingUserId: true,
+  decidedAt: true,
   createdAt: true,
   updatedAt: true,
   assignedAdminProfile: {
@@ -37,10 +44,26 @@ const detailSelect = {
   photoMime: true,
   consent: true,
   interviewAssignedAt: true,
+  interviewCompletedAt: true,
   rejectionReason: true,
   rejectedAt: true,
+  decidedAt: true,
+  decidedByUserId: true,
+  decisionReason: true,
+  resultingUserId: true,
   reviewedByUser: {
     select: { id: true, name: true, email: true },
+  },
+  decidedBy: {
+    select: { id: true, name: true, email: true },
+  },
+  resultingUser: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: { select: { id: true, name: true } },
+    },
   },
   assignedAdminProfile: {
     select: {
@@ -115,6 +138,13 @@ export class TeamApplicationsService {
     };
   }
 
+  async findMyInterviews(userId: number) {
+    return this.findAssignedInterviews(userId);
+  }
+
+  async findMyInterviewDetail(id: number, userId: number) {
+    return this.findAssignedInterview(userId, id);
+  }
 
   async findInterviewers() {
     const profiles = await this.prisma.adminProfile.findMany({
@@ -157,12 +187,19 @@ export class TeamApplicationsService {
 
   async findAssignedInterview(userId: number, id: number) {
     const adminProfileId = await this.assignedAdminProfileId(userId);
-    const application = await this.prisma.teamApplication.findFirst({
-      where: { id, assignedAdminProfileId: adminProfileId },
-      select: detailSelect,
+    const application = await this.prisma.teamApplication.findUnique({
+      where: { id },
+      select: {
+        ...detailSelect,
+        assignedAdminProfileId: true,
+      },
     });
-    if (!application)
+    if (!application) {
       throw new NotFoundException('Entrevista asignada no encontrada');
+    }
+    if (application.assignedAdminProfileId !== adminProfileId) {
+      throw new ForbiddenException('No tienes permisos sobre esta entrevista');
+    }
     return this.toDetail(application);
   }
 
@@ -178,37 +215,208 @@ export class TeamApplicationsService {
 
   async completeAssignedInterview(
     userId: number,
+    userRole: string,
     id: number,
     decision: 'ACCEPTED' | 'REJECTED',
     reason?: string,
   ) {
-    const adminProfileId = await this.assignedAdminProfileId(userId);
-    const application = await this.prisma.teamApplication.findFirst({
-      where: { id, assignedAdminProfileId: adminProfileId },
-      select: { email: true, profile: true, status: true },
-    });
-    if (!application)
-      throw new NotFoundException('Entrevista asignada no encontrada');
-    if (application.status !== TEAM_APPLICATION_STATUS.INTERVIEW_ASSIGNED) {
+    if (decision === 'REJECTED' && (!reason || reason.trim().length < 20)) {
       throw new ConflictException(
-        'La entrevista ya tiene una decisión registrada',
+        'El rechazo requiere un motivo de al menos 20 caracteres',
       );
     }
-    const updated = await this.prisma.teamApplication.updateMany({
-      where: {
-        id,
-        assignedAdminProfileId: adminProfileId,
-        status: TEAM_APPLICATION_STATUS.INTERVIEW_ASSIGNED,
-      },
-      data: {
-        status: decision,
-        rejectionReason:
-          decision === 'REJECTED' ? reason?.trim() || null : null,
-        rejectedAt: decision === 'REJECTED' ? new Date() : null,
+
+    const application = await this.prisma.teamApplication.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        requestedRole: true,
+        profile: true,
+        status: true,
+        assignedAdminProfileId: true,
       },
     });
-    if (updated.count !== 1)
-      throw new ConflictException('La entrevista ya fue procesada');
+
+    if (!application) {
+      throw new NotFoundException('Postulación no encontrada');
+    }
+
+    if (userRole === PLATFORM_ROLES.ADMIN) {
+      const adminProfileId = await this.assignedAdminProfileId(userId);
+      if (application.assignedAdminProfileId !== adminProfileId) {
+        throw new ForbiddenException(
+          'No tienes permisos sobre esta entrevista',
+        );
+      }
+    } else if (userRole !== PLATFORM_ROLES.SUPER_ADMIN) {
+      throw new ForbiddenException('No tienes permisos suficientes');
+    }
+
+    if (application.status !== TEAM_APPLICATION_STATUS.INTERVIEW_ASSIGNED) {
+      throw new ConflictException(
+        'La postulación ya tiene una decisión registrada',
+      );
+    }
+
+    const trimmedReason = reason?.trim() || null;
+    const now = new Date();
+
+    let precomputedHash = '';
+    if (decision === 'ACCEPTED') {
+      const randomSecret = crypto.randomBytes(32).toString('hex');
+      precomputedHash = await bcrypt.hash(randomSecret, 10);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.teamApplication.updateMany({
+        where: {
+          id,
+          status: TEAM_APPLICATION_STATUS.INTERVIEW_ASSIGNED,
+        },
+        data: {
+          status: decision,
+          decidedByUserId: userId,
+          decidedAt: now,
+          interviewCompletedAt: now,
+          decisionReason: trimmedReason,
+          rejectionReason: decision === 'REJECTED' ? trimmedReason : null,
+          rejectedAt: decision === 'REJECTED' ? now : null,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new ConflictException('La postulación ya fue procesada');
+      }
+
+      if (decision === 'ACCEPTED') {
+        let resultingUserId: number;
+
+        const existingUser = await tx.user.findUnique({
+          where: { email: application.email },
+          include: {
+            role: true,
+            developerProfile: true,
+            productOwnerProfile: true,
+          },
+        });
+
+        if (existingUser) {
+          if (existingUser.role.name !== application.requestedRole) {
+            throw new ConflictException(
+              `El correo ya está registrado con un rol incompatible (${existingUser.role.name})`,
+            );
+          }
+
+          resultingUserId = existingUser.id;
+
+          if (
+            application.requestedRole === 'DEVELOPER' &&
+            !existingUser.developerProfile
+          ) {
+            await tx.developerProfile.create({
+              data: { userId: existingUser.id },
+            });
+          } else if (
+            application.requestedRole === 'PRODUCT_OWNER' &&
+            !existingUser.productOwnerProfile
+          ) {
+            await tx.productOwnerProfile.create({
+              data: { userId: existingUser.id },
+            });
+          }
+        } else {
+          const role = await tx.role.findUnique({
+            where: { name: application.requestedRole },
+          });
+
+          if (!role) {
+            throw new InternalServerErrorException(
+              `El rol ${application.requestedRole} no está configurado`,
+            );
+          }
+
+          const profileObj = this.profileObject(application.profile);
+          const fullName =
+            this.profileString(profileObj, 'fullName') || 'Colaborador';
+
+          try {
+            const newUser = await tx.user.create({
+              data: {
+                name: fullName,
+                email: application.email,
+                passwordHash: precomputedHash,
+                roleId: role.id,
+                isActive: true,
+                acceptedTermsAt: now,
+                ...(application.requestedRole === 'DEVELOPER'
+                  ? { developerProfile: { create: {} } }
+                  : {}),
+                ...(application.requestedRole === 'PRODUCT_OWNER'
+                  ? { productOwnerProfile: { create: {} } }
+                  : {}),
+              },
+            });
+            resultingUserId = newUser.id;
+          } catch (error) {
+            if (
+              error instanceof Prisma.PrismaClientKnownRequestError &&
+              error.code === 'P2002'
+            ) {
+              throw new ConflictException('El correo ya está registrado');
+            }
+            throw error;
+          }
+        }
+
+        await tx.teamApplication.update({
+          where: { id },
+          data: { resultingUserId },
+        });
+
+        await tx.auditEvent.create({
+          data: {
+            actorId: userId,
+            action: 'TEAM_APPLICATION_ACCEPTED',
+            entityType: 'TEAM_APPLICATION',
+            entityId: String(id),
+            metadata: {
+              status: 'ACCEPTED',
+              role: application.requestedRole,
+              resultingUserId,
+            },
+          },
+        });
+
+        await tx.auditEvent.create({
+          data: {
+            actorId: userId,
+            action: 'TEAM_APPLICATION_USER_LINKED',
+            entityType: 'TEAM_APPLICATION',
+            entityId: String(id),
+            metadata: {
+              status: 'ACCEPTED',
+              role: application.requestedRole,
+              resultingUserId,
+            },
+          },
+        });
+      } else {
+        await tx.auditEvent.create({
+          data: {
+            actorId: userId,
+            action: 'TEAM_APPLICATION_REJECTED',
+            entityType: 'TEAM_APPLICATION',
+            entityId: String(id),
+            metadata: {
+              status: 'REJECTED',
+              role: application.requestedRole,
+            },
+          },
+        });
+      }
+    });
+
     const fullName = this.profileString(
       this.profileObject(application.profile),
       'fullName',
@@ -228,8 +436,9 @@ export class TeamApplicationsService {
         event: `TEAM_APPLICATION_${decision}`,
       },
     });
+
     return {
-      ...(await this.findAssignedInterview(userId, id)),
+      ...(await this.findOne(id)),
       notificationStatus,
     };
   }
@@ -366,20 +575,39 @@ export class TeamApplicationsService {
     }
     this.ensurePending(application.status);
 
-    const updated = await this.prisma.teamApplication.updateMany({
-      where: { id, status: TEAM_APPLICATION_STATUS.PENDING_REVIEW },
-      data: {
-        status: TEAM_APPLICATION_STATUS.REJECTED,
-        reviewedByUserId: reviewerUserId,
-        rejectionReason: reason,
-        rejectedAt: new Date(),
-        assignedAdminProfileId: null,
-        interviewAssignedAt: null,
-      },
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.teamApplication.updateMany({
+        where: { id, status: TEAM_APPLICATION_STATUS.PENDING_REVIEW },
+        data: {
+          status: TEAM_APPLICATION_STATUS.REJECTED,
+          reviewedByUserId: reviewerUserId,
+          rejectionReason: reason,
+          rejectedAt: now,
+          decidedByUserId: reviewerUserId,
+          decidedAt: now,
+          decisionReason: reason,
+          assignedAdminProfileId: null,
+          interviewAssignedAt: null,
+        },
+      });
+      if (updated.count !== 1) {
+        throw new ConflictException('La postulación ya fue procesada');
+      }
+
+      await tx.auditEvent.create({
+        data: {
+          actorId: reviewerUserId,
+          action: 'TEAM_APPLICATION_REJECTED',
+          entityType: 'TEAM_APPLICATION',
+          entityId: String(id),
+          metadata: {
+            status: 'REJECTED',
+            role: application.requestedRole,
+          },
+        },
+      });
     });
-    if (updated.count !== 1) {
-      throw new ConflictException('La postulación ya fue procesada');
-    }
 
     const notificationStatus = await this.notifySafely({
       recipient: application.email,
@@ -408,6 +636,8 @@ export class TeamApplicationsService {
       requestedRole: application.requestedRole,
       specialty: this.profileString(profile, 'specialty'),
       status: application.status,
+      resultingUserId: application.resultingUserId,
+      decidedAt: application.decidedAt,
       createdAt: application.createdAt,
       updatedAt: application.updatedAt,
       assignedAdmin: application.assignedAdminProfile
@@ -445,7 +675,20 @@ export class TeamApplicationsService {
           }
         : null,
       reviewedBy: application.reviewedByUser,
+      decidedBy: application.decidedBy,
+      decidedAt: application.decidedAt,
+      decisionReason: application.decisionReason,
+      resultingUserId: application.resultingUserId,
+      resultingUser: application.resultingUser
+        ? {
+            id: application.resultingUser.id,
+            name: application.resultingUser.name,
+            email: application.resultingUser.email,
+            role: application.resultingUser.role.name,
+          }
+        : null,
       interviewAssignedAt: application.interviewAssignedAt,
+      interviewCompletedAt: application.interviewCompletedAt,
       rejectionReason: application.rejectionReason,
       rejectedAt: application.rejectedAt,
     };

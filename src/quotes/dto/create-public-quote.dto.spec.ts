@@ -53,7 +53,9 @@ describe('CreatePublicQuoteDto', () => {
     });
 
     const errors = await validate(dto);
-    expect(errors.some(({ property }) => property === 'deliveryMode')).toBe(true);
+    expect(errors.some(({ property }) => property === 'deliveryMode')).toBe(
+      true,
+    );
   });
 
   it('debe rechazar opciones duplicadas después de normalizar códigos', async () => {
@@ -96,13 +98,13 @@ describe('CreatePublicQuoteDto', () => {
     expect(result.contact).not.toHaveProperty('internalNote');
   });
 
-  it('debe rechazar una lista vacía de opciones', async () => {
+  it('permite cotizar el paquete base sin extras', async () => {
     const dto = plainToInstance(CreatePublicQuoteDto, {
       ...validPayload,
       options: [],
     });
 
     const errors = await validate(dto);
-    expect(errors.some(({ property }) => property === 'options')).toBe(true);
+    expect(errors.some(({ property }) => property === 'options')).toBe(false);
   });
 });

@@ -42,9 +42,9 @@ enum ProspectSource {
 }
 
 enum MeetingStatus {
-  REQUESTED
-  CONFIRMED
-  CANCELED
+  PENDING   @map("REQUESTED")
+  SCHEDULED @map("CONFIRMED")
+  CANCELLED @map("CANCELED")
   COMPLETED
 }
 
@@ -70,6 +70,12 @@ model Role {
 }
 
 model User {
+  resultingApplications    TeamApplication[]    @relation("ApplicationAccount")
+  applicationDecisions     TeamApplication[]    @relation("ApplicationDecisionActor")
+  ownedProjects            Project[]            @relation("ProjectOwner")
+  clientProjects           Project[]            @relation("ProjectClient")
+  kickoffs                 Kickoff[]
+  auditEvents              AuditEvent[]
   id                       Int                  @id @default(autoincrement())
   name                     String               @db.VarChar(100)
   email                    String               @unique @db.VarChar(150)
@@ -90,6 +96,8 @@ model User {
   prospect                 Prospect?
   projectMemberships       ProjectMember[]
   reviewedDeliverables     ProjectDeliverable[] @relation("DeliverableReviewer")
+  authoredQuoteVersions    QuoteVersion[]       @relation("QuoteVersionAuthor")
+  commercialQuotes         QuoteVersion[]       @relation("QuoteVersionClient")
   reviewedTeamApplications TeamApplication[]    @relation("TeamApplicationReviewer")
 
   @@index([roleId, isActive])
@@ -167,26 +175,33 @@ model AdminProfile {
 }
 
 model Quote {
-  id             Int                @id @default(autoincrement())
-  publicCode     String             @unique @db.VarChar(20)
-  status         QuoteStatus        @default(RECEIVED)
-  solutionType   String             @db.VarChar(64)
-  contactName    String             @db.VarChar(100)
-  contactEmail   String             @db.VarChar(150)
-  contactPhone   String             @db.VarChar(30)
-  contactCompany String?            @db.VarChar(150)
-  notes          String?            @db.Text
-  pricingStatus  QuotePricingStatus @default(PENDING_RULES)
-  amountMinor    Decimal?           @db.Decimal(15, 0)
-  currency       String?            @db.Char(3)
-  pricingVersion String?            @db.VarChar(50)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  prospectId     Int?
-  options        QuoteOption[]
-  items          QuoteItem[]
-  prospect       Prospect?          @relation(fields: [prospectId], references: [id], onDelete: SetNull)
-  meetings       Meeting[]
+  id                  Int                @id @default(autoincrement())
+  publicCode          String             @unique @db.VarChar(20)
+  status              QuoteStatus        @default(RECEIVED)
+  solutionType        String             @db.VarChar(64)
+  contactName         String             @db.VarChar(100)
+  contactEmail        String             @db.VarChar(150)
+  contactPhone        String             @db.VarChar(30)
+  contactCompany      String?            @db.VarChar(150)
+  notes               String?            @db.Text
+  pricingStatus       QuotePricingStatus @default(PENDING_RULES)
+  amountMinor         Decimal?           @db.Decimal(15, 0)
+  currency            String?            @db.Char(3)
+  pricingVersion      String?            @db.VarChar(50)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deliveryMode        String             @default("NORMAL") @db.VarChar(20)
+  snapshot            Json?
+  legacyCode          String?            @unique @db.VarChar(100)
+  legacyPublicQuoteId Int?               @unique
+  activeVersion       Int                @default(0)
+  versions            QuoteVersion[]
+  project             Project?
+  prospectId          Int?
+  options             QuoteOption[]
+  items               QuoteItem[]
+  prospect            Prospect?          @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  meetings            Meeting[]
 
   @@index([status, createdAt])
   @@index([pricingStatus, createdAt])
@@ -195,6 +210,7 @@ model Quote {
 }
 
 model Prospect {
+  projects  Project[]
   id        Int            @id @default(autoincrement())
   userId    Int?           @unique
   name      String         @db.VarChar(100)
@@ -214,21 +230,24 @@ model Prospect {
 }
 
 model Meeting {
-  id               Int           @id @default(autoincrement())
+  id               Int            @id @default(autoincrement())
   prospectId       Int
   quoteId          Int?
   advisorProfileId Int?
-  status           MeetingStatus @default(REQUESTED)
+  status           MeetingStatus  @default(PENDING)
   scheduledAt      DateTime?
-  timezone         String        @default("America/Lima") @db.VarChar(64)
-  notes            String?       @db.VarChar(1000)
-  externalProvider String?       @db.VarChar(50)
-  externalEventUri String?       @unique @db.VarChar(500)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  prospect         Prospect      @relation(fields: [prospectId], references: [id], onDelete: Cascade)
-  quote            Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
-  advisorProfile   AdminProfile? @relation("MeetingAdvisor", fields: [advisorProfileId], references: [id], onDelete: SetNull)
+  timezone         String         @default("America/Lima") @db.VarChar(64)
+  notes            String?        @db.VarChar(1000)
+  endsAt           DateTime?
+  bookingKey       String?        @unique @db.VarChar(180)
+  externalEvents   MeetingEvent[]
+  externalProvider String?        @db.VarChar(50)
+  externalEventUri String?        @unique @db.VarChar(500)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  prospect         Prospect       @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  quote            Quote?         @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  advisorProfile   AdminProfile?  @relation("MeetingAdvisor", fields: [advisorProfileId], references: [id], onDelete: SetNull)
 
   @@index([prospectId, createdAt])
   @@index([quoteId])
@@ -305,6 +324,14 @@ model TechnologyCategory {
 }
 
 model Project {
+  clientUserId     Int?
+  prospectId       Int?
+  productOwnerId   Int?
+  client           User?                @relation("ProjectClient", fields: [clientUserId], references: [id], onDelete: Restrict)
+  prospect         Prospect?            @relation(fields: [prospectId], references: [id], onDelete: Restrict)
+  productOwner     User?                @relation("ProjectOwner", fields: [productOwnerId], references: [id], onDelete: Restrict)
+  kickoff          Kickoff?
+  milestones       ProjectMilestone[]
   id               Int                  @id @default(autoincrement())
   name             String               @db.VarChar(150)
   slug             String               @unique @db.VarChar(180)
@@ -326,25 +353,31 @@ model Project {
   displayOrder     Int                  @default(0)
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
+  quoteId          Int?                 @unique
+  quote            Quote?               @relation(fields: [quoteId], references: [id], onDelete: Restrict)
   category         Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   technologies     ProjectTechnology[]
   members          ProjectMember[]
   deliverables     ProjectDeliverable[]
 
+  @@index([clientUserId, status])
+  @@index([prospectId])
+  @@index([productOwnerId, status])
   @@index([categoryId])
   @@index([status])
   @@index([isPublished, displayOrder])
 }
 
 model ProjectMember {
-  id         Int               @id @default(autoincrement())
-  projectId  Int
-  userId     Int
-  memberRole ProjectMemberRole
-  isActive   Boolean           @default(true)
-  createdAt  DateTime          @default(now())
-  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  participationBasisPoints Int               @default(0)
+  id                       Int               @id @default(autoincrement())
+  projectId                Int
+  userId                   Int
+  memberRole               ProjectMemberRole
+  isActive                 Boolean           @default(true)
+  createdAt                DateTime          @default(now())
+  project                  Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user                     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
   @@index([userId, isActive])
@@ -352,6 +385,8 @@ model ProjectMember {
 }
 
 model ProjectDeliverable {
+  milestoneId    Int?
+  milestone      ProjectMilestone? @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
   id             Int               @id @default(autoincrement())
   projectId      Int
   title          String            @db.VarChar(150)
@@ -371,6 +406,7 @@ model ProjectDeliverable {
   reviewedBy     User?             @relation("DeliverableReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@unique([projectId, milestoneOrder])
+  @@index([milestoneId])
   @@index([projectId, status, dueDate])
   @@index([reviewedById])
 }
@@ -418,31 +454,162 @@ model PublicQuote {
   createdAt      DateTime @default(now())
 }
 
+enum TeamApplicationStatus {
+  PENDING_REVIEW
+  INTERVIEW_ASSIGNED
+  ACCEPTED
+  REJECTED
+}
+
+enum TeamApplicationRole {
+  DEVELOPER
+  PRODUCT_OWNER
+}
+
 model TeamApplication {
-  id                     Int           @id @default(autoincrement())
-  code                   String        @unique @db.VarChar(100)
-  email                  String        @unique @db.VarChar(150)
-  dni                    String        @unique @db.VarChar(8)
-  requestedRole          String        @db.VarChar(30)
+  resultingUserId        Int?
+  decidedByUserId        Int?
+  decidedAt              DateTime?
+  interviewCompletedAt   DateTime?
+  decisionReason         String?               @db.VarChar(1000)
+  resultingUser          User?                 @relation("ApplicationAccount", fields: [resultingUserId], references: [id], onDelete: SetNull)
+  decidedBy              User?                 @relation("ApplicationDecisionActor", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  id                     Int                   @id @default(autoincrement())
+  code                   String                @unique @db.VarChar(100)
+  email                  String                @unique @db.VarChar(150)
+  dni                    String                @unique @db.VarChar(8)
+  requestedRole          TeamApplicationRole
   profile                Json
-  cv                     Bytes         @db.LongBlob
-  cvName                 String        @db.VarChar(255)
-  photo                  Bytes         @db.LongBlob
-  photoMime              String        @db.VarChar(30)
+  cv                     Bytes                 @db.LongBlob
+  cvName                 String                @db.VarChar(255)
+  photo                  Bytes                 @db.LongBlob
+  photoMime              String                @db.VarChar(30)
   consent                Boolean
-  status                 String        @default("PENDING_REVIEW") @db.VarChar(30)
+  status                 TeamApplicationStatus @default(PENDING_REVIEW)
   assignedAdminProfileId Int?
   reviewedByUserId       Int?
   interviewAssignedAt    DateTime?
-  rejectionReason        String?       @db.VarChar(1000)
+  rejectionReason        String?               @db.VarChar(1000)
   rejectedAt             DateTime?
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @updatedAt
-  assignedAdminProfile   AdminProfile? @relation("TeamApplicationInterviewer", fields: [assignedAdminProfileId], references: [id], onDelete: SetNull)
-  reviewedByUser         User?         @relation("TeamApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  assignedAdminProfile   AdminProfile?         @relation("TeamApplicationInterviewer", fields: [assignedAdminProfileId], references: [id], onDelete: SetNull)
+  reviewedByUser         User?                 @relation("TeamApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
 
+  @@index([resultingUserId])
+  @@index([decidedByUserId, decidedAt])
   @@index([status, createdAt])
   @@index([requestedRole, status, createdAt])
   @@index([assignedAdminProfileId, status])
   @@index([reviewedByUserId])
+}
+
+model QuoteVersion {
+  id           Int               @id @default(autoincrement())
+  quoteId      Int
+  version      Int
+  clientUserId Int
+  authorId     Int
+  observations String?           @db.VarChar(2000)
+  amountMinor  Decimal           @db.Decimal(15, 0)
+  currency     String            @db.Char(3)
+  scope        Json
+  createdAt    DateTime          @default(now())
+  officialAt   DateTime          @default(now())
+  quote        Quote             @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  client       User              @relation("QuoteVersionClient", fields: [clientUserId], references: [id], onDelete: Restrict)
+  author       User              @relation("QuoteVersionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  schedules    PaymentSchedule[]
+
+  @@unique([quoteId, version])
+  @@index([clientUserId, createdAt])
+  @@index([authorId])
+}
+
+model PaymentSchedule {
+  milestoneRecord       ProjectMilestone?
+  id                    Int               @id @default(autoincrement())
+  quoteVersionId        Int
+  sequence              Int
+  percentageBasisPoints Int
+  amountMinor           Decimal           @db.Decimal(15, 0)
+  dueDate               DateTime          @db.Date
+  milestone             String            @db.VarChar(150)
+  quoteVersion          QuoteVersion      @relation(fields: [quoteVersionId], references: [id], onDelete: Restrict)
+  payments              Payment[]
+
+  @@unique([quoteVersionId, sequence])
+  @@index([dueDate])
+}
+
+enum PaymentStatus {
+  CONFIRMED
+  FAILED
+}
+
+model Payment {
+  id              Int             @id @default(autoincrement())
+  scheduleId      Int
+  externalEventId String          @unique @db.VarChar(150)
+  amountMinor     Decimal         @db.Decimal(15, 0)
+  currency        String          @db.Char(3)
+  status          PaymentStatus
+  createdAt       DateTime        @default(now())
+  schedule        PaymentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+
+  @@index([scheduleId, status])
+}
+
+model MeetingEvent {
+  id              Int           @id @default(autoincrement())
+  externalEventId String        @unique @db.VarChar(150)
+  meetingId       Int
+  status          MeetingStatus
+  occurredAt      DateTime
+  createdAt       DateTime      @default(now())
+  meeting         Meeting       @relation(fields: [meetingId], references: [id], onDelete: Restrict)
+
+  @@index([meetingId, occurredAt])
+}
+
+model Kickoff {
+  id        Int      @id @default(autoincrement())
+  projectId Int      @unique
+  actorId   Int
+  heldAt    DateTime
+  notes     String?  @db.VarChar(2000)
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  actor     User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([actorId])
+}
+
+model ProjectMilestone {
+  id                Int                  @id @default(autoincrement())
+  projectId         Int
+  paymentScheduleId Int                  @unique
+  title             String               @db.VarChar(150)
+  dueDate           DateTime             @db.Date
+  sequence          Int
+  project           Project              @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  paymentSchedule   PaymentSchedule      @relation(fields: [paymentScheduleId], references: [id], onDelete: Restrict)
+  deliverables      ProjectDeliverable[]
+
+  @@unique([projectId, sequence])
+}
+
+model AuditEvent {
+  id         Int      @id @default(autoincrement())
+  actorId    Int?
+  action     String   @db.VarChar(100)
+  entityType String   @db.VarChar(50)
+  entityId   String   @db.VarChar(100)
+  metadata   Json
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, createdAt, id])
+  @@index([actorId, createdAt, id])
+  @@index([createdAt, id])
 }

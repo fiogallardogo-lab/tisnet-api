@@ -205,3 +205,25 @@ Cualquier campo desconocido (ej. `status`, `amountMinor`, etc.) es rechazado inm
 | `deliveryMode` | `Quote` | `String @db.VarChar(20)` | `String?` o `@default("NORMAL")` | Persistir la modalidad directamente en la entidad raíz `Quote` para facilitar consultas administrativas, reportes y dashboards sin necesidad de consultar el desglose de `QuoteItem`. |
 
 *Nota de implementación:* Mientras el Responsable A integra la columna en Prisma, la modalidad queda registrada y respaldada financieramente en la tabla `QuoteItem` bajo el código `DELIVERY_ADJUSTMENT`.
+
+## Sprints 7–9 — contrato canónico (2026-09-25)
+
+A es propietario de Prisma, AppModule, Quotes, Prospects, Payments y Kickoff. Esta asignación sustituye la propiedad histórica de Quotes documentada en el handoff del Sprint 5. Los módulos de B (documents, notifications, scheduling, storage, meetings) no se modifican.
+
+### Cotización única
+
+`POST /api/v1/public/quotes` es canónico. `POST /api/v1/public/project-quotes` conserva el contrato del portal como adaptador y llama al mismo QuotesService; no escribe PublicQuote. Se admiten cero extras para cotizar el paquete base. El body contiene solutionType, options [{code}], deliveryMode NORMAL/URGENT/FLEXIBLE, contact {fullName,email,phone,company?}, notes?. Nunca se acepta un importe calculado por el cliente. El adaptador conserva catalogVersion=SP-01-v2 por compatibilidad.
+
+Respuesta 201: {success,message,data:{code,status,pricingStatus,amountMinor,currency,pricingVersion,createdAt}}. Código nuevo Q-XXXXXXXX, total en unidades monetarias menores. Quote, opciones, líneas y Prospect se guardan transaccionalmente. Un contacto público no se convierte automáticamente en cuenta de usuario.
+
+Se utiliza el motor existente `Sp01V2PricingEngine`, no el catálogo duplicado de public-intake: CORPORATE_SITE=180000 y WEB_APP=580000 unidades menores. Se detectaron precios distintos en el catálogo anterior. Los importes históricos NO se recalculan. C debe retirar su cálculo local y consumir el importe devuelto por el backend.
+
+`GET /api/v1/public/quotes/:code`: resumen sin correo, nombre, teléfono ni notas. 404 si no existe. `GET /api/v1/quotes/:code/pdf`: JWT obligatorio, permitido al contacto autenticado o ADMIN/SUPER_ADMIN; 403 para otros usuarios. El renderizador exportado por B recibe exclusivamente Quote persistida, opciones y líneas persistidas. No se envía correo automáticamente.
+
+`GET /api/v1/admin/quotes` y `GET /api/v1/admin/quotes/:id`: ADMIN/SUPER_ADMIN. Conservan el shape de la bandeja existente, ahora sobre Quote. Filtros search, status (CALCULATED/PENDING_RULES), page, limit. Los IDs históricos de PublicQuote no son IDs canónicos: volver a consultar la bandeja después de migrar.
+
+### Consolidación sin borrado
+
+PublicQuote queda archivada, sin lectores/escritores en servicios de producción. La migración copia contacto, notas, snapshot, precio, moneda, fecha y líneas. `legacyCode` y `legacyPublicQuoteId` mantienen trazabilidad. Los Q-XXXXXXXX migrados usan base36 con ceros iniciales, reservada para migración; el generador aleatorio excluye cero. Los QUOTE-UUID antiguos son alias de consulta temporales, nunca nuevos códigos emitidos. No retirar la tabla/alias hasta que C y B hayan migrado enlaces y se haya validado un respaldo.
+
+Errores: 400 validación de DTO/estado; 422 solución/opción desconocida; 503 agotamiento de colisiones de código. Regresión integrada en test/commercial-core.e2e-spec.ts.

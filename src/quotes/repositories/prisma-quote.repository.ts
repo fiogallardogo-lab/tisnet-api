@@ -51,6 +51,19 @@ export class PrismaQuoteRepository implements QuoteRepository {
         const quote = await tx.quote.create({
           data: {
             publicCode: input.publicCode,
+            deliveryMode: input.deliveryMode || 'NORMAL',
+            prospect: {
+              connectOrCreate: {
+                where: { email: input.contactEmail },
+                create: {
+                  email: input.contactEmail,
+                  name: input.contactName,
+                  phone: input.contactPhone,
+                  company: input.contactCompany,
+                  source: 'QUOTE',
+                },
+              },
+            },
             status: input.status,
             solutionType: input.solutionType,
             contactName: input.contactName,
@@ -102,10 +115,14 @@ export class PrismaQuoteRepository implements QuoteRepository {
     }
   }
 
-  async findByPublicCode(publicCode: string): Promise<QuoteDetailRecord | null> {
+  async findByPublicCode(
+    publicCode: string,
+  ): Promise<QuoteDetailRecord | null> {
     const code = publicCode.trim().toUpperCase();
     const quote = await this.prisma.quote.findUnique({
-      where: { publicCode: code },
+      where: code.startsWith('QUOTE-')
+        ? { legacyCode: publicCode.trim() }
+        : { publicCode: code },
       include: {
         options: { orderBy: { displayOrder: 'asc' } },
         items: { orderBy: { displayOrder: 'asc' } },

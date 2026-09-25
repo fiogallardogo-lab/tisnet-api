@@ -89,6 +89,7 @@ export class QuotesService {
       try {
         const created = await this.repository.create({
           publicCode: this.codeGenerator(),
+          deliveryMode: normalized.deliveryMode,
           status: QuoteStatus.RECEIVED,
           solutionType: solution.code,
           contactName: normalized.contact.fullName,

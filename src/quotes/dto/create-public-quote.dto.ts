@@ -43,9 +43,9 @@ export class CreatePublicQuoteDto {
   })
   solutionType: string;
 
-  @ApiProperty({ type: [QuoteOptionDto], minItems: 1, maxItems: 20 })
+  @ApiProperty({ type: [QuoteOptionDto], minItems: 0, maxItems: 20 })
   @IsArray()
-  @ArrayMinSize(1)
+  @ArrayMinSize(0)
   @ArrayMaxSize(20)
   @ArrayUnique((option: QuoteOptionDto) => option.code, {
     message: 'Las características seleccionadas no pueden repetirse',
