@@ -1,14 +1,4 @@
-import { Module } from '@nestjs/common';
-import { PassportModule } from '@nestjs/passport';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { PrismaModule } from '../prisma/prisma.module';
-import { ClientPortalController } from './client-portal.controller';
-import { ClientPortalService } from './client-portal.service';
-
-@Module({
-  imports: [PrismaModule, PassportModule.register({ defaultStrategy: 'jwt' })],
-  controllers: [ClientPortalController],
-  providers: [ClientPortalService, JwtAuthGuard, RolesGuard],
-})
-export class ClientPortalModule {}
+import { PaymentsModule } from '../payments/payments.module';
+import { Module } from '@nestjs/common'; import { PassportModule } from '@nestjs/passport'; import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; import { RolesGuard } from '../auth/guards/roles.guard'; import { PrismaModule } from '../prisma/prisma.module'; import { ClientPortalController } from './client-portal.controller'; import { ClientPortalService } from './client-portal.service'; import { ClientQuotesController } from './client-quotes.controller'; import { ClientQuotesService } from './client-quotes.service';
+import { ClientPaymentsController } from './client-payments.controller';
+import { ClientPaymentsService } from './client-payments.service';  @Module({   imports: [PaymentsModule, PrismaModule, PassportModule.register({ defaultStrategy: 'jwt' })],   controllers: [ClientPortalController, ClientQuotesController, ClientPaymentsController],   providers: [ClientPortalService, ClientQuotesService, ClientPaymentsService, JwtAuthGuard, RolesGuard], }) export class ClientPortalModule {}

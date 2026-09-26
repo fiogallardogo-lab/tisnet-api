@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsDateString,
+  IsIn,
   IsEmail,
   IsInt,
   IsOptional,
@@ -26,4 +27,13 @@ export class AvailabilityQuery {
 export class MeetingListQuery {
   @Type(() => Number) @IsInt() @Min(1) page = 1;
   @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
+}
+
+export class UpdateMeetingStatusDto {
+  @IsIn(['SCHEDULED', 'COMPLETED', 'CANCELLED']) status:
+    'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+}
+export class RescheduleMeetingDto {
+  @IsDateString({ strict: true }) start: string;
+  @IsDateString({ strict: true }) end: string;
 }

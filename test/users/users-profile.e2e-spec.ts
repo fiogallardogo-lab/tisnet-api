@@ -1,12 +1,11 @@
+import { createAppTestModule } from '../helpers/create-app-test-module';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { App } from 'supertest/types';
 
-import { AppModule } from '../../src/app.module';
 import { HttpExceptionFilter } from '../../src/common/filters/http-exception/http-exception.filter';
 import { TransformInterceptor } from '../../src/common/interceptors/transform/transform.interceptor';
 import { PrismaService } from '../../src/prisma/prisma.service';
@@ -68,9 +67,7 @@ describe('Sprint 5 users, profiles, catalog and legal versions (MySQL e2e)', () 
 
     process.env.PRIVACY_VERSION = legal.privacyVersion;
 
-    const module = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    const module = await createAppTestModule().compile();
 
     app = module.createNestApplication();
 

@@ -239,7 +239,7 @@ export class TeamApplicationsService {
     });
 
     if (!application) {
-      throw new NotFoundException('Postulaci+¦n no encontrada');
+      throw new NotFoundException('Postulaci+Â¦n no encontrada');
     }
 
     if (userRole === PLATFORM_ROLES.ADMIN) {
@@ -255,7 +255,7 @@ export class TeamApplicationsService {
 
     if (application.status !== TEAM_APPLICATION_STATUS.INTERVIEW_ASSIGNED) {
       throw new ConflictException(
-        'La postulaci+¦n ya tiene una decisi+¦n registrada',
+        'La postulaci+Â¦n ya tiene una decisi+Â¦n registrada',
       );
     }
 
@@ -286,7 +286,7 @@ export class TeamApplicationsService {
       });
 
       if (updated.count !== 1) {
-        throw new ConflictException('La postulaci+¦n ya fue procesada');
+        throw new ConflictException('La postulaci+Â¦n ya fue procesada');
       }
 
       if (decision === 'ACCEPTED') {
@@ -304,7 +304,7 @@ export class TeamApplicationsService {
         if (existingUser) {
           if (existingUser.role.name !== application.requestedRole) {
             throw new ConflictException(
-              `El correo ya est+í registrado con un rol incompatible (${existingUser.role.name})`,
+              `El correo ya est+Ã­ registrado con un rol incompatible (${existingUser.role.name})`,
             );
           }
 
@@ -332,7 +332,7 @@ export class TeamApplicationsService {
 
           if (!role) {
             throw new InternalServerErrorException(
-              `El rol ${application.requestedRole} no est+í configurado`,
+              `El rol ${application.requestedRole} no est+Ã­ configurado`,
             );
           }
 
@@ -363,7 +363,7 @@ export class TeamApplicationsService {
               error instanceof Prisma.PrismaClientKnownRequestError &&
               error.code === 'P2002'
             ) {
-              throw new ConflictException('El correo ya est+í registrado');
+              throw new ConflictException('El correo ya est+Ã­ registrado');
             }
             throw error;
           }
@@ -429,7 +429,7 @@ export class TeamApplicationsService {
           : 'TISNET: resultado de entrevista',
       text:
         decision === 'ACCEPTED'
-          ? `Hola ${fullName}. Tu entrevista fue aprobada. TISNET se comunicar+í contigo para los siguientes pasos.`
+          ? `Hola ${fullName}. Tu entrevista fue aprobada. TISNET se comunicar+Ã­ contigo para los siguientes pasos.`
           : `Hola ${fullName}. Gracias por participar en la entrevista. En esta oportunidad no continuaremos con el proceso.`,
       metadata: {
         applicationId: String(id),
@@ -449,7 +449,7 @@ export class TeamApplicationsService {
       select: detailSelect,
     });
     if (!application) {
-      throw new NotFoundException('Postulaci+¦n no encontrada');
+      throw new NotFoundException('Postulaci+Â¦n no encontrada');
     }
     return this.toDetail(application);
   }
@@ -460,7 +460,7 @@ export class TeamApplicationsService {
       select: { photo: true, photoMime: true },
     });
     if (!application) {
-      throw new NotFoundException('Postulaci+¦n no encontrada');
+      throw new NotFoundException('Postulaci+Â¦n no encontrada');
     }
     return {
       content: Buffer.from(application.photo),
@@ -474,7 +474,7 @@ export class TeamApplicationsService {
       select: { cv: true, cvName: true },
     });
     if (!application) {
-      throw new NotFoundException('Postulaci+¦n no encontrada');
+      throw new NotFoundException('Postulaci+Â¦n no encontrada');
     }
     return {
       content: Buffer.from(application.cv),
@@ -516,7 +516,7 @@ export class TeamApplicationsService {
     ]);
 
     if (!application) {
-      throw new NotFoundException('Postulaci+¦n no encontrada');
+      throw new NotFoundException('Postulaci+Â¦n no encontrada');
     }
     this.ensurePending(application.status);
     if (!admin) {
@@ -540,7 +540,7 @@ export class TeamApplicationsService {
       },
     });
     if (updated.count !== 1) {
-      throw new ConflictException('La postulaci+¦n ya fue procesada');
+      throw new ConflictException('La postulaci+Â¦n ya fue procesada');
     }
 
     const notificationStatus = await this.notifySafely({
@@ -571,7 +571,7 @@ export class TeamApplicationsService {
       },
     });
     if (!application) {
-      throw new NotFoundException('Postulaci+¦n no encontrada');
+      throw new NotFoundException('Postulaci+Â¦n no encontrada');
     }
     this.ensurePending(application.status);
 
@@ -592,7 +592,7 @@ export class TeamApplicationsService {
         },
       });
       if (updated.count !== 1) {
-        throw new ConflictException('La postulaci+¦n ya fue procesada');
+        throw new ConflictException('La postulaci+Â¦n ya fue procesada');
       }
 
       await tx.auditEvent.create({
@@ -611,7 +611,7 @@ export class TeamApplicationsService {
 
     const notificationStatus = await this.notifySafely({
       recipient: application.email,
-      subject: 'TISNET: resultado de tu postulaci+¦n',
+      subject: 'TISNET: resultado de tu postulaci+Â¦n',
       text: this.rejectionMessage(application, reason),
       metadata: {
         applicationId: String(id),
@@ -696,7 +696,7 @@ export class TeamApplicationsService {
 
   private ensurePending(status: string) {
     if (status !== TEAM_APPLICATION_STATUS.PENDING_REVIEW) {
-      throw new ConflictException('La postulaci+¦n ya fue procesada');
+      throw new ConflictException('La postulaci+Â¦n ya fue procesada');
     }
   }
 
@@ -741,8 +741,8 @@ export class TeamApplicationsService {
     );
     const calendly = admin.calendlyUrl
       ? ` Puedes coordinar el horario en ${admin.calendlyUrl}.`
-      : ' El entrevistador se comunicar+í contigo para coordinar el horario.';
-    return `Hola ${name}. Tu postulaci+¦n como ${application.requestedRole} avanz+¦ a entrevista. ${admin.user.name} fue asignado como entrevistador.${calendly}`;
+      : ' El entrevistador se comunicar+Ã­ contigo para coordinar el horario.';
+    return `Hola ${name}. Tu postulaci+Â¦n como ${application.requestedRole} avanz+Â¦ a entrevista. ${admin.user.name} fue asignado como entrevistador.${calendly}`;
   }
 
   private rejectionMessage(

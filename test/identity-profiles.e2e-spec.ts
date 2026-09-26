@@ -1,10 +1,10 @@
+import { createAppTestModule } from './helpers/create-app-test-module';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { App } from 'supertest/types';
 
-import { AppModule } from '../src/app.module.js';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception/http-exception.filter.js';
 import { TransformInterceptor } from '../src/common/interceptors/transform/transform.interceptor.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
@@ -54,9 +54,7 @@ describe('Identity and profiles API (e2e)', () => {
     process.env.TERMS_VERSION = termsVersion;
     process.env.PRIVACY_VERSION = privacyVersion;
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    const moduleFixture: TestingModule = await createAppTestModule().compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');

@@ -141,7 +141,7 @@ describe('TeamApplicationsService', () => {
     const pending = application();
     const assignedAdmin = {
       id: 4,
-      executiveTitle: 'Asesor t+®cnico',
+      executiveTitle: 'Asesor t+Â®cnico',
       specialty: 'Soluciones web',
       calendlyUrl: 'https://calendly.com/tisnet/entrevista',
       user: {
@@ -202,7 +202,7 @@ describe('TeamApplicationsService', () => {
         application({
           status: 'REJECTED',
           rejectionReason:
-            'Actualmente buscamos mayor experiencia en producci+¦n.',
+            'Actualmente buscamos mayor experiencia en producci+Â¦n.',
           rejectedAt: now,
           reviewedByUser: {
             id: 99,
@@ -216,7 +216,7 @@ describe('TeamApplicationsService', () => {
 
     const result = await service.reject(
       1,
-      'Actualmente buscamos mayor experiencia en producci+¦n.',
+      'Actualmente buscamos mayor experiencia en producci+Â¦n.',
       99,
     );
 
@@ -249,7 +249,7 @@ describe('TeamApplicationsService', () => {
     await expect(
       service.reject(
         1,
-        'Actualmente buscamos mayor experiencia en producci+¦n.',
+        'Actualmente buscamos mayor experiencia en producci+Â¦n.',
         99,
       ),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -298,7 +298,7 @@ describe('TeamApplicationsService', () => {
         PLATFORM_ROLES.ADMIN,
         1,
         'ACCEPTED',
-        'Candidato con excelente perfil t+®cnico',
+        'Candidato con excelente perfil t+Â®cnico',
       );
 
       expect(prisma.user.create).toHaveBeenCalledWith(
@@ -478,7 +478,7 @@ describe('TeamApplicationsService', () => {
         .mockResolvedValueOnce({
           ...appRecord,
           status: 'REJECTED',
-          decisionReason: 'No cumple con los requisitos t+®cnicos exigidos.',
+          decisionReason: 'No cumple con los requisitos t+Â®cnicos exigidos.',
           decidedByUserId: 8,
           decidedAt: now,
           resultingUserId: null,
@@ -487,7 +487,7 @@ describe('TeamApplicationsService', () => {
       prisma.adminProfile.findUnique.mockResolvedValue({ id: 10, userId: 8 });
       prisma.teamApplication.updateMany.mockResolvedValue({ count: 1 });
 
-      const reason = 'No cumple con los requisitos t+®cnicos exigidos.';
+      const reason = 'No cumple con los requisitos t+Â®cnicos exigidos.';
       const result = await service.completeAssignedInterview(
         8,
         PLATFORM_ROLES.ADMIN,
@@ -531,7 +531,7 @@ describe('TeamApplicationsService', () => {
           1,
           'ACCEPTED',
         ),
-      ).rejects.toThrow('La postulaci+¦n ya fue procesada');
+      ).rejects.toThrow('La postulaci+Â¦n ya fue procesada');
     });
 
     it('handles Prisma P2002 error gracefully during user creation', async () => {
@@ -561,7 +561,7 @@ describe('TeamApplicationsService', () => {
           1,
           'ACCEPTED',
         ),
-      ).rejects.toThrow('El correo ya est+í registrado');
+      ).rejects.toThrow('El correo ya est+Ã­ registrado');
     });
 
     it('blocks ADMIN from deciding an interview assigned to another admin (RBAC)', async () => {

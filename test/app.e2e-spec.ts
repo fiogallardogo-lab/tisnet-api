@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { createAppTestModule } from './helpers/create-app-test-module';
+import type { TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 
-import { AppModule } from './../src/app.module.js';
 import { TransformInterceptor } from '../src/common/interceptors/transform/transform.interceptor.js';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception/http-exception.filter.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
@@ -67,9 +67,7 @@ describe('TISNET API (e2e)', () => {
       );
     }
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    const moduleFixture: TestingModule = await createAppTestModule().compile();
 
     app = moduleFixture.createNestApplication();
 

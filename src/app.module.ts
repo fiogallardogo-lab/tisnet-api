@@ -3,6 +3,8 @@ import { ClientPortalModule } from './client-portal/client-portal.module';
 import { IntakeModule } from './public-intake/intake.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -28,13 +30,29 @@ import { BusinessDaysModule } from './common/business-days/business-days.module.
 import { AuditModule } from './audit/audit.module.js';
 import { SignedUrlModule } from './common/signed-urls/signed-url.module.js';
 import { SlaAlertsModule } from './common/sla-alerts/sla-alerts.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-    cache: true,
+      cache: true,
     }),
+    /**
+     * Rate limiting � global defaults (overridable per-route with @Throttle()).
+     *
+     * Profiles:
+     *   default  � 120 req / 60 s  (general API)
+     *   auth     � 10  req / 60 s  (login, forgot-password, reset-password)
+     *   public   � 30  req / 60 s  (public quote, public meeting booking)
+     *   webhook  � 60  req / 60 s  (Culqi/Calendly webhooks � higher burst allowed)
+     */
+    ThrottlerModule.forRoot([
+      { name: 'default', ttl: 60000, limit: 120 },
+      { name: 'auth',    ttl: 60000, limit: 10 },
+      { name: 'public',  ttl: 60000, limit: 30 },
+      { name: 'webhook', ttl: 60000, limit: 60 },
+    ]),
     PrismaModule,
     UsersModule,
     AuthModule,
@@ -60,8 +78,17 @@ import { SlaAlertsModule } from './common/sla-alerts/sla-alerts.module.js';
     BusinessDaysModule,
     SignedUrlModule,
     SlaAlertsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Apply the throttler globally; individual controllers can use
+    // @SkipThrottle() or @Throttle({ auth: { ... } }) to override.
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

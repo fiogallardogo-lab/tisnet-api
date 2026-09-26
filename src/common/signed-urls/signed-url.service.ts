@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
@@ -25,16 +25,21 @@ export class SignedUrlService {
     this.secret =
       this.configService.get<string>('SIGNED_URL_SECRET') ??
       this.configService.get<string>('JWT_SECRET') ??
-      'tisnet-default-secure-signed-url-secret-2026';
+      '';
+  }
+
+  get defaultTtlSeconds() {
+    const ttl = Number(this.configService.get('SIGNED_URL_TTL_SECONDS') ?? 300);
+    return Number.isInteger(ttl) && ttl > 0 && ttl <= 3600 ? ttl : 300;
   }
 
   /**
-   * Generates a signed token valid for `expiresInSeconds` (default 15 minutes / 900s).
+   * Generates a signed token valid for `expiresInSeconds` (default 5 minutes / 300s).
    */
   generateSignedToken(
     entityId: string | number,
     fileType: 'cv' | 'photo',
-    expiresInSeconds = 900,
+    expiresInSeconds = this.defaultTtlSeconds,
   ): { token: string; expiresAt: Date; expiresInSeconds: number } {
     const expiresAtMs = Date.now() + expiresInSeconds * 1000;
     const payload: SignedUrlPayload = {
@@ -62,7 +67,7 @@ export class SignedUrlService {
     baseUrl: string,
     entityId: string | number,
     fileType: 'cv' | 'photo',
-    expiresInSeconds = 900,
+    expiresInSeconds = this.defaultTtlSeconds,
   ): { signedUrl: string; expiresAt: Date } {
     const { token, expiresAt } = this.generateSignedToken(
       entityId,
@@ -115,7 +120,7 @@ export class SignedUrlService {
     }
 
     // Expiration check
-    if (Date.now() > payload.expiresAt) {
+    if (Date.now() >= payload.expiresAt) {
       return { valid: false, expired: true, error: 'Token has expired', payload };
     }
 
@@ -131,6 +136,7 @@ export class SignedUrlService {
   }
 
   private sign(data: string): string {
+    if (!this.secret.trim()) throw new ServiceUnavailableException('Falta configurar el secreto de descargas.');
     return crypto.createHmac('sha256', this.secret).update(data).digest('base64url');
   }
 }

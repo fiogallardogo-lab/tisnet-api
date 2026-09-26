@@ -5,18 +5,26 @@ import {
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CreateQuoteDto, TeamApplicationDto } from './intake.dto';
 import { IntakeService } from './intake.service';
 import type { IntakeFile } from './intake.service';
+
 @Controller('public')
 export class IntakeController {
   constructor(private readonly service: IntakeService) {}
+
+  /** 30 req / 60 s � public quote creation */
   @Post('project-quotes')
+  @Throttle({ public: { ttl: 60000, limit: 30 } })
   quote(@Body() body: CreateQuoteDto) {
     return this.service.createQuote(body);
   }
+
+  /** 10 req / 60 s � file uploads are heavier */
   @Post('team-applications')
+  @Throttle({ public: { ttl: 60000, limit: 10 } })
   @UseInterceptors(
     FileFieldsInterceptor(
       [

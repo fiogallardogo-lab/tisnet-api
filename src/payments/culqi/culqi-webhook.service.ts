@@ -1,12 +1,17 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional, forwardRef, Inject } from '@nestjs/common';
 import { AuditService } from '../../audit/audit.service';
 import { CulqiProcessedEvent, CulqiWebhookPayload } from './culqi-webhook.types';
+import { PaymentsService } from '../payments.service';
 
 @Injectable()
 export class CulqiWebhookService {
   private readonly logger = new Logger(CulqiWebhookService.name);
 
-  constructor(@Optional() private readonly auditService?: AuditService) {}
+  constructor(
+    @Inject(forwardRef(() => PaymentsService))
+    private readonly paymentsService: PaymentsService,
+    @Optional() private readonly auditService?: AuditService,
+  ) {}
 
   /**
    * Process Culqi webhook payload.
@@ -39,6 +44,17 @@ export class CulqiWebhookService {
           this.logger.log(
             `[CulqiWebhook] Payment SUCCEEDED: charge=${data.id}, amount=${data.amount} ${data.currency_code}, email=${data.email}`,
           );
+
+          if (data.metadata?.scheduleId) {
+            await this.paymentsService.processEvent({
+              scheduleId: Number(data.metadata.scheduleId),
+              externalEventId: data.id,
+              amountMinor: Number(data.amount),
+              currency: data.currency_code,
+              status: 'CONFIRMED',
+            });
+          }
+
           await this.auditService?.logPaymentEvent({
             paymentId: data.id,
             amount: data.amount,
@@ -61,6 +77,17 @@ export class CulqiWebhookService {
           this.logger.warn(
             `[CulqiWebhook] Payment FAILED: charge=${data.id}, outcome=${data.outcome?.user_message}`,
           );
+
+          if (data.metadata?.scheduleId) {
+            await this.paymentsService.processEvent({
+              scheduleId: Number(data.metadata.scheduleId),
+              externalEventId: data.id,
+              amountMinor: Number(data.amount),
+              currency: data.currency_code,
+              status: 'FAILED',
+            });
+          }
+
           await this.auditService?.logPaymentEvent({
             paymentId: data.id,
             amount: data.amount,
@@ -80,6 +107,25 @@ export class CulqiWebhookService {
           baseEvent.status = data.state === 'paid' ? 'SUCCEEDED' : 'PENDING';
 
           this.logger.log(`[CulqiWebhook] Order status changed: order=${data.id}, state=${data.state}`);
+
+          if (data.state === 'paid' && data.metadata?.scheduleId) {
+             await this.paymentsService.processEvent({
+                scheduleId: Number(data.metadata.scheduleId),
+                externalEventId: data.id,
+                amountMinor: Number(data.amount),
+                currency: data.currency_code,
+                status: 'CONFIRMED',
+             });
+          } else if (data.state === 'expired' && data.metadata?.scheduleId) {
+             await this.paymentsService.processEvent({
+                scheduleId: Number(data.metadata.scheduleId),
+                externalEventId: data.id,
+                amountMinor: Number(data.amount),
+                currency: data.currency_code,
+                status: 'FAILED',
+             });
+          }
+
           break;
         }
 
@@ -90,8 +136,13 @@ export class CulqiWebhookService {
         }
       }
     } catch (err: any) {
-      this.logger.error(`[CulqiWebhook] Error processing event ${eventType}: ${err.message}`, err.stack);
-      baseEvent.status = 'FAILED';
+      if (err.status === 409 || err.response?.statusCode === 409) {
+        this.logger.log(`[CulqiWebhook] Idempotent event processing conflict: ${err.message}`);
+        baseEvent.status = 'SUCCEEDED'; // Conflict means already processed
+      } else {
+        this.logger.error(`[CulqiWebhook] Error processing event ${eventType}: ${err.message}`, err.stack);
+        baseEvent.status = 'FAILED';
+      }
     }
 
     return baseEvent;

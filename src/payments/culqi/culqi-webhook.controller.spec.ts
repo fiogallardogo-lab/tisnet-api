@@ -7,7 +7,7 @@ describe('CulqiWebhookController', () => {
 
   beforeEach(() => {
     service = new CulqiWebhookService();
-    controller = new CulqiWebhookController(service);
+    controller = new CulqiWebhookController(service, { get: () => 'test-secret' } as any);
   });
 
   it('should return { received: true } immediately on valid webhook', async () => {
@@ -17,7 +17,7 @@ describe('CulqiWebhookController', () => {
       data: { id: 'chr_123', amount: 5000 },
     };
 
-    const response = await controller.handleWebhook(payload);
+    const response = await controller.handleWebhook(payload, 'Basic test-secret');
     expect(response).toEqual({ received: true });
   });
 });

@@ -57,4 +57,67 @@ describe('AuditService helpers', () => {
       }),
     );
   });
+
+  describe('list pagination and search', () => {
+    const mockEvents = [
+      { id: 3, action: 'CREATE' },
+      { id: 2, action: 'UPDATE' },
+      { id: 1, action: 'DELETE' },
+    ];
+
+    beforeEach(() => {
+      prismaMock.auditEvent.findMany = vi.fn();
+      prismaMock.auditEvent.count = vi.fn();
+      (service as any).prisma = {
+        $transaction: vi.fn(),
+        auditEvent: prismaMock.auditEvent,
+      };
+    });
+
+    it('uses cursor pagination by default', async () => {
+      prismaMock.auditEvent.findMany.mockResolvedValue(mockEvents);
+
+      const result = await service.list({ limit: 2 } as any);
+
+      expect(prismaMock.auditEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 3 }),
+      );
+      expect(result.items).toHaveLength(2);
+      expect(result.nextCursor).toBe(2);
+      expect((result as any).meta).toBeUndefined();
+    });
+
+    it('uses offset pagination when page is provided', async () => {
+      (service as any).prisma.$transaction.mockResolvedValue([
+        mockEvents.slice(0, 2),
+        3,
+      ]);
+
+      const result = await service.list({ page: 1, limit: 2 } as any);
+
+      expect((service as any).prisma.$transaction).toHaveBeenCalled();
+      expect(result.items).toHaveLength(2);
+      expect((result as any).nextCursor).toBeUndefined();
+      expect(result.meta).toEqual({
+        page: 1,
+        limit: 2,
+        totalItems: 3,
+        totalPages: 2,
+      });
+    });
+
+    it('applies search safely', async () => {
+      prismaMock.auditEvent.findMany.mockResolvedValue(mockEvents);
+
+      await service.list({ limit: 10, search: 'TEST' } as any);
+
+      expect(prismaMock.auditEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [{ action: { contains: 'TEST' } }],
+          }),
+        }),
+      );
+    });
+  });
 });

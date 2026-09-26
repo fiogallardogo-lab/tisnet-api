@@ -98,6 +98,7 @@ model User {
   reviewedDeliverables     ProjectDeliverable[] @relation("DeliverableReviewer")
   authoredQuoteVersions    QuoteVersion[]       @relation("QuoteVersionAuthor")
   commercialQuotes         QuoteVersion[]       @relation("QuoteVersionClient")
+  acceptedQuoteVersions    QuoteVersion[]       @relation("QuoteVersionAccepter")
   reviewedTeamApplications TeamApplication[]    @relation("TeamApplicationReviewer")
 
   @@index([roleId, isActive])
@@ -505,21 +506,25 @@ model TeamApplication {
 }
 
 model QuoteVersion {
-  id           Int               @id @default(autoincrement())
-  quoteId      Int
-  version      Int
-  clientUserId Int
-  authorId     Int
-  observations String?           @db.VarChar(2000)
-  amountMinor  Decimal           @db.Decimal(15, 0)
-  currency     String            @db.Char(3)
-  scope        Json
-  createdAt    DateTime          @default(now())
-  officialAt   DateTime          @default(now())
-  quote        Quote             @relation(fields: [quoteId], references: [id], onDelete: Restrict)
-  client       User              @relation("QuoteVersionClient", fields: [clientUserId], references: [id], onDelete: Restrict)
-  author       User              @relation("QuoteVersionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  schedules    PaymentSchedule[]
+  id               Int       @id @default(autoincrement())
+  quoteId          Int
+  version          Int
+  clientUserId     Int
+  authorId         Int
+  observations     String?   @db.VarChar(2000)
+  amountMinor      Decimal   @db.Decimal(15, 0)
+  currency         String    @db.Char(3)
+  scope            Json
+  createdAt        DateTime  @default(now())
+  officialAt       DateTime  @default(now())
+  acceptedAt       DateTime?
+  acceptedByUserId Int?
+
+  quote          Quote             @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  client         User              @relation("QuoteVersionClient", fields: [clientUserId], references: [id], onDelete: Restrict)
+  author         User              @relation("QuoteVersionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  acceptedByUser User?             @relation("QuoteVersionAccepter", fields: [acceptedByUserId], references: [id], onDelete: Restrict)
+  schedules      PaymentSchedule[]
 
   @@unique([quoteId, version])
   @@index([clientUserId, createdAt])

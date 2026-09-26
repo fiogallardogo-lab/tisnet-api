@@ -22,5 +22,7 @@ export class AuditQuery {
   @IsOptional() @IsDateString({ strict: true }) from?: string;
   @IsOptional() @IsDateString({ strict: true }) to?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) cursor?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
   @Type(() => Number) @IsInt() @Min(1) @Max(1000) limit = 50;
+  @IsOptional() search?: string;
 }

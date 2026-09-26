@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   Request,
@@ -16,6 +17,8 @@ import {
   AvailabilityQuery,
   BookMeetingDto,
   MeetingListQuery,
+  UpdateMeetingStatusDto,
+  RescheduleMeetingDto,
 } from './meeting-persistence.dto';
 import { MeetingPersistenceService } from './meeting-persistence.service';
 @Controller('public')
@@ -35,6 +38,24 @@ export class CommercialMeetingsPublicController {
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CommercialMeetingsController {
   constructor(private readonly service: MeetingPersistenceService) {}
+  @Patch('meetings/:id/status')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateMeetingStatusDto,
+    @Request() req: { user: { id: number; role: string } },
+  ) {
+    return this.service.manageMeeting(id, req.user, { status: dto.status });
+  }
+  @Patch('meetings/:id/reschedule')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  reschedule(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RescheduleMeetingDto,
+    @Request() req: { user: { id: number; role: string } },
+  ) {
+    return this.service.manageMeeting(id, req.user, dto);
+  }
   @Get('meetings/my') @Roles('CLIENT', 'ADMIN', 'SUPER_ADMIN') own(
     @Query() query: MeetingListQuery,
     @Request() req: { user: { id: number; email: string; role: string } },

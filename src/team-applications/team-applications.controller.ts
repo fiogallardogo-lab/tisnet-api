@@ -221,8 +221,9 @@ export class TeamApplicationsController {
   }
 
   @Get(':id/signed-url')
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Generar URL firmada temporal para descarga segura de CV o fotografía' })
-  getSignedUrl(
+  async getSignedUrl(
     @Param('id', ParseIntPipe) id: number,
     @Query('fileType') fileType: 'cv' | 'photo',
     @Request() request: any,
@@ -235,6 +236,12 @@ export class TeamApplicationsController {
       throw new BadRequestException('SignedUrlService no está configurado');
     }
 
+    if (request.user.role === PLATFORM_ROLES.ADMIN) {
+      await this.service.findAssignedInterview(request.user.id, id);
+    } else {
+      await this.service.findOne(id);
+    }
+    const ttl = this.signedUrlService.defaultTtlSeconds;
     const host = request.get ? request.get('host') : 'localhost:3000';
     const protocol = request.protocol ?? 'https';
     const baseUrl = `${protocol}://${host}`;
@@ -243,19 +250,21 @@ export class TeamApplicationsController {
       baseUrl,
       id,
       fileType,
-      900,
+      ttl,
     );
 
     return {
       signedUrl,
       expiresAt,
-      expiresInSeconds: 900,
+      expiresInSeconds: ttl,
     };
   }
 
   @Get(':id/secure-download')
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Descargar archivo mediante token firmado temporal con expiración' })
   async downloadSecureFile(
+    @Request() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
     @Query('token') token: string,
     @Query('fileType') fileType: 'cv' | 'photo',
@@ -269,6 +278,9 @@ export class TeamApplicationsController {
       throw new BadRequestException('SignedUrlService no está disponible');
     }
 
+    if (request.user.role === PLATFORM_ROLES.ADMIN) {
+      await this.service.findAssignedInterview(request.user.id, id);
+    }
     const verification = this.signedUrlService.verifyToken(token, id, fileType);
     if (!verification.valid) {
       throw new ForbiddenException(verification.error ?? 'Enlace de descarga no autorizado o expirado.');
@@ -276,7 +288,7 @@ export class TeamApplicationsController {
 
     void this.auditService?.record({
       action: 'SECURE_FILE_DOWNLOADED',
-      entityType: 'TeamApplication',
+      entityType: 'TEAM_APPLICATION',
       entityId: id,
       metadata: { fileType },
     });

@@ -26,7 +26,9 @@ export function safeAuditMetadata(value: Record<string, unknown> = {}) {
     if (
       (typeof v === 'number' && Number.isFinite(v)) ||
       typeof v === 'boolean' ||
-      (typeof v === 'string' && /^[A-Za-z0-9_\-\.:]+$/.test(v) && v.length <= 80)
+      (typeof v === 'string' &&
+        /^[A-Za-z0-9_\-\.:]+$/.test(v) &&
+        v.length <= 80)
     )
       safe[key] = v as string | number | boolean;
   }
@@ -72,14 +74,40 @@ export class AuditService {
     return {
       ...(query.entityType ? { entityType: query.entityType } : {}),
       ...(query.actorId ? { actorId: query.actorId } : {}),
+      ...(query.search
+        ? {
+            OR: [{ action: { contains: query.search } }],
+          }
+        : {}),
       createdAt: { gte: from, lte: to },
       ...(query.cursor ? { id: { lt: query.cursor } } : {}),
     };
   }
 
   async list(query: AuditQuery) {
+    const where = this.where(query);
+    if (query.page) {
+      const [items, totalItems] = await this.prisma.$transaction([
+        this.prisma.auditEvent.findMany({
+          where,
+          orderBy: { id: 'desc' },
+          skip: (query.page - 1) * query.limit,
+          take: query.limit,
+        }),
+        this.prisma.auditEvent.count({ where }),
+      ]);
+      return {
+        items,
+        meta: {
+          page: query.page,
+          limit: query.limit,
+          totalItems,
+          totalPages: Math.ceil(totalItems / query.limit),
+        },
+      };
+    }
     const rows = await this.prisma.auditEvent.findMany({
-      where: this.where(query),
+      where,
       orderBy: { id: 'desc' },
       take: query.limit + 1,
     });
@@ -192,11 +220,7 @@ export class AuditService {
     });
   }
 
-  async logAuthEvent(opts: {
-    action: string;
-    email: string;
-    userId?: number;
-  }) {
+  async logAuthEvent(opts: { action: string; email: string; userId?: number }) {
     return this.record({
       action: opts.action,
       entityType: 'User',

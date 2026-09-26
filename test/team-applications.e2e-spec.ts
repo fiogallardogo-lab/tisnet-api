@@ -1,9 +1,10 @@
+import { ConfigService } from '@nestjs/config';
+import { createAppTestModule } from './helpers/create-app-test-module';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '../src/app.module.js';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception/http-exception.filter.js';
 import { TransformInterceptor } from '../src/common/interceptors/transform/transform.interceptor.js';
 import { FakeNotificationProvider } from '../src/notifications/fake-notification.provider.js';
@@ -63,9 +64,7 @@ describe('Team applications API (e2e, base aislada)', () => {
       );
     }
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    const moduleFixture: TestingModule = await createAppTestModule().compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
@@ -109,7 +108,7 @@ describe('Team applications API (e2e, base aislada)', () => {
         roleId: adminRole.id,
         adminProfile: {
           create: {
-            executiveTitle: 'Asesor t+®cnico',
+            executiveTitle: 'Asesor t+Â®cnico',
             specialty: 'Soluciones web',
             calendlyUrl: 'https://calendly.com/tisnet/e2e',
           },
@@ -128,8 +127,8 @@ describe('Team applications API (e2e, base aislada)', () => {
         roleId: adminRole.id,
         adminProfile: {
           create: {
-            executiveTitle: 'Asesor t+®cnico secundario',
-            specialty: 'M+¦vil',
+            executiveTitle: 'Asesor t+Â®cnico secundario',
+            specialty: 'M+Â¦vil',
           },
         },
       },
@@ -169,7 +168,7 @@ describe('Team applications API (e2e, base aislada)', () => {
             age: 24,
             district: 'Miraflores',
             phone: '999999999',
-            career: 'Ingenier+¡a de Sistemas',
+            career: 'Ingenier+Â¡a de Sistemas',
             university: 'Universidad E2E',
             experienceYears: 2,
             programmingLanguages: 'TypeScript, Node.js',
@@ -193,7 +192,7 @@ describe('Team applications API (e2e, base aislada)', () => {
             age: 28,
             district: 'San Isidro',
             phone: '988888888',
-            career: 'Administraci+¦n',
+            career: 'Administraci+Â¦n',
             university: 'Universidad E2E',
             experienceYears: 4,
             programmingLanguages: 'Jira, Scrum',
@@ -415,7 +414,7 @@ describe('Team applications API (e2e, base aislada)', () => {
 
   it('rejects with a reason and records a notification at initial review', async () => {
     const reason =
-      'Actualmente buscamos un perfil con mayor experiencia en producci+¦n.';
+      'Actualmente buscamos un perfil con mayor experiencia en producci+Â¦n.';
     const response = await request(app.getHttpServer())
       .patch(`/api/v1/team-applications/${secondApplicationId}/reject`)
       .set('Authorization', `Bearer ${superAdminToken}`)
@@ -462,13 +461,13 @@ describe('Team applications API (e2e, base aislada)', () => {
       .expect(403);
   });
 
-  it('acepta entrevista, crea User, vincula aplicaci+¦n y registra auditor+¡a en transacci+¦n', async () => {
+  it('acepta entrevista, crea User, vincula aplicaci+Â¦n y registra auditor+Â¡a en transacci+Â¦n', async () => {
     const response = await request(app.getHttpServer())
       .patch(`/api/v1/team-applications/my-interviews/${firstApplicationId}/decision`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         decision: 'ACCEPTED',
-        reason: 'Aprobado con honores en evaluaci+¦n t+®cnica y de fit cultural.',
+        reason: 'Aprobado con honores en evaluaci+Â¦n t+Â®cnica y de fit cultural.',
       })
       .expect(200);
 
@@ -520,7 +519,7 @@ describe('Team applications API (e2e, base aislada)', () => {
     expect((auditLinked!.metadata as any).resultingUserId).toBe(createdUser!.id);
   });
 
-  it('segundo intento controlado: rechaza doble decisi+¦n con 409', async () => {
+  it('segundo intento controlado: rechaza doble decisi+Â¦n con 409', async () => {
     await request(app.getHttpServer())
       .patch(`/api/v1/team-applications/my-interviews/${firstApplicationId}/decision`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -537,7 +536,7 @@ describe('Team applications API (e2e, base aislada)', () => {
       .expect(200);
 
     // 2. Reject interview
-    const reason = 'El postulante no demostr+¦ el nivel requerido para la vacante.';
+    const reason = 'El postulante no demostr+Â¦ el nivel requerido para la vacante.';
     const response = await request(app.getHttpServer())
       .patch(`/api/v1/team-applications/my-interviews/${thirdApplicationId}/decision`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -565,7 +564,7 @@ describe('Team applications API (e2e, base aislada)', () => {
     expect(audit!.actorId).toBe(adminUserId);
   });
 
-  it('SUPER_ADMIN autorizado para aceptar postulaci+¦n en entrevista', async () => {
+  it('SUPER_ADMIN autorizado para aceptar postulaci+Â¦n en entrevista', async () => {
     // 1. Assign interview
     await request(app.getHttpServer())
       .patch(`/api/v1/team-applications/${fourthApplicationId}/assign-interview`)
@@ -593,7 +592,7 @@ describe('Team applications API (e2e, base aislada)', () => {
     expect(createdUser!.productOwnerProfile).not.toBeNull();
   });
 
-  it('vinculaci+¦n a User existente: reutiliza cuenta y no crea duplicado', async () => {
+  it('vinculaci+Â¦n a User existente: reutiliza cuenta y no crea duplicado', async () => {
     // 1. Assign interview
     await request(app.getHttpServer())
       .patch(`/api/v1/team-applications/${fifthApplicationId}/assign-interview`)
@@ -617,4 +616,45 @@ describe('Team applications API (e2e, base aislada)', () => {
     });
     expect(userCount).toBe(1);
   });
+  it('signed downloads enforce assigned ADMIN, signature, TTL and JWT over HTTP', async () => {
+    const config = app.get(ConfigService);
+    config.set('SIGNED_URL_TTL_SECONDS', 1);
+    const endpoint = '/api/v1/team-applications/' + fourthApplicationId + '/signed-url?fileType=cv';
+    const signed = await request(app.getHttpServer()).get(endpoint).set('Authorization', 'Bearer ' + adminToken).expect(200);
+    expect(signed.body.data.expiresInSeconds).toBe(1);
+    const url = new URL(signed.body.data.signedUrl);
+    const download = url.pathname + url.search;
+    await request(app.getHttpServer()).get(download).set('Authorization', 'Bearer ' + adminToken).expect(200);
+    await request(app.getHttpServer()).get(download).expect(401);
+    await request(app.getHttpServer()).get(download).set('Authorization', 'Bearer ' + clientToken).expect(403);
+    await request(app.getHttpServer()).get(endpoint).set('Authorization', 'Bearer ' + otherAdminToken).expect(403);
+    await request(app.getHttpServer()).get(download).set('Authorization', 'Bearer ' + otherAdminToken).expect(403);
+    url.searchParams.set('token', url.searchParams.get('token') + 'tampered');
+    await request(app.getHttpServer()).get(url.pathname + url.search).set('Authorization', 'Bearer ' + adminToken).expect(403);
+    await new Promise(resolve => setTimeout(resolve, 1100));
+    await request(app.getHttpServer()).get(download).set('Authorization', 'Bearer ' + adminToken).expect(403);
+    config.set('SIGNED_URL_TTL_SECONDS', 300);
+  });
+
+  it('CV and photo persist across closing and recreating the backend application', async () => {
+    const files = ['/cv', '/photo'].map(suffix => '/api/v1/team-applications/' + fourthApplicationId + suffix);
+    const before = [];
+    for (const file of files) before.push((await request(app.getHttpServer()).get(file).set('Authorization', 'Bearer ' + superAdminToken).expect(200)).body);
+    await app.close();
+    const module = await createAppTestModule().compile();
+    app = module.createNestApplication();
+    app.setGlobalPrefix('api/v1');
+    app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }));
+    app.useGlobalInterceptors(new TransformInterceptor());
+    app.useGlobalFilters(new HttpExceptionFilter());
+    await app.init();
+    prisma = app.get(PrismaService);
+    notifications = app.get(NOTIFICATION_PROVIDER);
+    for (let i = 0; i < files.length; i++) {
+      const after = await request(app.getHttpServer()).get(files[i]).set('Authorization', 'Bearer ' + superAdminToken).expect(200);
+      expect(Buffer.isBuffer(after.body)).toBe(true);
+      expect(after.body).toEqual(before[i]);
+    }
+  });
+
 });

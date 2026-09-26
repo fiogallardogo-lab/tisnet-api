@@ -1,14 +1,22 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-  ApiCreatedResponse,
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
   ApiBadRequestResponse,
-  ApiUnauthorizedResponse,
-  ApiForbiddenResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiOkResponse,
+  ApiOperation,
   ApiServiceUnavailableResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -17,6 +25,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { PLATFORM_ROLES } from '../common/constants/platform-roles';
 
 import { CreateUserDto } from './dto/create-user.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
@@ -24,7 +33,28 @@ import { UsersService } from './users.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
+
+  @Get()
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Listar cuentas de usuario',
+    description:
+      'Solo ADMIN/SUPER_ADMIN. Lista las cuentas existentes con paginación, búsqueda por nombre o correo y filtro por estado.',
+  })
+  @ApiOkResponse({
+    description:
+      'Listado paginado de usuarios. No expone passwordHash ni otros datos sensibles.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'JWT ausente o inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'El actor no es ADMIN ni SUPER_ADMIN.',
+  })
+  listUsers(@Query() query: ListUsersQueryDto) {
+    return this.usersService.listUsers(query);
+  }
 
   @Post()
   @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
@@ -41,11 +71,18 @@ export class UsersController {
     description:
       'DTO, consentimiento, rol creado o versiones legales inválidos.',
   })
-  @ApiUnauthorizedResponse({ description: 'JWT ausente o inválido.' })
-  @ApiForbiddenResponse({ description: 'El actor no es ADMIN ni SUPER_ADMIN.' })
-  @ApiConflictResponse({ description: 'El correo ya está registrado.' })
+  @ApiUnauthorizedResponse({
+    description: 'JWT ausente o inválido.',
+  })
+  @ApiForbiddenResponse({
+    description: 'El actor no es ADMIN ni SUPER_ADMIN.',
+  })
+  @ApiConflictResponse({
+    description: 'El correo ya está registrado.',
+  })
   @ApiServiceUnavailableResponse({
-    description: 'Configuración legal ausente o inválida; no se crean datos.',
+    description:
+      'Configuración legal ausente o inválida; no se crean datos.',
   })
   createUser(@Body() dto: CreateUserDto) {
     return this.usersService.createAdministrativeUser(dto);

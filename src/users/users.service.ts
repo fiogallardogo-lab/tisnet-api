@@ -13,6 +13,7 @@ import { validateLegalVersions } from '../common/legal/legal-versions';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 
 interface CreateClientInput {
   name: string;
@@ -27,7 +28,89 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
+
+  async listUsers(query: ListUsersQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const search = query.search?.trim();
+
+    const where: Prisma.UserWhereInput = {
+      ...(typeof query.isActive === 'boolean'
+        ? {
+          isActive: query.isActive,
+        }
+        : {}),
+
+      ...(search
+        ? {
+          OR: [
+            {
+              name: {
+                contains: search,
+              },
+            },
+            {
+              email: {
+                contains: search,
+              },
+            },
+          ],
+        }
+        : {}),
+    };
+
+    const [users, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          id: 'desc',
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isActive: true,
+          acceptedTermsAt: true,
+          termsVersion: true,
+          privacyVersion: true,
+          role: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      }),
+
+      this.prisma.user.count({
+        where,
+      }),
+    ]);
+
+    return {
+      data: users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role.name,
+        isActive: user.isActive,
+        acceptedTermsAt: user.acceptedTermsAt,
+        termsVersion: user.termsVersion,
+        privacyVersion: user.privacyVersion,
+      })),
+
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+      },
+    };
+  }
 
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
@@ -62,7 +145,9 @@ export class UsersService {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const role = await tx.role.findUnique({
-          where: { name: PLATFORM_ROLES.CLIENT },
+          where: {
+            name: PLATFORM_ROLES.CLIENT,
+          },
         });
 
         if (!role) {
@@ -135,34 +220,34 @@ export class UsersService {
 
             ...(dto.role === PLATFORM_ROLES.CLIENT
               ? {
-                  clientProfile: {
-                    create: {},
-                  },
-                }
+                clientProfile: {
+                  create: {},
+                },
+              }
               : {}),
 
             ...(dto.role === PLATFORM_ROLES.DEVELOPER
               ? {
-                  developerProfile: {
-                    create: {},
-                  },
-                }
+                developerProfile: {
+                  create: {},
+                },
+              }
               : {}),
 
             ...(dto.role === PLATFORM_ROLES.PRODUCT_OWNER
               ? {
-                  productOwnerProfile: {
-                    create: {},
-                  },
-                }
+                productOwnerProfile: {
+                  create: {},
+                },
+              }
               : {}),
 
             ...(dto.role === PLATFORM_ROLES.ADMIN
               ? {
-                  adminProfile: {
-                    create: {},
-                  },
-                }
+                adminProfile: {
+                  create: {},
+                },
+              }
               : {}),
           },
           include: {
@@ -196,7 +281,9 @@ export class UsersService {
   async updatePassword(id: number, passwordHash: string) {
     try {
       return await this.prisma.user.update({
-        where: { id },
+        where: {
+          id,
+        },
         data: {
           passwordHash,
           tokenVersion: {
@@ -230,7 +317,9 @@ export class UsersService {
   ) {
     try {
       return await this.prisma.user.update({
-        where: { id },
+        where: {
+          id,
+        },
         data,
         include: {
           role: true,

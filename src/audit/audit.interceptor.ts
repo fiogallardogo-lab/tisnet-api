@@ -18,11 +18,15 @@ export class AuditInterceptor implements NestInterceptor {
       ProfilesController: 'USER',
       ProjectsController: 'PROJECT',
       DeliverablesController: 'DELIVERABLE',
+      PublicQuotesController: 'QUOTE',
+      AuthController: 'USER',
     };
     const entityType =
       type[controller] ||
-      (controller === 'AuthController' && ctx.getHandler().name === 'register'
-        ? 'USER'
+      (controller === 'IntakeController'
+        ? ctx.getHandler().name === 'quote'
+          ? 'QUOTE'
+          : 'TEAM_APPLICATION'
         : undefined);
     if (!entityType || !['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method))
       return next.handle();
@@ -37,6 +41,7 @@ export class AuditInterceptor implements NestInterceptor {
           entityType,
           entityId: String(
             data?.id ??
+              data?.code ??
               data?.user?.id ??
               req.params?.id ??
               req.params?.projectId ??

@@ -1,13 +1,12 @@
+import { createAppTestModule } from './helpers/create-app-test-module';
 import {
   INestApplication,
   ValidationPipe,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
-import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { TransformInterceptor } from '../src/common/interceptors/transform/transform.interceptor';
@@ -55,7 +54,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       ],
     });
     beforeAll(async () => {
-      const module = await Test.createTestingModule({ imports: [AppModule] })
+      const module = await createAppTestModule()
         .overrideGuard(JwtAuthGuard)
         .useValue({
           canActivate(ctx) {
@@ -80,7 +79,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         }),
       );
       app.useGlobalInterceptors(new TransformInterceptor());
-      app.useGlobalFilters(new HttpExceptionFilter());
+      app.useGlobalFilters({ catch(err, host) { console.error('FATAL ERROR:', err); host.switchToHttp().getResponse().status(500).send(err.message); } }); app.useGlobalFilters(new HttpExceptionFilter());
       await app.init();
       db = app.get(PrismaService);
       const cr = await db.role.findUniqueOrThrow({ where: { name: 'CLIENT' } }),
@@ -164,7 +163,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       const res = await req()
         .post('/api/v1/public/project-quotes')
         .send(payload)
-        .expect(201);
+        .expect((res) => { if (res.status !== 201) console.error(res.body); }).expect(201);
       code = res.body.data.code;
       expect(code).toMatch(/^Q-[A-Z2-9]{8}$/);
       expect(res.body.data.amountMinor).toBe(85000);
@@ -218,7 +217,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       const created = await req()
         .post('/api/v1/public/meetings')
         .send(body)
-        .expect(201);
+        .expect((res) => { if (res.status !== 201) console.error(res.body); }).expect(201);
       const id = created.body.data.id;
       expect(created.body.data.status).toBe('PENDING');
       await req().post('/api/v1/public/meetings').send(body).expect(409);
@@ -272,13 +271,13 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         .post(`/api/v1/admin/quotes/${quoteId}/versions`)
         .set(adminHeaders())
         .send(official())
-        .expect(201);
+        .expect((res) => { if (res.status !== 201) console.error(res.body); }).expect(201);
       expect(first.body.data.version).toBe(1);
       const second = await req()
         .post(`/api/v1/admin/quotes/${quoteId}/versions`)
         .set(adminHeaders())
         .send({ ...official(), observations: 'Segunda versión' })
-        .expect(201);
+        .expect((res) => { if (res.status !== 201) console.error(res.body); }).expect(201);
       expect(second.body.data.version).toBe(2);
       expect(await db.quoteVersion.count({ where: { quoteId } })).toBe(2);
       const payments = app.get(PaymentsService);
@@ -297,12 +296,12 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         .post('/api/v1/admin/payments/events')
         .set(adminHeaders())
         .send(event)
-        .expect(201);
+        .expect((res) => { if (res.status !== 201) console.error(res.body); }).expect(201);
       const duplicate = await req()
         .post('/api/v1/admin/payments/events')
         .set(adminHeaders())
         .send(event)
-        .expect(201);
+        .expect((res) => { if (res.status !== 201) console.error(res.body); }).expect(201);
       expect(duplicate.body.data.id).toBe(paid.body.data.id);
       await req()
         .post('/api/v1/admin/payments/events')
@@ -372,7 +371,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
           options: [],
           contact: { fullName: 'Cliente', email, phone: '987654321' },
         })
-        .expect(201);
+        .expect((res) => { if (res.status !== 201) console.error(res.body); }).expect(201);
       const pendingQuote = await db.quote.findUniqueOrThrow({
         where: { publicCode: pending.body.data.code },
       });
@@ -380,7 +379,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         .post('/api/v1/admin/quotes/' + pendingQuote.id + '/versions')
         .set(adminHeaders())
         .send(official())
-        .expect(201);
+        .expect((res) => { if (res.status !== 201) console.error(res.body); }).expect(201);
       await req()
         .post('/api/v1/kickoff')
         .set(adminHeaders())
@@ -390,7 +389,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         .post('/api/v1/kickoff')
         .set(adminHeaders())
         .send(kickoff)
-        .expect(201);
+        .expect((res) => { if (res.status !== 201) console.error(res.body); }).expect(201);
       const project = created.body.data;
       expect(project.clientUserId).toBe(client);
       expect(project.productOwnerId).toBe(po);
@@ -463,5 +462,47 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         .set({ ...adminHeaders(), 'x-role': 'SUPER_ADMIN' })
         .expect(200);
     });
+    it('manages internal meetings only for assigned administrators and prevents conflicting reschedules', async () => {
+      const meeting = await db.meeting.findFirstOrThrow({ where: { quoteId } });
+      const path = '/api/v1/meetings/' + meeting.id;
+      await req().patch(path + '/status').set({ 'x-user': String(client), 'x-role': 'CLIENT', 'x-email': email }).send({ status: 'CANCELLED' }).expect(403);
+      await req().patch(path + '/status').set({ ...adminHeaders(), 'x-user': String(client) }).send({ status: 'CANCELLED' }).expect(404);
+      await req().patch(path + '/status').set(adminHeaders()).send({ status: 'SCHEDULED' }).expect(200);
+      await req().patch(path + '/status').set(adminHeaders()).send({ status: 'INVALID' }).expect(400);
+      const start = new Date(Date.now() + 86400000 * 22), end = new Date(start.getTime() + 3600000);
+      const changed = await req().patch(path + '/reschedule').set(adminHeaders()).send({ start: start.toISOString(), end: end.toISOString() }).expect(200);
+      expect(changed.body.data.scheduledAt).toBe(start.toISOString());
+      const blocked = new Date(start.getTime() + 86400000), blockedEnd = new Date(blocked.getTime() + 3600000);
+      const other = await db.meeting.create({ data: { prospectId: meeting.prospectId, quoteId, advisorProfileId: advisor, status: 'PENDING', scheduledAt: blocked, endsAt: blockedEnd, bookingKey: advisor + ':' + blocked.toISOString() } });
+      await req().patch(path + '/reschedule').set(adminHeaders()).send({ start: blocked.toISOString(), end: blockedEnd.toISOString() }).expect(409);
+      expect((await db.meeting.findUniqueOrThrow({ where: { id: meeting.id } })).scheduledAt?.toISOString()).toBe(start.toISOString());
+      await req().patch('/api/v1/meetings/' + other.id + '/status').set(adminHeaders()).send({ status: 'CANCELLED' }).expect(200);
+      await req().patch('/api/v1/meetings/' + other.id + '/status').set(adminHeaders()).send({ status: 'SCHEDULED' }).expect(409);
+    });
+    it('client and admin see the same meeting after restarting the app and after client cancellation', async () => {
+      const meeting = await db.meeting.findFirstOrThrow({ where: { quoteId } });
+      const clientHeaders = { 'x-user': String(client), 'x-role': 'CLIENT', 'x-email': email };
+      const check = async (status: string) => {
+        for (const [url, headers] of [['/api/v1/meetings/my', clientHeaders], ['/api/v1/admin/meetings', adminHeaders()]] as const) {
+          const response = await req().get(url).set(headers).expect(200);
+          expect(response.body.data.items.find((item) => item.id === meeting.id)?.status).toBe(status);
+        }
+      };
+      await check(meeting.status);
+      const guard = app.get(JwtAuthGuard);
+      await app.close();
+      const module = await createAppTestModule().overrideGuard(JwtAuthGuard).useValue(guard).compile();
+      app = module.createNestApplication();
+      app.setGlobalPrefix('api/v1');
+      app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }));
+      app.useGlobalInterceptors(new TransformInterceptor());
+      app.useGlobalFilters(new HttpExceptionFilter());
+      await app.init();
+      db = app.get(PrismaService);
+      await check(meeting.status);
+      await req().patch('/api/v1/client/meetings/' + meeting.id + '/cancel').set(clientHeaders).send({}).expect(200);
+      await check('CANCELLED');
+    });
+
   },
 );
