@@ -244,13 +244,41 @@ export class KickoffService {
       isActive: m.isActive,
     }));
 
+    // DoD: "El Product Owner no recibe montos económicos"
+    // Strip financial fields from milestones if the actor has no finance access.
+    const milestones = project.milestones.map((m) => {
+      const base = {
+        id: m.id,
+        title: m.title,
+        dueDate: m.dueDate,
+        sequence: m.sequence,
+        deliverables: m.deliverables,
+      };
+      if (canViewFinance) {
+        return {
+          ...base,
+          amountMinor: (m.paymentSchedule as any)?.amountMinor ?? null,
+          percentageBasisPoints: (m.paymentSchedule as any)?.percentageBasisPoints ?? null,
+          paymentScheduleId: m.paymentScheduleId,
+        };
+      }
+      return base; // PO and DEVELOPER: no amounts exposed
+    });
+
     return {
-      ...project,
       projectId: project.id,
       name: project.name,
+      slug: project.slug,
+      shortDescription: project.shortDescription,
+      status: project.status,
+      developmentDate: project.developmentDate,
+      quoteId: canViewFinance ? project.quoteId : undefined,
+      clientUserId: canViewFinance ? project.clientUserId : undefined,
+      productOwnerId: project.productOwnerId,
       kickoff: kickoffData,
       rawKickoff: project.kickoff,
       members: formattedMembers,
+      milestones,
       candidates,
       canManageTeam,
       canManageKickoff,
