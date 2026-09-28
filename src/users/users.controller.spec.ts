@@ -12,6 +12,7 @@ describe('UsersController', () => {
 
   const usersServiceMock = {
     createAdministrativeUser: vi.fn(),
+    updateManagedUser: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -74,5 +75,14 @@ describe('UsersController', () => {
     expect(usersServiceMock.createAdministrativeUser).toHaveBeenCalledWith(dto);
 
     expect(result).toEqual(expected);
+  });
+
+  it('delegates managed account updates with the actor id', async () => {
+    const dto = { role: PLATFORM_ROLES.DEVELOPER, isActive: false };
+    usersServiceMock.updateManagedUser.mockResolvedValue({ id: 20, ...dto });
+
+    await controller.updateUser(20, { user: { id: 1 } }, dto);
+
+    expect(usersServiceMock.updateManagedUser).toHaveBeenCalledWith(20, 1, dto);
   });
 });

@@ -2,8 +2,12 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseIntPipe,
+  Patch,
   Post,
   Query,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -26,6 +30,7 @@ import { PLATFORM_ROLES } from '../common/constants/platform-roles';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
@@ -33,7 +38,7 @@ import { UsersService } from './users.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Get()
   @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
@@ -54,6 +59,17 @@ export class UsersController {
   })
   listUsers(@Query() query: ListUsersQueryDto) {
     return this.usersService.listUsers(query);
+  }
+
+  @Patch(':id')
+  @Roles(PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Actualizar rol o estado de una cuenta gestionable' })
+  updateUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() request: { user: { id: number } },
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.usersService.updateManagedUser(id, request.user.id, dto);
   }
 
   @Post()

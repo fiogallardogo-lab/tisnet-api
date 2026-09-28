@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -14,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 interface CreateClientInput {
   name: string;
@@ -109,6 +111,67 @@ export class UsersService {
         total,
         totalPages: total === 0 ? 0 : Math.ceil(total / limit),
       },
+    };
+  }
+
+  async updateManagedUser(id: number, actorId: number, dto: UpdateUserDto) {
+    if (id === actorId) {
+      throw new ForbiddenException('No puedes modificar tu propia cuenta');
+    }
+
+    const current = await this.prisma.user.findUnique({
+      where: { id },
+      include: { role: true },
+    });
+    if (!current) throw new NotFoundException('Usuario no encontrado');
+    if (current.role.name === PLATFORM_ROLES.SUPER_ADMIN) {
+      throw new ForbiddenException('No se puede modificar una cuenta SUPER_ADMIN');
+    }
+
+    const role = dto.role
+      ? await this.prisma.role.findUnique({ where: { name: dto.role } })
+      : null;
+    if (dto.role && !role) {
+      throw new InternalServerErrorException(`El rol ${dto.role} no está configurado`);
+    }
+
+    const changedRole = role && role.id !== current.roleId;
+    const changedActive =
+      typeof dto.isActive === 'boolean' && dto.isActive !== current.isActive;
+
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        ...(role ? { roleId: role.id } : {}),
+        ...(typeof dto.isActive === 'boolean' ? { isActive: dto.isActive } : {}),
+        ...(changedRole || changedActive
+          ? { tokenVersion: { increment: 1 } }
+          : {}),
+        ...(dto.role === PLATFORM_ROLES.CLIENT
+          ? { clientProfile: { upsert: { create: {}, update: {} } } }
+          : {}),
+        ...(dto.role === PLATFORM_ROLES.DEVELOPER
+          ? { developerProfile: { upsert: { create: {}, update: {} } } }
+          : {}),
+        ...(dto.role === PLATFORM_ROLES.PRODUCT_OWNER
+          ? { productOwnerProfile: { upsert: { create: {}, update: {} } } }
+          : {}),
+        ...(dto.role === PLATFORM_ROLES.ADMIN
+          ? { adminProfile: { upsert: { create: {}, update: {} } } }
+          : {}),
+      },
+      include: { role: true },
+    });
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role.name,
+      isActive: user.isActive,
+      acceptedTermsAt: user.acceptedTermsAt,
+      termsVersion: user.termsVersion,
+      privacyVersion: user.privacyVersion,
     };
   }
 
