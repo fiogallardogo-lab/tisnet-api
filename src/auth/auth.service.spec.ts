@@ -312,6 +312,35 @@ describe('AuthService', () => {
       );
     });
 
+    it('permite restablecer la contraseña usando el alias password del frontend', async () => {
+      configServiceMock.get.mockReturnValue('reset-secret');
+      jwtServiceMock.verify.mockReturnValue({
+        sub: 5,
+        email: 'usuario@tisnet.pe',
+        tokenVersion: 3,
+        purpose: 'password_reset',
+      });
+
+      usersServiceMock.findById.mockResolvedValue({
+        id: 5,
+        email: 'usuario@tisnet.pe',
+        isActive: true,
+        tokenVersion: 3,
+      });
+      usersServiceMock.updatePassword.mockResolvedValue({ id: 5 });
+
+      const res = await service.resetPassword({
+        token: 'valid_token_abc',
+        password: 'NuevaPassword123!',
+      });
+
+      expect(res.success).toBe(true);
+      expect(usersServiceMock.updatePassword).toHaveBeenCalledWith(
+        5,
+        expect.any(String),
+      );
+    });
+
     it('lanza BadRequestException si el token está expirado o corrupto', async () => {
       configServiceMock.get.mockReturnValue('reset-secret');
       jwtServiceMock.verify.mockImplementation(() => {

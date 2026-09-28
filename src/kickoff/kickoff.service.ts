@@ -196,6 +196,147 @@ export class KickoffService {
       },
     });
   }
+
+  async getOperations(projectId: number, actor: { id: number; role: string }) {
+    const project = await this.detail(projectId, actor);
+    const candidateUsers = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: { name: { in: ['DEVELOPER', 'PRODUCT_OWNER'] } },
+      },
+      include: { role: true },
+    });
+    const candidates = candidateUsers.map((u) => ({
+      id: u.id,
+      name: u.name,
+      role: u.role.name,
+    }));
+
+    const canManageTeam = ['ADMIN', 'SUPER_ADMIN'].includes(actor.role);
+    const canManageKickoff = ['ADMIN', 'SUPER_ADMIN'].includes(actor.role);
+    const canViewFinance = ['ADMIN', 'SUPER_ADMIN', 'CLIENT'].includes(actor.role);
+
+    const kickoffData = project.kickoff
+      ? {
+          status: 'CONFIRMED',
+          scheduledAt: project.kickoff.heldAt
+            ? project.kickoff.heldAt.toISOString()
+            : null,
+          notes: project.kickoff.notes || '',
+          canStart: true,
+          blockingReason: undefined,
+        }
+      : {
+          status: 'PENDING',
+          scheduledAt: null,
+          notes: '',
+          canStart: true,
+          blockingReason: undefined,
+        };
+
+    const formattedMembers = project.members.map((m) => ({
+      id: m.id,
+      userId: m.userId,
+      role: m.memberRole,
+      memberRole: m.memberRole,
+      participation: m.participationBasisPoints,
+      participationBasisPoints: m.participationBasisPoints,
+      isActive: m.isActive,
+    }));
+
+    return {
+      ...project,
+      projectId: project.id,
+      name: project.name,
+      kickoff: kickoffData,
+      rawKickoff: project.kickoff,
+      members: formattedMembers,
+      candidates,
+      canManageTeam,
+      canManageKickoff,
+      canViewFinance,
+    };
+  }
+
+  async scheduleKickoff(
+    projectId: number,
+    actor: { id: number; role: string },
+    dto: { scheduledAt: string; notes?: string },
+  ) {
+    await this.access(projectId, actor);
+    if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER'].includes(actor.role)) {
+      throw new ForbiddenException(
+        'Solo administración o el Product Owner puede programar el kickoff.',
+      );
+    }
+    const heldAt = new Date(dto.scheduledAt);
+    if (isNaN(heldAt.getTime())) {
+      throw new BadRequestException('Fecha de kickoff inválida.');
+    }
+
+    const existing = await this.prisma.kickoff.findUnique({
+      where: { projectId },
+    });
+
+    if (existing) {
+      return this.prisma.kickoff.update({
+        where: { projectId },
+        data: {
+          heldAt,
+          notes: dto.notes ?? existing.notes,
+          actorId: actor.id,
+        },
+      });
+    }
+
+    return this.prisma.kickoff.create({
+      data: {
+        projectId,
+        heldAt,
+        notes: dto.notes ?? '',
+        actorId: actor.id,
+      },
+    });
+  }
+
+  async addMember(
+    projectId: number,
+    actor: { id: number; role: string },
+    dto: { userId: number; memberRole: string; participation?: number },
+  ) {
+    await this.access(projectId, actor);
+    if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER'].includes(actor.role)) {
+      throw new ForbiddenException(
+        'Solo administración o el Product Owner puede agregar miembros.',
+      );
+    }
+    const user = await this.prisma.user.findFirst({
+      where: { id: dto.userId, isActive: true },
+      include: { role: true },
+    });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado o inactivo.');
+    }
+    const roleToAssign = dto.memberRole || user.role.name;
+    const basisPoints = dto.participation ?? 0;
+
+    return this.prisma.projectMember.upsert({
+      where: { projectId_userId: { projectId, userId: dto.userId } },
+      create: {
+        projectId,
+        userId: dto.userId,
+        memberRole: roleToAssign as any,
+        participationBasisPoints: basisPoints,
+        isActive: true,
+      },
+      update: {
+        memberRole: roleToAssign as any,
+        participationBasisPoints: basisPoints,
+        isActive: true,
+      },
+    });
+  }
+
   async setTeam(
     projectId: number,
     actor: { id: number; role: string },

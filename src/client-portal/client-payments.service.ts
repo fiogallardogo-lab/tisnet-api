@@ -142,6 +142,14 @@ export class ClientPaymentsService {
       },
     });
 
+    const frontendBaseUrl = (
+      this.config.get<string>('FRONTEND_URL') ||
+      'http://localhost:5173'
+    ).replace(/\/+$/, '');
+    const checkoutUrl =
+      order.qrCode ||
+      `${frontendBaseUrl}/client/quotes/${quoteVersion.quote.id}/agreement?checkoutOrder=${order.id}&code=${order.paymentCode ?? ''}`;
+
     return {
       orderId: order.id,
       paymentCode: order.paymentCode,
@@ -149,6 +157,7 @@ export class ClientPaymentsService {
       amountMinor: order.amount,
       currency: order.currency,
       expirationDate: order.expirationDate,
+      checkoutUrl,
     };
   }
 }

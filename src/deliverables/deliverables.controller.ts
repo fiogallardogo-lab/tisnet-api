@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -7,8 +8,11 @@ import {
   Patch,
   Post,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -23,6 +27,7 @@ import { PLATFORM_ROLES } from '../common/constants/platform-roles';
 import {
   DeliverablesService,
   type DeliverablesActor,
+  type DeliverableFile,
 } from './deliverables.service';
 import { CreateDeliverableDto } from './dto/create-deliverable.dto';
 import { ReviewDeliverableDto } from './dto/review-deliverable.dto';
@@ -125,6 +130,36 @@ export class DeliverablesController {
       deliverableId,
       request.user,
       dto,
+    );
+  }
+
+  @Post(':id/files')
+  @ApiOperation({ summary: 'Subir archivo de entregable (PDF o video)' })
+  @ApiParam({ name: 'projectId', type: Number })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Archivo subido exitosamente' })
+  @ApiResponse({ status: 400, description: 'Archivo o formato inválido' })
+  @ApiResponse({ status: 403, description: 'Membresía insuficiente' })
+  @ApiResponse({ status: 404, description: 'Entregable no encontrado' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 100 * 1024 * 1024 },
+    }),
+  )
+  uploadFile(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('id', ParseIntPipe) deliverableId: number,
+    @UploadedFile() file: DeliverableFile,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    if (!file) {
+      throw new BadRequestException('El archivo es obligatorio.');
+    }
+    return this.deliverablesService.uploadFile(
+      projectId,
+      deliverableId,
+      request.user,
+      file,
     );
   }
 }

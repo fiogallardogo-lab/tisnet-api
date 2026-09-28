@@ -256,7 +256,12 @@ export class AuthService {
       throw new BadRequestException('Este enlace ya fue utilizado o ha sido invalidado.');
     }
 
-    const newHash = await bcrypt.hash(dto.newPassword, 12);
+    const rawPassword = dto.newPassword || dto.password;
+    if (!rawPassword) {
+      throw new BadRequestException('La nueva contraseña es obligatoria.');
+    }
+
+    const newHash = await bcrypt.hash(rawPassword, 12);
     await this.usersService.updatePassword(user.id, newHash);
 
     void this.auditService?.logAuthEvent({

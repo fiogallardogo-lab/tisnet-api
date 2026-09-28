@@ -28,8 +28,19 @@ export class KickoffController {
   @Get('projects/:id/operations')
   @Roles('ADMIN', 'SUPER_ADMIN', 'CLIENT', 'DEVELOPER', 'PRODUCT_OWNER')
   detail(@Param('id', ParseIntPipe) id: number, @Request() r: ActorRequest) {
-    return this.service.detail(id, r.user);
+    return this.service.getOperations(id, r.user);
   }
+
+  @Post('projects/:id/kickoff')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER')
+  scheduleKickoff(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() r: ActorRequest,
+    @Body() dto: { scheduledAt: string; notes?: string },
+  ) {
+    return this.service.scheduleKickoff(id, r.user, dto);
+  }
+
   @Get('projects/:id/members')
   @Roles('ADMIN', 'SUPER_ADMIN', 'CLIENT', 'DEVELOPER', 'PRODUCT_OWNER')
   async members(
@@ -38,6 +49,17 @@ export class KickoffController {
   ) {
     return (await this.service.detail(id, r.user)).members;
   }
+
+  @Post('projects/:id/members')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER')
+  addMember(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() r: ActorRequest,
+    @Body() dto: { userId: number; memberRole: string; participation?: number },
+  ) {
+    return this.service.addMember(id, r.user, dto);
+  }
+
   @Patch('projects/:id/members') @Roles('ADMIN', 'SUPER_ADMIN') setTeam(
     @Param('id', ParseIntPipe) id: number,
     @Request() r: ActorRequest,

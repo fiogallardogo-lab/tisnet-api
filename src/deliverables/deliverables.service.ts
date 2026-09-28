@@ -2,12 +2,20 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import * as nodePath from 'node:path';
 import { DeliverableStatus, Prisma, ProjectMemberRole } from '@prisma/client';
 import { PLATFORM_ROLES } from '../common/constants/platform-roles';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  STORAGE_PROVIDER,
+  type StorageProvider,
+} from '../storage/storage-provider.interface';
 import { CreateDeliverableDto } from './dto/create-deliverable.dto';
 import {
   DeliverableReviewDecision,
@@ -20,6 +28,13 @@ export interface DeliverablesActor {
   role: string;
 }
 
+export interface DeliverableFile {
+  buffer: Buffer;
+  size: number;
+  mimetype: string;
+  originalname: string;
+}
+
 const ADMIN_ROLES = new Set<string>([
   PLATFORM_ROLES.ADMIN,
   PLATFORM_ROLES.SUPER_ADMIN,
@@ -30,7 +45,12 @@ const deliverableInclude = {
 
 @Injectable()
 export class DeliverablesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(STORAGE_PROVIDER)
+    private readonly storageProvider?: StorageProvider,
+  ) {}
 
   async list(projectId: number, actor: DeliverablesActor) {
     await this.requireProjectAccess(projectId, actor);
@@ -168,6 +188,79 @@ export class DeliverablesService {
       },
       include: deliverableInclude,
     });
+  }
+
+  async uploadFile(
+    projectId: number,
+    deliverableId: number,
+    actor: DeliverablesActor,
+    file: {
+      buffer: Buffer;
+      mimetype: string;
+      originalname: string;
+      size: number;
+    },
+  ) {
+    const membership = await this.requireProjectAccess(projectId, actor);
+    this.requirePermission(actor, membership?.memberRole, [
+      ProjectMemberRole.DEVELOPER,
+      ProjectMemberRole.PRODUCT_OWNER,
+    ]);
+    await this.findDeliverable(projectId, deliverableId);
+
+    const allowedMimes = [
+      'application/pdf',
+      'video/mp4',
+      'video/webm',
+    ];
+    if (!allowedMimes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Formato no permitido. Solo se aceptan archivos PDF, MP4 o WebM.',
+      );
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+      throw new BadRequestException('El archivo no puede exceder los 100 MB.');
+    }
+
+    const ext =
+      nodePath.extname(file.originalname) ||
+      (file.mimetype === 'application/pdf' ? '.pdf' : '.mp4');
+    const key = `deliverable-${projectId}-${deliverableId}-${randomUUID()}${ext}`;
+
+    let url: string;
+    let storageKey = key;
+
+    if (this.storageProvider) {
+      const stored = await this.storageProvider.save({
+        key,
+        content: file.buffer,
+        mimeType: file.mimetype,
+        metadata: {
+          projectId: String(projectId),
+          deliverableId: String(deliverableId),
+          originalName: file.originalname,
+        },
+      });
+      url = stored.url;
+      storageKey = stored.storageKey;
+    } else {
+      url = `https://storage.tisnet.pe/deliverables/${key}`;
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      const baseUrl =
+        process.env.STORAGE_BASE_URL || 'http://localhost:3000/storage';
+      url = `${baseUrl.replace(/\/+$/, '')}/deliverables/${encodeURIComponent(storageKey)}`;
+    }
+
+    return {
+      url,
+      storageKey,
+      filename: file.originalname,
+      sizeBytes: file.size,
+      mimeType: file.mimetype,
+    };
   }
 
   private async requireProjectAccess(
