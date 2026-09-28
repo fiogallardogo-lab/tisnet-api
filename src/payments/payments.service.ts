@@ -2,12 +2,16 @@ import { auditRecord } from '../audit/audit.service';
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
+  forwardRef,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OfficialQuoteDto, PaymentEventDto } from './payments.dto';
+import { ProjectEnablementService } from '../projects/project-enablement.service';
 export function allocateInstallments(
   total: number,
   installments: OfficialQuoteDto['installments'],
@@ -56,7 +60,12 @@ export function allocateInstallments(
 }
 @Injectable()
 export class PaymentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(forwardRef(() => ProjectEnablementService))
+    private readonly enablement?: ProjectEnablementService,
+  ) {}
   async officialize(id: number, authorId: number, dto: OfficialQuoteDto) {
     const schedules = allocateInstallments(dto.amountMinor, dto.installments);
     return this.prisma.$transaction(async (tx) => {
@@ -192,6 +201,21 @@ export class PaymentsService {
           entityId: String(payment.id),
           metadata: { scheduleId: dto.scheduleId, status: dto.status },
         });
+        // S14-B01/B02: trigger idempotent project enablement for the advance payment
+        if (dto.status === 'CONFIRMED' && schedule.sequence === 1) {
+          // Fire-and-forget inside the transaction result; enablement runs its own transaction
+          setImmediate(() => {
+            this.enablement
+              ?.enableFromPayment({
+                scheduleId: dto.scheduleId,
+                paymentId: payment.id,
+                actorId,
+              })
+              .catch(() => {
+                // Errors are logged inside enablement service; webhook must still return 200
+              });
+          });
+        }
         return payment;
       });
     } catch (error) {

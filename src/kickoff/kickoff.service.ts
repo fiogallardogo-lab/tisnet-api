@@ -264,9 +264,10 @@ export class KickoffService {
     dto: { scheduledAt: string; notes?: string },
   ) {
     await this.access(projectId, actor);
-    if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER'].includes(actor.role)) {
+    // S14-B04: CLIENT may request a kickoff date, ADMIN/SUPER_ADMIN/PRODUCT_OWNER may confirm it
+    if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER', 'CLIENT'].includes(actor.role)) {
       throw new ForbiddenException(
-        'Solo administración o el Product Owner puede programar el kickoff.',
+        'Solo administración, el Product Owner o el Cliente puede solicitar el kickoff.',
       );
     }
     const heldAt = new Date(dto.scheduledAt);
@@ -302,13 +303,25 @@ export class KickoffService {
   async addMember(
     projectId: number,
     actor: { id: number; role: string },
-    dto: { userId: number; memberRole: string; participation?: number },
+    dto: { userId: number; memberRole: string; participationBasisPoints?: number },
   ) {
     await this.access(projectId, actor);
     if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER'].includes(actor.role)) {
       throw new ForbiddenException(
         'Solo administración o el Product Owner puede agregar miembros.',
       );
+    }
+    // S14-B06: PRODUCT_OWNER must be the assigned PO of this specific project
+    if (actor.role === 'PRODUCT_OWNER') {
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+        select: { productOwnerId: true },
+      });
+      if (project?.productOwnerId !== actor.id) {
+        throw new ForbiddenException(
+          'Solo el Product Owner asignado a este proyecto puede gestionar el equipo.',
+        );
+      }
     }
     const user = await this.prisma.user.findFirst({
       where: { id: dto.userId, isActive: true },
@@ -318,7 +331,7 @@ export class KickoffService {
       throw new NotFoundException('Usuario no encontrado o inactivo.');
     }
     const roleToAssign = dto.memberRole || user.role.name;
-    const basisPoints = dto.participation ?? 0;
+    const basisPoints = dto.participationBasisPoints ?? 0;
 
     return this.prisma.projectMember.upsert({
       where: { projectId_userId: { projectId, userId: dto.userId } },

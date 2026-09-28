@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -13,12 +13,14 @@ import { CulqiWebhookController } from './culqi/culqi-webhook.controller';
 import { CulqiWebhookService } from './culqi/culqi-webhook.service';
 import { PaymentsService } from './payments.service';
 import { PaymentsController } from './payments.controller';
+import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
   imports: [
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     ConfigModule.forFeature(paymentsConfig),
+    forwardRef(() => ProjectsModule),
   ],
   controllers: [PaymentsController, CulqiWebhookController],
   providers: [

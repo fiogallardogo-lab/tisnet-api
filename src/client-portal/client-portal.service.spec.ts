@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ClientPortalService } from './client-portal.service';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { ProjectEnablementService } from '../projects/project-enablement.service';
 
 describe('ClientPortalService', () => {
   const prisma = {
@@ -20,9 +21,18 @@ describe('ClientPortalService', () => {
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
   };
-  const service = new ClientPortalService(prisma as unknown as PrismaService);
+  // S14-B03: mock enablement service — unlocked by default so existing tests pass
+  const enablement = {
+    isProjectLocked: vi.fn().mockResolvedValue(false),
+  } as unknown as ProjectEnablementService;
+  const service = new ClientPortalService(
+    prisma as unknown as PrismaService,
+    enablement,
+  );
   beforeEach(() => {
     vi.resetAllMocks();
+    // Restore enablement mock — reset clears it
+    (enablement.isProjectLocked as ReturnType<typeof vi.fn>).mockResolvedValue(false);
     prisma.user.findUniqueOrThrow.mockResolvedValue({
       name: 'Lucía',
       email: 'lucia@example.test',

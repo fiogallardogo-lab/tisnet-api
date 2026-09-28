@@ -5,10 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ProjectEnablementService } from '../projects/project-enablement.service';
 
 @Injectable()
 export class ClientPortalService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly enablement: ProjectEnablementService,
+  ) {}
 
   async overview(actor: { id: number; email: string }) {
     const [user, projects, quotes, meetings] = await Promise.all([
@@ -92,34 +96,39 @@ export class ClientPortalService {
         orderBy: { createdAt: 'desc' },
       }),
     ]);
-    const ownProjects = projects.map((project) => {
-      const total = project.deliverables.length;
-      const approved = project.deliverables.filter(
-        (item) => item.status === 'APPROVED',
-      ).length;
-      const dates = project.deliverables.map((item) => item.dueDate.getTime());
-      return {
-        id: project.id,
-        name: project.name,
-        summary: project.shortDescription,
-        description: project.description,
-        status: project.status,
-        progress: total ? Math.round((approved / total) * 100) : null,
-        startedAt: project.developmentDate?.toISOString().slice(0, 10) ?? null,
-        estimatedDeliveryAt: dates.length
-          ? new Date(Math.max(...dates)).toISOString().slice(0, 10)
-          : null,
-        teamSize: project.members.length,
-        totalDeliverables: total,
-        pendingDeliverables: total - approved,
-        milestones: project.deliverables.map((item) => ({
-          id: item.id,
-          title: item.title,
-          status: item.status,
-          date: item.dueDate.toISOString().slice(0, 10),
-        })),
-      };
-    });
+    const ownProjects = await Promise.all(
+      projects.map(async (project) => {
+        const total = project.deliverables.length;
+        const approved = project.deliverables.filter(
+          (item) => item.status === 'APPROVED',
+        ).length;
+        const dates = project.deliverables.map((item) => item.dueDate.getTime());
+        // S14-B03: project is locked until the advance payment is confirmed
+        const locked = await this.enablement.isProjectLocked(project.id);
+        return {
+          id: project.id,
+          name: project.name,
+          summary: project.shortDescription,
+          description: project.description,
+          status: project.status,
+          locked,
+          progress: total ? Math.round((approved / total) * 100) : null,
+          startedAt: project.developmentDate?.toISOString().slice(0, 10) ?? null,
+          estimatedDeliveryAt: dates.length
+            ? new Date(Math.max(...dates)).toISOString().slice(0, 10)
+            : null,
+          teamSize: project.members.length,
+          totalDeliverables: total,
+          pendingDeliverables: total - approved,
+          milestones: project.deliverables.map((item) => ({
+            id: item.id,
+            title: item.title,
+            status: item.status,
+            date: item.dueDate.toISOString().slice(0, 10),
+          })),
+        };
+      }),
+    );
     const ownQuotes = quotes
       .map((quote) => ({
         ...quote,

@@ -1,4 +1,27 @@
 import { PaymentsModule } from '../payments/payments.module';
-import { Module } from '@nestjs/common'; import { PassportModule } from '@nestjs/passport'; import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; import { RolesGuard } from '../auth/guards/roles.guard'; import { PrismaModule } from '../prisma/prisma.module'; import { ClientPortalController } from './client-portal.controller'; import { ClientPortalService } from './client-portal.service'; import { ClientQuotesController } from './client-quotes.controller'; import { ClientQuotesService } from './client-quotes.service';
+import { Module, forwardRef } from '@nestjs/common';
+import { PassportModule } from '@nestjs/passport';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PrismaModule } from '../prisma/prisma.module';
+import { ClientPortalController } from './client-portal.controller';
+import { ClientPortalService } from './client-portal.service';
+import { ClientQuotesController } from './client-quotes.controller';
+import { ClientQuotesService } from './client-quotes.service';
 import { ClientPaymentsController } from './client-payments.controller';
-import { ClientPaymentsService } from './client-payments.service';  @Module({   imports: [PaymentsModule, PrismaModule, PassportModule.register({ defaultStrategy: 'jwt' })],   controllers: [ClientPortalController, ClientQuotesController, ClientPaymentsController],   providers: [ClientPortalService, ClientQuotesService, ClientPaymentsService, JwtAuthGuard, RolesGuard], }) export class ClientPortalModule {}
+import { ClientPaymentsService } from './client-payments.service';
+import { KickoffModule } from '../kickoff/kickoff.module';
+import { ProjectsModule } from '../projects/projects.module';
+
+@Module({
+  imports: [
+    PaymentsModule,
+    PrismaModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    forwardRef(() => KickoffModule),
+    forwardRef(() => ProjectsModule),
+  ],
+  controllers: [ClientPortalController, ClientQuotesController, ClientPaymentsController],
+  providers: [ClientPortalService, ClientQuotesService, ClientPaymentsService, JwtAuthGuard, RolesGuard],
+})
+export class ClientPortalModule {}
