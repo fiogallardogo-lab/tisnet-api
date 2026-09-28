@@ -21,8 +21,21 @@ export class BookMeetingDto {
   @IsDateString({ strict: true }) end: string;
 }
 export class AvailabilityQuery {
-  @IsDateString({ strict: true }) from: string;
-  @IsDateString({ strict: true }) to: string;
+  @IsOptional()
+  @IsDateString({ strict: true })
+  from?: string;
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  to?: string;
+
+  @IsOptional()
+  @IsString()
+  date?: string;
+
+  @IsOptional()
+  @IsString()
+  timezone?: string;
 }
 export class MeetingListQuery {
   @Type(() => Number) @IsInt() @Min(1) page = 1;

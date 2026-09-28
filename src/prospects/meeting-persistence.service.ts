@@ -37,7 +37,34 @@ export class MeetingPersistenceService {
     return { a, b };
   }
   async availability(advisorId: number, query: AvailabilityQuery) {
-    const { a, b } = this.range(query.from, query.to, 31);
+    let fromStr = query.from;
+    let toStr = query.to;
+
+    if ((!fromStr || !toStr) && query.date) {
+      const match = query.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, y, m, d] = match;
+        fromStr = `${y}-${m}-${d}T00:00:00.000Z`;
+        toStr = `${y}-${m}-${d}T23:59:59.999Z`;
+      } else {
+        const parsed = new Date(query.date);
+        if (!Number.isFinite(parsed.getTime())) {
+          throw new BadRequestException('Fecha inválida.');
+        }
+        const start = new Date(parsed);
+        start.setUTCHours(0, 0, 0, 0);
+        const end = new Date(parsed);
+        end.setUTCHours(23, 59, 59, 999);
+        fromStr = start.toISOString();
+        toStr = end.toISOString();
+      }
+    }
+
+    if (!fromStr || !toStr) {
+      throw new BadRequestException('Se requieren parámetros from y to, o date.');
+    }
+
+    const { a, b } = this.range(fromStr, toStr, 31);
     const advisor = await this.prisma.adminProfile.findFirst({
       where: { id: advisorId, isPublicAdvisor: true, user: { isActive: true } },
     });
