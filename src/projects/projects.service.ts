@@ -1,12 +1,14 @@
-import { PaymentsService } from '../payments/payments.service';
-import { Optional } from '@nestjs/common';
 import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
+  forwardRef,
 } from '@nestjs/common';
+import { PaymentsService } from '../payments/payments.service';
 import { Prisma, ProjectStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -42,7 +44,9 @@ type ProjectWithRelations = Prisma.ProjectGetPayload<{
 export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() private readonly payments?: PaymentsService,
+    @Optional()
+    @Inject(forwardRef(() => PaymentsService))
+    private readonly payments?: PaymentsService,
   ) {}
 
   async create(dto: CreateProjectDto) {
