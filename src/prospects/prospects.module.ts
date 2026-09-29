@@ -1,3 +1,4 @@
+import { CommercialModule } from '../commercial/commercial.module';
 import { SchedulingModule } from '../scheduling/scheduling.module';
 import { MeetingPersistenceService } from './meeting-persistence.service';
 import {
@@ -16,6 +17,7 @@ import { AdvisorsAdminController } from './advisors-admin.controller';
 
 @Module({
   imports: [
+    CommercialModule,
     SchedulingModule,
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),

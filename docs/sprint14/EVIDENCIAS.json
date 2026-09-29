@@ -1,0 +1,486 @@
+{
+  "date": "2026-09-29",
+  "baseDevelop": "013fc1d",
+  "unit": {
+    "success": true,
+    "files": 77,
+    "passed": 587,
+    "failed": 0,
+    "pending": 0,
+    "total": 587,
+    "suites": [
+      {
+        "file": "src/app.controller.spec.ts",
+        "status": "passed",
+        "tests": 1
+      },
+      {
+        "file": "src/audit/audit.service.spec.ts",
+        "status": "passed",
+        "tests": 6
+      },
+      {
+        "file": "src/audit/in-memory-audit.provider.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/auth/auth.controller.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/auth/auth.service.spec.ts",
+        "status": "passed",
+        "tests": 17
+      },
+      {
+        "file": "src/categories/categories.service.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/client-portal/client-payments.service.spec.ts",
+        "status": "passed",
+        "tests": 4
+      },
+      {
+        "file": "src/client-portal/client-portal.controller.spec.ts",
+        "status": "passed",
+        "tests": 2
+      },
+      {
+        "file": "src/client-portal/client-portal.service.spec.ts",
+        "status": "passed",
+        "tests": 5
+      },
+      {
+        "file": "src/commercial/activation.service.spec.ts",
+        "status": "passed",
+        "tests": 8
+      },
+      {
+        "file": "src/commercial/commercial-mail.service.spec.ts",
+        "status": "passed",
+        "tests": 5
+      },
+      {
+        "file": "src/commercial/commercial-validation.spec.ts",
+        "status": "passed",
+        "tests": 11
+      },
+      {
+        "file": "src/commercial/commercial.service.spec.ts",
+        "status": "passed",
+        "tests": 7
+      },
+      {
+        "file": "src/deliverables/deliverables.service.spec.ts",
+        "status": "passed",
+        "tests": 11
+      },
+      {
+        "file": "src/documents/fake-document-renderer.spec.ts",
+        "status": "passed",
+        "tests": 5
+      },
+      {
+        "file": "src/documents/pdf-quote-document.renderer.spec.ts",
+        "status": "passed",
+        "tests": 6
+      },
+      {
+        "file": "src/documents/quote-delivery.service.spec.ts",
+        "status": "passed",
+        "tests": 7
+      },
+      {
+        "file": "src/kickoff/kickoff.service.spec.ts",
+        "status": "passed",
+        "tests": 2
+      },
+      {
+        "file": "src/meetings/meetings.service.spec.ts",
+        "status": "passed",
+        "tests": 11
+      },
+      {
+        "file": "src/payments/fake-payment.provider.spec.ts",
+        "status": "passed",
+        "tests": 6
+      },
+      {
+        "file": "src/payments/payments.config.spec.ts",
+        "status": "passed",
+        "tests": 5
+      },
+      {
+        "file": "src/payments/payments.service.spec.ts",
+        "status": "passed",
+        "tests": 12
+      },
+      {
+        "file": "src/notifications/application-notifications.spec.ts",
+        "status": "passed",
+        "tests": 20
+      },
+      {
+        "file": "src/notifications/application-security.spec.ts",
+        "status": "passed",
+        "tests": 32
+      },
+      {
+        "file": "src/notifications/fake-notification.provider.spec.ts",
+        "status": "passed",
+        "tests": 8
+      },
+      {
+        "file": "src/notifications/meeting-notifications.spec.ts",
+        "status": "passed",
+        "tests": 11
+      },
+      {
+        "file": "src/notifications/notification-config.spec.ts",
+        "status": "passed",
+        "tests": 18
+      },
+      {
+        "file": "src/notifications/notification-errors.spec.ts",
+        "status": "passed",
+        "tests": 9
+      },
+      {
+        "file": "src/notifications/smtp-notification.provider.spec.ts",
+        "status": "passed",
+        "tests": 7
+      },
+      {
+        "file": "src/prisma/prisma.service.spec.ts",
+        "status": "passed",
+        "tests": 1
+      },
+      {
+        "file": "src/projects/project-enablement.service.spec.ts",
+        "status": "passed",
+        "tests": 16
+      },
+      {
+        "file": "src/projects/projects.service.spec.ts",
+        "status": "passed",
+        "tests": 22
+      },
+      {
+        "file": "src/prospects/advisors.controller.spec.ts",
+        "status": "passed",
+        "tests": 2
+      },
+      {
+        "file": "src/prospects/prospects.controller.spec.ts",
+        "status": "passed",
+        "tests": 5
+      },
+      {
+        "file": "src/prospects/prospects.service.spec.ts",
+        "status": "passed",
+        "tests": 17
+      },
+      {
+        "file": "src/profiles/profiles.controller.spec.ts",
+        "status": "passed",
+        "tests": 2
+      },
+      {
+        "file": "src/profiles/profiles.module.spec.ts",
+        "status": "passed",
+        "tests": 1
+      },
+      {
+        "file": "src/profiles/profiles.service.spec.ts",
+        "status": "passed",
+        "tests": 18
+      },
+      {
+        "file": "src/public-intake/intake.service.spec.ts",
+        "status": "passed",
+        "tests": 4
+      },
+      {
+        "file": "src/quotes/admin-quotes.spec.ts",
+        "status": "passed",
+        "tests": 7
+      },
+      {
+        "file": "src/quotes/public-quotes.controller.spec.ts",
+        "status": "passed",
+        "tests": 1
+      },
+      {
+        "file": "src/quotes/quotes.service.spec.ts",
+        "status": "passed",
+        "tests": 10
+      },
+      {
+        "file": "src/scheduling/fake-scheduling.provider.spec.ts",
+        "status": "passed",
+        "tests": 9
+      },
+      {
+        "file": "src/services/services.service.spec.ts",
+        "status": "passed",
+        "tests": 33
+      },
+      {
+        "file": "src/storage/disk-storage.provider.spec.ts",
+        "status": "passed",
+        "tests": 12
+      },
+      {
+        "file": "src/storage/in-memory-storage.provider.spec.ts",
+        "status": "passed",
+        "tests": 9
+      },
+      {
+        "file": "src/storage/storage-config.spec.ts",
+        "status": "passed",
+        "tests": 9
+      },
+      {
+        "file": "src/team-applications/team-applications.service.spec.ts",
+        "status": "passed",
+        "tests": 15
+      },
+      {
+        "file": "src/technologies/technologies.service.spec.ts",
+        "status": "passed",
+        "tests": 13
+      },
+      {
+        "file": "src/users/users.controller.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/users/users.service.spec.ts",
+        "status": "passed",
+        "tests": 8
+      },
+      {
+        "file": "src/common/business-days/business-days.service.spec.ts",
+        "status": "passed",
+        "tests": 11
+      },
+      {
+        "file": "src/common/dto/active-filter-query.dto.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/common/legal/legal-versions.spec.ts",
+        "status": "passed",
+        "tests": 7
+      },
+      {
+        "file": "src/common/signed-urls/signed-url.service.spec.ts",
+        "status": "passed",
+        "tests": 5
+      },
+      {
+        "file": "src/common/sla-alerts/sla-alerts.service.spec.ts",
+        "status": "passed",
+        "tests": 2
+      },
+      {
+        "file": "src/payments/culqi/culqi-payment.provider.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/payments/culqi/culqi-webhook.controller.spec.ts",
+        "status": "passed",
+        "tests": 1
+      },
+      {
+        "file": "src/payments/culqi/culqi-webhook.service.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/notifications/templates/password-reset-notification.spec.ts",
+        "status": "passed",
+        "tests": 2
+      },
+      {
+        "file": "src/profiles/dto/profile-validation.spec.ts",
+        "status": "passed",
+        "tests": 10
+      },
+      {
+        "file": "src/profiles/dto/update-own-user.dto.spec.ts",
+        "status": "passed",
+        "tests": 14
+      },
+      {
+        "file": "src/quotes/dto/create-public-quote.dto.spec.ts",
+        "status": "passed",
+        "tests": 7
+      },
+      {
+        "file": "src/quotes/domain/quote-code.generator.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/quotes/domain/quote-normalizer.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/quotes/interceptors/reject-unknown-quote-fields.interceptor.spec.ts",
+        "status": "passed",
+        "tests": 4
+      },
+      {
+        "file": "src/quotes/mappers/public-quote.mapper.spec.ts",
+        "status": "passed",
+        "tests": 2
+      },
+      {
+        "file": "src/quotes/pricing/rounding.spec.ts",
+        "status": "passed",
+        "tests": 4
+      },
+      {
+        "file": "src/quotes/pricing/sp01-v2-pricing-engine.spec.ts",
+        "status": "passed",
+        "tests": 9
+      },
+      {
+        "file": "src/quotes/repositories/prisma-quote.repository.spec.ts",
+        "status": "passed",
+        "tests": 6
+      },
+      {
+        "file": "src/reports/__tests__/reports.controller.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/reports/__tests__/reports.service.spec.ts",
+        "status": "passed",
+        "tests": 4
+      },
+      {
+        "file": "src/scheduling/calendly/calendly-signature.service.spec.ts",
+        "status": "passed",
+        "tests": 8
+      },
+      {
+        "file": "src/scheduling/calendly/calendly-webhook.service.spec.ts",
+        "status": "passed",
+        "tests": 5
+      },
+      {
+        "file": "src/team-applications/dto/interview-decision.dto.spec.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "file": "src/common/filters/http-exception/http-exception.filter.spec.ts",
+        "status": "passed",
+        "tests": 1
+      },
+      {
+        "file": "src/common/interceptors/transform/transform.interceptor.spec.ts",
+        "status": "passed",
+        "tests": 2
+      }
+    ]
+  },
+  "e2e": {
+    "success": true,
+    "files": 12,
+    "passed": 223,
+    "failed": 0,
+    "pending": 0,
+    "total": 223,
+    "suites": [
+      {
+        "file": "test/agreement-flow.e2e-spec.ts",
+        "status": "passed",
+        "tests": 9
+      },
+      {
+        "file": "test/app.e2e-spec.ts",
+        "status": "passed",
+        "tests": 103
+      },
+      {
+        "file": "test/commercial-core.e2e-spec.ts",
+        "status": "passed",
+        "tests": 6
+      },
+      {
+        "file": "test/deliverables.e2e-spec.ts",
+        "status": "passed",
+        "tests": 6
+      },
+      {
+        "file": "test/identity-profiles.e2e-spec.ts",
+        "status": "passed",
+        "tests": 13
+      },
+      {
+        "file": "test/notifications.e2e-spec.ts",
+        "status": "passed",
+        "tests": 8
+      },
+      {
+        "file": "test/prospects.e2e-spec.ts",
+        "status": "passed",
+        "tests": 4
+      },
+      {
+        "file": "test/quotes.e2e-spec.ts",
+        "status": "passed",
+        "tests": 6
+      },
+      {
+        "file": "test/s14-concurrency.e2e-spec.ts",
+        "status": "passed",
+        "tests": 4
+      },
+      {
+        "file": "test/sprint14-commercial.e2e-spec.ts",
+        "status": "passed",
+        "tests": 13
+      },
+      {
+        "file": "test/team-applications.e2e-spec.ts",
+        "status": "passed",
+        "tests": 13
+      },
+      {
+        "file": "test/users/users-profile.e2e-spec.ts",
+        "status": "passed",
+        "tests": 38
+      }
+    ]
+  },
+  "build": {
+    "exitCode": 0
+  },
+  "lint": {
+    "exitCode": 0,
+    "existingWarnings": 13
+  },
+  "database": {
+    "engine": "MySQL 8.0.46",
+    "scope": "Instancia temporal independiente en loopback; no datos productivos",
+    "incrementalMigration": "applied; no schema drift",
+    "cleanMigrationHistory": "blocked at 20260925170000_project_kickoff_audit: ProjectMember absent (P3018/1146)"
+  },
+  "mail": {
+    "automatedTests": "captured by FakeNotificationProvider; no external recipients",
+    "sandboxDemo": "not executed"
+  }
+}

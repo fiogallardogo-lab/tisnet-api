@@ -44,6 +44,8 @@ function makeProspect(overrides: Record<string, unknown> = {}) {
 
 function createService() {
   const tx = {
+    $queryRaw: vi.fn(),
+    auditEvent: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
     quote: {
       findUnique: vi.fn(),
       update: vi.fn(),
@@ -222,7 +224,9 @@ describe('ProspectsService', () => {
       const { service, prisma } = createService();
       prisma.prospect.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOwn(5)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.findOwn(5)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 
@@ -264,7 +268,9 @@ describe('ProspectsService', () => {
       const { service, prisma } = createService();
       prisma.prospect.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne(999)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.findOne(999)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 
@@ -352,9 +358,9 @@ describe('ProspectsService', () => {
       const { service, prisma } = createService();
       prisma.adminProfile.findUnique.mockResolvedValue(null);
 
-      await expect(service.setAdvisorVisibility(999, true)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.setAdvisorVisibility(999, true),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('lanza ConflictException si el usuario está inactivo y se intenta publicar', async () => {
@@ -364,9 +370,9 @@ describe('ProspectsService', () => {
         user: { isActive: false },
       });
 
-      await expect(service.setAdvisorVisibility(4, true)).rejects.toBeInstanceOf(
-        ConflictException,
-      );
+      await expect(
+        service.setAdvisorVisibility(4, true),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 });

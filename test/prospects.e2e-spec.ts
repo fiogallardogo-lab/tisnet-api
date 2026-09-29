@@ -123,7 +123,7 @@ describe('Prospects API (e2e, base aislada)', () => {
     return response.body.data.accessToken as string;
   }
 
-  it('vincula una cotización propia y permite repetir la operación', async () => {
+  it('vincula una cotización propia y rechaza código reutilizado', async () => {
     const first = await request(app.getHttpServer())
       .post('/api/v1/prospects/link-quote')
       .set('Authorization', `Bearer ${clientToken}`)
@@ -142,9 +142,9 @@ describe('Prospects API (e2e, base aislada)', () => {
       .post('/api/v1/prospects/link-quote')
       .set('Authorization', `Bearer ${clientToken}`)
       .send({ publicCode: quoteCode })
-      .expect(201);
+      .expect(409);
 
-    expect(repeated.body.data.id).toBe(first.body.data.id);
+    expect(repeated.body.success).toBe(false);
   });
 
   it('rechaza una cotización perteneciente a otro correo', async () => {

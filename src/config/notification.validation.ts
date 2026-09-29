@@ -25,9 +25,7 @@ export interface ResendNotificationConfig extends BaseNotificationConfig {
 }
 
 export type NotificationConfig =
-  | FakeNotificationConfig
-  | SmtpNotificationConfig
-  | ResendNotificationConfig;
+  FakeNotificationConfig | SmtpNotificationConfig | ResendNotificationConfig;
 
 function requireEnv(
   env: Record<string, string | undefined>,
@@ -47,7 +45,11 @@ function parsePort(raw: string | undefined, context: string): number {
   const parsed = parseInt(raw ?? '587', 10);
   if (Number.isNaN(parsed) || parsed < 1 || parsed > 65535) {
     throw new Error(
-      '[Notifications] ' + context + ': SMTP_PORT must be a valid port number (1-65535), got "' + raw + '"',
+      '[Notifications] ' +
+        context +
+        ': SMTP_PORT must be a valid port number (1-65535), got "' +
+        raw +
+        '"',
     );
   }
   return parsed;
@@ -56,9 +58,20 @@ function parsePort(raw: string | undefined, context: string): number {
 export function validateNotificationConfig(
   env: Record<string, string | undefined>,
 ): NotificationConfig {
-  const provider = (env.NOTIFICATION_PROVIDER ?? 'fake').trim() as NotificationProvider;
+  const provider = (
+    env.NOTIFICATION_PROVIDER ?? 'fake'
+  ).trim() as NotificationProvider;
 
   if (provider === 'fake') {
+    if (
+      env.NODE_ENV === 'production' ||
+      env.NODE_ENV === 'staging' ||
+      env.S14_DEMO === 'true'
+    ) {
+      throw new Error(
+        '[Notifications] SMTP or Resend is required in production, staging and S14_DEMO.',
+      );
+    }
     return { provider: 'fake', mailFrom: '' };
   }
 
@@ -85,6 +98,8 @@ export function validateNotificationConfig(
   }
 
   throw new Error(
-    '[Notifications] Unknown NOTIFICATION_PROVIDER="' + provider + '". Valid values: fake | smtp | resend',
+    '[Notifications] Unknown NOTIFICATION_PROVIDER="' +
+      provider +
+      '". Valid values: fake | smtp | resend',
   );
 }

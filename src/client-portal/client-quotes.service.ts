@@ -1,5 +1,5 @@
-﻿import {
-  BadRequestException,
+import { auditRecord } from '../audit/audit.service';
+import {
   ConflictException,
   Injectable,
   NotFoundException,
@@ -23,7 +23,7 @@ export class ClientQuotesService {
       include: {
         versions: {
           orderBy: { version: 'desc' },
-          take: 1,
+
           include: {
             schedules: {
               orderBy: { sequence: 'asc' },
@@ -35,7 +35,9 @@ export class ClientQuotesService {
     });
 
     if (!quote || quote.versions.length === 0) {
-      throw new NotFoundException('Cotización oficial no encontrada o no pertenece a tu cuenta.');
+      throw new NotFoundException(
+        'Cotización oficial no encontrada o no pertenece a tu cuenta.',
+      );
     }
 
     const official = quote.versions[0];
@@ -48,9 +50,40 @@ export class ClientQuotesService {
       currency: official.currency,
       officialAt: official.officialAt,
       acceptedAt: official.acceptedAt,
-      acceptedVersionId: official.acceptedAt ? official.version : null,
+      acceptedVersionId: official.acceptedAt ? official.id : null,
+      versions: quote.versions.map((v) => ({
+        id: v.id,
+        version: v.version,
+        code: quote.publicCode,
+        kind: 'OFFICIAL',
+        status: v.acceptedAt
+          ? 'ACCEPTED'
+          : v.version === quote.activeVersion
+            ? 'SENT'
+            : 'SUPERSEDED',
+        amountMinor: Number(v.amountMinor),
+        currency: v.currency,
+        createdAt: v.createdAt,
+        notes:
+          typeof v.scope === 'object' && v.scope && 'description' in v.scope
+            ? v.scope.description
+            : '',
+        canAccept: v.version === quote.activeVersion && !v.acceptedAt,
+        installments: v.schedules.map((s) => ({
+          id: s.id,
+          label: s.milestone,
+          percentage: s.percentageBasisPoints / 100,
+          amountMinor: Number(s.amountMinor),
+          currency: v.currency,
+          dueDate: s.dueDate.toISOString().slice(0, 10),
+          status: s.payments.length ? 'PAID' : 'PENDING',
+        })),
+      })),
       installments: official.schedules.map((s) => {
-        const totalPaid = s.payments.reduce((sum, p) => sum + Number(p.amountMinor), 0);
+        const totalPaid = s.payments.reduce(
+          (sum, p) => sum + Number(p.amountMinor),
+          0,
+        );
         return {
           id: s.id,
           sequence: s.sequence,
@@ -64,23 +97,22 @@ export class ClientQuotesService {
     };
   }
 
-  async acceptAgreement(quoteId: number, clientId: number, version: number) {
+  async acceptAgreement(quoteId: number, clientId: number, versionId: number) {
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM Quote WHERE id = ${quoteId} FOR UPDATE`;
       const quote = await tx.quote.findFirst({
         where: { id: quoteId, prospect: { userId: clientId } },
       });
       if (!quote) throw new NotFoundException('Cotización no encontrada.');
-      
-      if (quote.activeVersion !== version) {
-        throw new ConflictException('Solo puedes aceptar la versión activa/oficial actual.');
-      }
 
-      const qv = await tx.quoteVersion.findUnique({
-        where: { quoteId_version: { quoteId, version } },
+      const qv = await tx.quoteVersion.findFirst({
+        where: { id: versionId, quoteId, clientUserId: clientId },
       });
-
       if (!qv) throw new NotFoundException('Versión no encontrada.');
-
+      if (quote.activeVersion !== qv.version)
+        throw new ConflictException(
+          'Solo puedes aceptar la versión activa/oficial actual.',
+        );
       if (qv.acceptedAt) {
         // Idempotent return
         return { accepted: true, acceptedAt: qv.acceptedAt };
@@ -94,12 +126,12 @@ export class ClientQuotesService {
         },
       });
 
-      await this.audit.record({
+      await auditRecord(tx, {
         actorId: clientId,
         action: 'CLIENT_ACCEPTED_QUOTE_VERSION',
         entityType: 'QUOTE',
-        entityId: quoteId,
-        metadata: { version },
+        entityId: String(quoteId),
+        metadata: { version: qv.version },
       });
 
       return { accepted: true, acceptedAt: updated.acceptedAt };
