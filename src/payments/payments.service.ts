@@ -150,74 +150,83 @@ export class PaymentsService {
   // Domain boundary for B: call only AFTER verifying the provider signature and event origin.
   async processEvent(dto: PaymentEventDto, actorId?: number) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const schedule = await tx.paymentSchedule.findUnique({
-          where: { id: dto.scheduleId },
-          include: { quoteVersion: true },
-        });
-        if (!schedule) throw new NotFoundException('Cuota no encontrada');
-        await tx.$queryRaw`SELECT id FROM Quote WHERE id = ${schedule.quoteVersion.quoteId} FOR UPDATE`;
-        const existing = await tx.payment.findUnique({
-          where: { externalEventId: dto.externalEventId },
-        });
-        if (existing) {
-          if (
-            existing.scheduleId !== dto.scheduleId ||
-            Number(existing.amountMinor) !== dto.amountMinor ||
-            existing.currency !== dto.currency ||
-            existing.status !== dto.status
-          )
-            throw new ConflictException(
-              'El identificador del evento ya tiene otro contenido.',
-            );
-          return existing;
-        }
-        const quote = await tx.quote.findUniqueOrThrow({
-          where: { id: schedule.quoteVersion.quoteId },
-        });
-        if (quote.activeVersion !== schedule.quoteVersion.version)
-          throw new ConflictException(
-            'La cuota corresponde a una versión sustituida.',
-          );
-        if (
-          Number(schedule.amountMinor) !== dto.amountMinor ||
-          schedule.quoteVersion.currency !== dto.currency
-        )
-          throw new BadRequestException(
-            'Importe o moneda no coincide con la cuota.',
-          );
-        if (
-          dto.status === 'CONFIRMED' &&
-          (await tx.payment.count({
-            where: { scheduleId: dto.scheduleId, status: 'CONFIRMED' },
-          }))
-        )
-          throw new ConflictException('La cuota ya fue pagada.');
-        const payment = await tx.payment.create({ data: dto });
-        await auditRecord(tx, {
-          actorId,
-          action: 'PAYMENT_' + dto.status,
-          entityType: 'PAYMENT',
-          entityId: String(payment.id),
-          metadata: { scheduleId: dto.scheduleId, status: dto.status },
-        });
-        // S14-B01/B02: trigger idempotent project enablement for the advance payment
-        if (dto.status === 'CONFIRMED' && schedule.sequence === 1) {
-          // Fire-and-forget inside the transaction result; enablement runs its own transaction
-          setImmediate(() => {
-            this.enablement
-              ?.enableFromPayment({
-                scheduleId: dto.scheduleId,
-                paymentId: payment.id,
-                actorId,
-              })
-              .catch(() => {
-                // Errors are logged inside enablement service; webhook must still return 200
-              });
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const schedule = await tx.paymentSchedule.findUnique({
+            where: { id: dto.scheduleId },
+            include: { quoteVersion: true },
           });
-        }
-        return payment;
-      });
+          if (!schedule) throw new NotFoundException('Cuota no encontrada');
+          await tx.$queryRaw`SELECT id FROM Quote WHERE id = ${schedule.quoteVersion.quoteId} FOR UPDATE`;
+          const existing = await tx.payment.findUnique({
+            where: { externalEventId: dto.externalEventId },
+          });
+          if (existing) {
+            if (
+              existing.scheduleId !== dto.scheduleId ||
+              Number(existing.amountMinor) !== dto.amountMinor ||
+              existing.currency !== dto.currency ||
+              existing.status !== dto.status
+            )
+              throw new ConflictException(
+                'El identificador del evento ya tiene otro contenido.',
+              );
+            if (existing.status === 'CONFIRMED' && schedule.sequence === 1) {
+              if (!this.enablement)
+                throw new ConflictException(
+                  'Habilitación de proyectos no configurada.',
+                );
+              await this.enablement.enableFromPayment(
+                { scheduleId: dto.scheduleId, paymentId: existing.id, actorId },
+                tx,
+              );
+            }
+            return existing;
+          }
+          const quote = await tx.quote.findUniqueOrThrow({
+            where: { id: schedule.quoteVersion.quoteId },
+          });
+          if (quote.activeVersion !== schedule.quoteVersion.version)
+            throw new ConflictException(
+              'La cuota corresponde a una versión sustituida.',
+            );
+          if (
+            Number(schedule.amountMinor) !== dto.amountMinor ||
+            schedule.quoteVersion.currency !== dto.currency
+          )
+            throw new BadRequestException(
+              'Importe o moneda no coincide con la cuota.',
+            );
+          if (
+            dto.status === 'CONFIRMED' &&
+            (await tx.payment.count({
+              where: { scheduleId: dto.scheduleId, status: 'CONFIRMED' },
+            }))
+          )
+            throw new ConflictException('La cuota ya fue pagada.');
+          const payment = await tx.payment.create({ data: dto });
+          await auditRecord(tx, {
+            actorId,
+            action: 'PAYMENT_' + dto.status,
+            entityType: 'PAYMENT',
+            entityId: String(payment.id),
+            metadata: { scheduleId: dto.scheduleId, status: dto.status },
+          });
+          // S14-B01/B02: trigger idempotent project enablement for the advance payment
+          if (dto.status === 'CONFIRMED' && schedule.sequence === 1) {
+            if (!this.enablement)
+              throw new ConflictException(
+                'Habilitación de proyectos no configurada.',
+              );
+            await this.enablement.enableFromPayment(
+              { scheduleId: dto.scheduleId, paymentId: payment.id, actorId },
+              tx,
+            );
+          }
+          return payment;
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+      );
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

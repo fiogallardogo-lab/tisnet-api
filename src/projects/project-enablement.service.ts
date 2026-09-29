@@ -40,11 +40,14 @@ export class ProjectEnablementService {
    * Must be called inside the same transaction as the payment, or as a
    * separate, idempotent follow-up call.
    */
-  async enableFromPayment(opts: EnableFromPaymentOptions): Promise<void> {
+  async enableFromPayment(
+    opts: EnableFromPaymentOptions,
+    transaction?: Prisma.TransactionClient,
+  ): Promise<void> {
     const { scheduleId, paymentId, actorId } = opts;
 
     try {
-      await this.prisma.$transaction(async (tx) => {
+      const run = async (tx: Prisma.TransactionClient) => {
         // Lock the schedule row to serialise concurrent webhooks for the same quote
         await tx.$queryRaw`SELECT id FROM PaymentSchedule WHERE id = ${scheduleId} FOR UPDATE`;
 
@@ -60,22 +63,33 @@ export class ProjectEnablementService {
         });
 
         if (!schedule) {
-          this.logger.warn(`[Enablement] Schedule ${scheduleId} not found, skipping.`);
+          this.logger.warn(
+            `[Enablement] Schedule ${scheduleId} not found, skipping.`,
+          );
           return;
         }
 
         // Only the advance payment (sequence=1) triggers project enablement
         if (schedule.sequence !== 1) {
-          this.logger.log(`[Enablement] Schedule ${scheduleId} is sequence=${schedule.sequence}, not the advance. Skipping.`);
+          this.logger.log(
+            `[Enablement] Schedule ${scheduleId} is sequence=${schedule.sequence}, not the advance. Skipping.`,
+          );
           return;
         }
 
         const { quoteVersion } = schedule;
         const quote = quoteVersion.quote;
+        const payment = await tx.payment.findFirst({
+          where: { id: paymentId, scheduleId, status: 'CONFIRMED' },
+        });
+        if (!payment)
+          throw new ConflictException('Se requiere un adelanto confirmado.');
 
         // Guard: only the active version should trigger enablement
         if (quote.activeVersion !== quoteVersion.version) {
-          this.logger.warn(`[Enablement] Quote ${quote.id} active version mismatch. Skipping.`);
+          this.logger.warn(
+            `[Enablement] Quote ${quote.id} active version mismatch. Skipping.`,
+          );
           return;
         }
 
@@ -86,6 +100,12 @@ export class ProjectEnablementService {
         });
 
         if (existing) {
+          await this.ensureMilestones(
+            tx,
+            existing.id,
+            quoteVersion.id,
+            quoteVersion.scope,
+          );
           this.logger.log(
             `[Enablement] Project ${existing.id} already exists for quote ${quote.id}. Idempotent skip.`,
           );
@@ -123,12 +143,17 @@ export class ProjectEnablementService {
         });
 
         if (!defaultCategory) {
-          throw new ConflictException('No active category found to assign to the project.');
+          throw new ConflictException(
+            'No active category found to assign to the project.',
+          );
         }
 
         const scope = quoteVersion.scope as { description?: string };
-        const projectName = scope.description?.slice(0, 150) || `Proyecto ${quote.publicCode}`;
-        const baseSlug = quote.publicCode.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const projectName =
+          scope.description?.slice(0, 150) || `Proyecto ${quote.publicCode}`;
+        const baseSlug = quote.publicCode
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-');
 
         // Ensure slug uniqueness
         const slug = await this.uniqueSlug(tx, baseSlug);
@@ -158,6 +183,12 @@ export class ProjectEnablementService {
           select: { id: true },
         });
 
+        await this.ensureMilestones(
+          tx,
+          project.id,
+          quoteVersion.id,
+          quoteVersion.scope,
+        );
         await auditRecord(tx, {
           actorId,
           action: 'PROJECT_ENABLED',
@@ -174,17 +205,19 @@ export class ProjectEnablementService {
         this.logger.log(
           `[Enablement] Project ${project.id} created and enabled for quote ${quote.id} (payment scheduleId=${scheduleId}).`,
         );
-      });
+      };
+      if (transaction) await run(transaction);
+      else await this.prisma.$transaction(run);
     } catch (err: any) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2002'
       ) {
-        // Unique constraint on quoteId — project was created by a concurrent request
+        // Do not acknowledge a payment whose associated transaction failed.
         this.logger.log(
-          `[Enablement] Concurrent project creation detected for scheduleId=${scheduleId}. Safe idempotent skip.`,
+          `[Enablement] Unique constraint failure for scheduleId=${scheduleId}; transaction must roll back.`,
         );
-        return;
+        throw err;
       }
       this.logger.error(
         `[Enablement] Error enabling project for scheduleId=${scheduleId}: ${err.message}`,
@@ -215,7 +248,11 @@ export class ProjectEnablementService {
       if (!project) throw new NotFoundException('Proyecto no encontrado.');
 
       const po = await tx.user.findFirst({
-        where: { id: poUserId, isActive: true, role: { name: 'PRODUCT_OWNER' } },
+        where: {
+          id: poUserId,
+          isActive: true,
+          role: { name: 'PRODUCT_OWNER' },
+        },
         select: { id: true },
       });
 
@@ -224,6 +261,9 @@ export class ProjectEnablementService {
           'El usuario no existe, está inactivo, o no tiene rol PRODUCT_OWNER.',
         );
       }
+
+      if (project.productOwnerId === poUserId)
+        return { projectId, productOwnerId: poUserId };
 
       // Deactivate previous PO membership if different
       if (project.productOwnerId && project.productOwnerId !== poUserId) {
@@ -287,7 +327,10 @@ export class ProjectEnablementService {
     const advancePayment = await this.prisma.paymentSchedule.findFirst({
       where: {
         sequence: 1,
-        quoteVersion: { quoteId: project.quoteId, version: quote.activeVersion },
+        quoteVersion: {
+          quoteId: project.quoteId,
+          version: quote.activeVersion,
+        },
         payments: { some: { status: 'CONFIRMED' } },
       },
       select: { id: true },
@@ -297,6 +340,41 @@ export class ProjectEnablementService {
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
+
+  private async ensureMilestones(
+    tx: Prisma.TransactionClient,
+    projectId: number,
+    quoteVersionId: number,
+    scope: Prisma.JsonValue,
+  ) {
+    const schedules = await tx.paymentSchedule.findMany({
+      where: { quoteVersionId },
+      orderBy: { sequence: 'asc' },
+    });
+    const description = (scope as { description?: string })?.description;
+    for (const part of schedules) {
+      await tx.projectMilestone.upsert({
+        where: { paymentScheduleId: part.id },
+        update: {},
+        create: {
+          projectId,
+          paymentScheduleId: part.id,
+          title: part.milestone,
+          dueDate: part.dueDate,
+          sequence: part.sequence,
+          deliverables: {
+            create: {
+              projectId,
+              title: part.milestone,
+              description: description || part.milestone,
+              milestoneOrder: part.sequence,
+              dueDate: part.dueDate,
+            },
+          },
+        },
+      });
+    }
+  }
 
   private async uniqueSlug(
     tx: Prisma.TransactionClient,

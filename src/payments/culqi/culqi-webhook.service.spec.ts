@@ -1,10 +1,17 @@
 import { CulqiWebhookService } from './culqi-webhook.service';
+import { PaymentsService } from '../payments.service';
+import { ConflictException } from '@nestjs/common';
+import { vi } from 'vitest';
 
 describe('CulqiWebhookService', () => {
   let service: CulqiWebhookService;
+  const processEvent = vi.fn();
 
   beforeEach(() => {
-    service = new CulqiWebhookService();
+    processEvent.mockReset().mockResolvedValue({ id: 1 });
+    service = new CulqiWebhookService({
+      processEvent,
+    } as unknown as PaymentsService);
   });
 
   it('should process charge.creation.succeeded event', async () => {
@@ -18,6 +25,7 @@ describe('CulqiWebhookService', () => {
         currency_code: 'PEN',
         email: 'customer@example.com',
         outcome: { type: 'venta_exitosa' },
+        metadata: { scheduleId: '1' },
       },
     };
 
@@ -27,7 +35,7 @@ describe('CulqiWebhookService', () => {
     expect(result.chargeId).toBe('chr_test_456');
     expect(result.amount).toBe(15000);
     expect(result.currency).toBe('PEN');
-    expect(result.customerEmail).toBe('customer@example.com');
+    expect(processEvent).toHaveBeenCalledOnce();
   });
 
   it('should process charge.creation.failed event', async () => {
@@ -41,6 +49,7 @@ describe('CulqiWebhookService', () => {
         currency_code: 'PEN',
         email: 'failed@example.com',
         outcome: { user_message: 'Tarjeta expirada' },
+        metadata: { scheduleId: '1' },
       },
     };
 
@@ -59,5 +68,37 @@ describe('CulqiWebhookService', () => {
 
     const result = await service.processEvent(payload);
     expect(result.status).toBe('IGNORED');
+  });
+  it('does not turn business conflicts into successful payments', async () => {
+    processEvent.mockRejectedValue(new ConflictException('Importe diferente'));
+    await expect(
+      service.processEvent({
+        type: 'charge.creation.succeeded',
+        object: 'event',
+        data: {
+          id: 'charge-1',
+          amount: 100,
+          currency_code: 'PEN',
+          metadata: { scheduleId: '1' },
+        },
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+  it('rejects malformed JSON and missing schedule metadata', async () => {
+    await expect(
+      service.processEvent({
+        type: 'charge.creation.succeeded',
+        object: 'event',
+        data: '{',
+      }),
+    ).rejects.toThrow();
+    await expect(
+      service.processEvent({
+        type: 'charge.creation.succeeded',
+        object: 'event',
+        data: { id: 'charge-1', amount: 100, currency_code: 'PEN' },
+      }),
+    ).rejects.toThrow();
+    expect(processEvent).not.toHaveBeenCalled();
   });
 });

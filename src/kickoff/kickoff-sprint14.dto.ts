@@ -19,6 +19,11 @@ import {
 
 /** S14-B07: Validated DTO for scheduling or updating a kickoff from a project */
 export class ScheduleKickoffDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  advisorId?: number;
+
   @IsDateString({ strict: true })
   scheduledAt: string;
 
@@ -30,12 +35,17 @@ export class ScheduleKickoffDto {
 
 /** S14-B07: Validated DTO for adding a single member to a project */
 export class AddMemberDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  technicalRole?: string;
+
   @IsInt()
   @Min(1)
   userId: number;
 
-  @IsIn(['DEVELOPER', 'PRODUCT_OWNER', 'CLIENT'])
-  memberRole: 'DEVELOPER' | 'PRODUCT_OWNER' | 'CLIENT';
+  @IsIn(['DEVELOPER'])
+  memberRole: 'DEVELOPER';
 
   @IsOptional()
   @IsInt()

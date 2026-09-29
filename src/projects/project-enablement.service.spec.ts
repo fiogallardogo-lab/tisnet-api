@@ -36,7 +36,16 @@ function buildPrisma(overrides: Record<string, any> = {}) {
     $queryRaw: vi.fn().mockResolvedValue([]),
     paymentSchedule: {
       findUnique: vi.fn().mockResolvedValue(makeSchedule()),
+      findMany: vi
+        .fn()
+        .mockResolvedValue([
+          { id: 1, sequence: 1, milestone: 'Inicio', dueDate: new Date() },
+        ]),
     },
+    payment: {
+      findFirst: vi.fn().mockResolvedValue({ id: 50, status: 'CONFIRMED' }),
+    },
+    projectMilestone: { upsert: vi.fn().mockResolvedValue({ id: 1 }) },
     project: {
       findUnique: vi.fn().mockResolvedValue(null), // no existing project
       create: vi.fn().mockResolvedValue({ id: 99 }),
@@ -145,7 +154,7 @@ describe('ProjectEnablementService.enableFromPayment', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('handles concurrent P2002 gracefully — safe idempotent skip (S14-B09)', async () => {
+  it('propagates unique constraint failures so the payment transaction can roll back', async () => {
     const uniqueError = new Prisma.PrismaClientKnownRequestError(
       'Unique constraint failed',
       { code: 'P2002', clientVersion: '5.0.0' },
@@ -155,11 +164,13 @@ describe('ProjectEnablementService.enableFromPayment', () => {
 
     await expect(
       service.enableFromPayment({ scheduleId: 1, paymentId: 56 }),
-    ).resolves.toBeUndefined();
+    ).rejects.toBe(uniqueError);
   });
 
   it('re-throws non-P2002 errors (unknown failures are propagated)', async () => {
-    prisma._tx.project.create.mockRejectedValue(new Error('DB connection lost'));
+    prisma._tx.project.create.mockRejectedValue(
+      new Error('DB connection lost'),
+    );
 
     await expect(
       service.enableFromPayment({ scheduleId: 1, paymentId: 57 }),
@@ -177,7 +188,10 @@ describe('ProjectEnablementService.assignProductOwner', () => {
   });
 
   it('assigns a PO to a project and emits PO_ASSIGNED audit (S14-B05)', async () => {
-    prisma._tx.project.findUnique.mockResolvedValue({ id: 10, productOwnerId: null });
+    prisma._tx.project.findUnique.mockResolvedValue({
+      id: 10,
+      productOwnerId: null,
+    });
     prisma._tx.user.findFirst.mockResolvedValue({ id: 20 });
     prisma._tx.project.update.mockResolvedValue({ id: 10 });
 
@@ -201,7 +215,10 @@ describe('ProjectEnablementService.assignProductOwner', () => {
   });
 
   it('throws ConflictException when user is not an active PRODUCT_OWNER', async () => {
-    prisma._tx.project.findUnique.mockResolvedValue({ id: 10, productOwnerId: null });
+    prisma._tx.project.findUnique.mockResolvedValue({
+      id: 10,
+      productOwnerId: null,
+    });
     prisma._tx.user.findFirst.mockResolvedValue(null); // not a PO
 
     await expect(service.assignProductOwner(10, 99, 1)).rejects.toBeInstanceOf(
@@ -210,7 +227,10 @@ describe('ProjectEnablementService.assignProductOwner', () => {
   });
 
   it('deactivates old PO membership when replacing the PO', async () => {
-    prisma._tx.project.findUnique.mockResolvedValue({ id: 10, productOwnerId: 15 }); // different PO
+    prisma._tx.project.findUnique.mockResolvedValue({
+      id: 10,
+      productOwnerId: 15,
+    }); // different PO
     prisma._tx.user.findFirst.mockResolvedValue({ id: 20 });
     prisma._tx.project.update.mockResolvedValue({ id: 10 });
 
@@ -218,14 +238,20 @@ describe('ProjectEnablementService.assignProductOwner', () => {
 
     expect(prisma._tx.projectMember.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ projectId: 10, memberRole: 'PRODUCT_OWNER' }),
+        where: expect.objectContaining({
+          projectId: 10,
+          memberRole: 'PRODUCT_OWNER',
+        }),
         data: expect.objectContaining({ isActive: false }),
       }),
     );
   });
 
   it('does not deactivate old PO if same user is re-assigned (idempotent)', async () => {
-    prisma._tx.project.findUnique.mockResolvedValue({ id: 10, productOwnerId: 20 }); // same PO
+    prisma._tx.project.findUnique.mockResolvedValue({
+      id: 10,
+      productOwnerId: 20,
+    }); // same PO
     prisma._tx.user.findFirst.mockResolvedValue({ id: 20 });
     prisma._tx.project.update.mockResolvedValue({ id: 10 });
 

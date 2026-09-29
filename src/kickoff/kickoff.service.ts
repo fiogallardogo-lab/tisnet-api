@@ -61,7 +61,11 @@ export class KickoffService {
         const quote = await tx.quote.findUniqueOrThrow({
           where: { id: dto.quoteId },
         });
-        if (await tx.project.findUnique({ where: { quoteId: dto.quoteId } }))
+        const existing = await tx.project.findUnique({
+          where: { quoteId: dto.quoteId },
+          include: { kickoff: true },
+        });
+        if (existing?.kickoff)
           throw new ConflictException(
             'Ya existe un proyecto para esta cotización.',
           );
@@ -87,46 +91,111 @@ export class KickoffService {
           orderBy: { sequence: 'asc' },
         });
         const scope = version.scope as { description?: string };
-        const project = await tx.project.create({
-          data: {
-            name: dto.name,
-            slug: dto.slug,
-            shortDescription: (scope.description || dto.name).slice(0, 300),
-            description: scope.description || dto.name,
-            categoryId: dto.categoryId,
-            status: 'IN_DEVELOPMENT',
-            quoteId: dto.quoteId,
-            clientUserId: client.id,
-            prospectId: quote.prospectId,
-            productOwnerId: dto.members.find((m) => m.role === 'PRODUCT_OWNER')!
-              .userId,
-            developmentDate: new Date(dto.heldAt),
-            kickoff: {
-              create: {
-                actorId,
-                heldAt: new Date(dto.heldAt),
-                notes: dto.notes,
+        const poUserId = dto.members.find(
+          (m) => m.role === 'PRODUCT_OWNER',
+        )!.userId;
+        let project: any;
+        if (existing) {
+          project = await tx.project.update({
+            where: { id: existing.id },
+            data: {
+              name: dto.name,
+              slug: dto.slug,
+              shortDescription: (scope.description || dto.name).slice(0, 300),
+              description: scope.description || dto.name,
+              categoryId: dto.categoryId,
+              productOwnerId: poUserId,
+              developmentDate: new Date(dto.heldAt),
+              kickoff: {
+                create: {
+                  actorId,
+                  heldAt: new Date(dto.heldAt),
+                  notes: dto.notes,
+                },
               },
             },
-            members: {
-              create: [
-                {
-                  userId: client.id,
-                  memberRole: 'CLIENT',
-                  participationBasisPoints: 0,
-                },
-                ...dto.members.map((m) => ({
-                  userId: m.userId,
-                  memberRole: m.role,
-                  participationBasisPoints: m.participationBasisPoints,
-                })),
-              ],
+          });
+          await tx.projectMember.upsert({
+            where: {
+              projectId_userId: { projectId: project.id, userId: client.id },
             },
-          },
-        });
-        for (const part of schedules) {
-          await tx.projectMilestone.create({
+            create: {
+              projectId: project.id,
+              userId: client.id,
+              memberRole: 'CLIENT',
+              participationBasisPoints: 0,
+            },
+            update: {
+              memberRole: 'CLIENT',
+              participationBasisPoints: 0,
+              isActive: true,
+            },
+          });
+          for (const m of dto.members) {
+            await tx.projectMember.upsert({
+              where: {
+                projectId_userId: { projectId: project.id, userId: m.userId },
+              },
+              create: {
+                projectId: project.id,
+                userId: m.userId,
+                memberRole: m.role,
+                technicalRole: m.technicalRole?.trim() || null,
+                participationBasisPoints: m.participationBasisPoints,
+                isActive: true,
+              },
+              update: {
+                memberRole: m.role,
+                technicalRole: m.technicalRole?.trim() || null,
+                participationBasisPoints: m.participationBasisPoints,
+                isActive: true,
+              },
+            });
+          }
+        } else {
+          project = await tx.project.create({
             data: {
+              name: dto.name,
+              slug: dto.slug,
+              shortDescription: (scope.description || dto.name).slice(0, 300),
+              description: scope.description || dto.name,
+              categoryId: dto.categoryId,
+              status: 'IN_DEVELOPMENT',
+              quoteId: dto.quoteId,
+              clientUserId: client.id,
+              prospectId: quote.prospectId,
+              productOwnerId: poUserId,
+              developmentDate: new Date(dto.heldAt),
+              kickoff: {
+                create: {
+                  actorId,
+                  heldAt: new Date(dto.heldAt),
+                  notes: dto.notes,
+                },
+              },
+              members: {
+                create: [
+                  {
+                    userId: client.id,
+                    memberRole: 'CLIENT',
+                    participationBasisPoints: 0,
+                  },
+                  ...dto.members.map((m) => ({
+                    userId: m.userId,
+                    memberRole: m.role,
+                    technicalRole: m.technicalRole?.trim() || null,
+                    participationBasisPoints: m.participationBasisPoints,
+                  })),
+                ],
+              },
+            },
+          });
+        }
+        for (const part of schedules) {
+          await tx.projectMilestone.upsert({
+            where: { paymentScheduleId: part.id },
+            update: {},
+            create: {
               projectId: project.id,
               paymentScheduleId: part.id,
               title: part.milestone,
@@ -190,8 +259,8 @@ export class KickoffService {
     return this.prisma.project.findUniqueOrThrow({
       where: { id: projectId },
       include: {
-        kickoff: true,
-        members: true,
+        kickoff: { include: { meeting: true } },
+        members: { include: { user: { select: { name: true } } } },
         milestones: { include: { deliverables: true, paymentSchedule: true } },
       },
     });
@@ -199,6 +268,11 @@ export class KickoffService {
 
   async getOperations(projectId: number, actor: { id: number; role: string }) {
     const project = await this.detail(projectId, actor);
+    let canStart = false;
+    if (project.quoteId) {
+      try { await this.payments.assertInitialPayment(project.quoteId); canStart = true; }
+      catch (error) { if (!(error instanceof ConflictException)) throw error; }
+    }
     const candidateUsers = await this.prisma.user.findMany({
       where: {
         isActive: true,
@@ -212,34 +286,42 @@ export class KickoffService {
       role: u.role.name,
     }));
 
-    const canManageTeam = ['ADMIN', 'SUPER_ADMIN'].includes(actor.role);
-    const canManageKickoff = ['ADMIN', 'SUPER_ADMIN'].includes(actor.role);
-    const canViewFinance = ['ADMIN', 'SUPER_ADMIN', 'CLIENT'].includes(actor.role);
+    const canManageTeam =
+      ['ADMIN', 'SUPER_ADMIN'].includes(actor.role) ||
+      (actor.role === 'PRODUCT_OWNER' && project.productOwnerId === actor.id);
+    const canManageKickoff = canManageTeam;
+    const canViewFinance = ['ADMIN', 'SUPER_ADMIN', 'CLIENT'].includes(
+      actor.role,
+    );
 
     const kickoffData = project.kickoff
       ? {
-          status: 'CONFIRMED',
-          scheduledAt: project.kickoff.heldAt
-            ? project.kickoff.heldAt.toISOString()
-            : null,
+          status: project.kickoff.meeting?.status ?? 'SCHEDULED',
+          scheduledAt:
+            project.kickoff.meeting?.scheduledAt?.toISOString() ??
+            (project.kickoff.heldAt
+              ? project.kickoff.heldAt.toISOString()
+              : null),
           notes: project.kickoff.notes || '',
-          canStart: true,
-          blockingReason: undefined,
+          canStart,
+          blockingReason: canStart ? undefined : 'Se requiere adelanto confirmado.',
         }
       : {
           status: 'PENDING',
           scheduledAt: null,
           notes: '',
-          canStart: true,
-          blockingReason: undefined,
+          canStart,
+          blockingReason: canStart ? undefined : 'Se requiere adelanto confirmado.',
         };
 
     const formattedMembers = project.members.map((m) => ({
       id: m.id,
       userId: m.userId,
+      name: m.user.name,
       role: m.memberRole,
       memberRole: m.memberRole,
-      participation: m.participationBasisPoints,
+      technicalRole: m.technicalRole,
+      participation: m.participationBasisPoints / 100,
       participationBasisPoints: m.participationBasisPoints,
       isActive: m.isActive,
     }));
@@ -258,7 +340,8 @@ export class KickoffService {
         return {
           ...base,
           amountMinor: (m.paymentSchedule as any)?.amountMinor ?? null,
-          percentageBasisPoints: (m.paymentSchedule as any)?.percentageBasisPoints ?? null,
+          percentageBasisPoints:
+            (m.paymentSchedule as any)?.percentageBasisPoints ?? null,
           paymentScheduleId: m.paymentScheduleId,
         };
       }
@@ -276,10 +359,9 @@ export class KickoffService {
       clientUserId: canViewFinance ? project.clientUserId : undefined,
       productOwnerId: project.productOwnerId,
       kickoff: kickoffData,
-      rawKickoff: project.kickoff,
       members: formattedMembers,
       milestones,
-      candidates,
+      candidates: canManageTeam ? candidates : [],
       canManageTeam,
       canManageKickoff,
       canViewFinance,
@@ -289,11 +371,13 @@ export class KickoffService {
   async scheduleKickoff(
     projectId: number,
     actor: { id: number; role: string },
-    dto: { scheduledAt: string; notes?: string },
+    dto: { scheduledAt: string; notes?: string; advisorId?: number },
   ) {
     await this.access(projectId, actor);
     // S14-B04: CLIENT may request a kickoff date, ADMIN/SUPER_ADMIN/PRODUCT_OWNER may confirm it
-    if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER', 'CLIENT'].includes(actor.role)) {
+    if (
+      !['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER', 'CLIENT'].includes(actor.role)
+    ) {
       throw new ForbiddenException(
         'Solo administración, el Product Owner o el Cliente puede solicitar el kickoff.',
       );
@@ -303,35 +387,160 @@ export class KickoffService {
       throw new BadRequestException('Fecha de kickoff inválida.');
     }
 
-    const existing = await this.prisma.kickoff.findUnique({
-      where: { projectId },
-    });
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM Project WHERE id = ${projectId} FOR UPDATE`;
+        const project = await tx.project.findUniqueOrThrow({
+          where: { id: projectId },
+        });
+        if (!project.quoteId)
+          throw new ConflictException(
+            'El proyecto no tiene un acuerdo comercial.',
+          );
+        await this.payments.assertInitialPayment(project.quoteId, tx);
+        if (
+          actor.role === 'PRODUCT_OWNER' &&
+          project.productOwnerId !== actor.id
+        )
+          throw new ForbiddenException(
+            'Solo el Product Owner asignado puede gestionar el kickoff.',
+          );
+        const existing = await tx.kickoff.findUnique({
+          where: { projectId },
+          include: { meeting: true },
+        });
 
-    if (existing) {
-      return this.prisma.kickoff.update({
-        where: { projectId },
-        data: {
-          heldAt,
-          notes: dto.notes ?? existing.notes,
-          actorId: actor.id,
-        },
-      });
-    }
+        let meetingId = existing?.meetingId;
+        const advisorId = dto.advisorId ?? existing?.meeting?.advisorProfileId;
+        if (actor.role === 'CLIENT' && !advisorId)
+          throw new BadRequestException('Selecciona el asesor del kickoff.');
+        if (advisorId) {
+          if (!project.prospectId)
+            throw new ConflictException('El proyecto no tiene prospecto.');
+          const unchanged =
+            existing?.meeting?.scheduledAt?.getTime() === heldAt.getTime() &&
+            existing.meeting.advisorProfileId === advisorId;
+          if (!unchanged) {
+            if (heldAt <= new Date())
+              throw new BadRequestException('La reunión debe ser futura.');
+            if (
+              existing?.meeting &&
+              (!['PENDING', 'SCHEDULED'].includes(existing.meeting.status) ||
+                existing.meeting.externalProvider)
+            )
+              throw new ConflictException(
+                'Esta reunión no puede reprogramarse desde el kickoff.',
+              );
+            await tx.$queryRaw`SELECT id FROM AdminProfile WHERE id = ${advisorId} FOR UPDATE`;
+            const advisor = await tx.adminProfile.findFirst({
+              where: {
+                id: advisorId,
+                isPublicAdvisor: true,
+                user: { isActive: true },
+              },
+            });
+            if (!advisor) throw new NotFoundException('Asesor no disponible.');
+            const endsAt = new Date(heldAt.getTime() + 3600000);
+            const overlap = await tx.meeting.findFirst({
+              where: {
+                ...(meetingId ? { id: { not: meetingId } } : {}),
+                advisorProfileId: advisorId,
+                status: { in: ['PENDING', 'SCHEDULED'] },
+                scheduledAt: { lt: endsAt },
+                OR: [
+                  { endsAt: { gt: heldAt } },
+                  {
+                    endsAt: null,
+                    scheduledAt: { gt: new Date(heldAt.getTime() - 3600000) },
+                  },
+                ],
+              },
+            });
+            if (overlap)
+              throw new ConflictException(
+                'El asesor ya tiene una reunión en ese intervalo.',
+              );
+            const meetingData = {
+              advisorProfileId: advisorId,
+              scheduledAt: heldAt,
+              endsAt,
+              bookingKey: `${advisorId}:${heldAt.toISOString()}`,
+              status: 'PENDING' as const,
+            };
+            const meeting = meetingId
+              ? await tx.meeting.update({
+                  where: { id: meetingId },
+                  data: meetingData,
+                })
+              : await tx.meeting.create({
+                  data: {
+                    ...meetingData,
+                    prospectId: project.prospectId,
+                    quoteId: project.quoteId,
+                    notes: dto.notes?.slice(0, 1000),
+                    timezone: 'America/Lima',
+                  },
+                });
+            meetingId = meeting.id;
+          }
+        }
 
-    return this.prisma.kickoff.create({
-      data: {
-        projectId,
-        heldAt,
-        notes: dto.notes ?? '',
-        actorId: actor.id,
+        if (existing) {
+          if (
+            existing.heldAt.getTime() === heldAt.getTime() &&
+            existing.meetingId === meetingId &&
+            (actor.role === 'CLIENT' ||
+              dto.notes === undefined ||
+              dto.notes === existing.notes)
+          )
+            return existing;
+        }
+        const result = existing
+          ? await tx.kickoff.update({
+              where: { projectId },
+              data: {
+                heldAt,
+                meetingId,
+                notes:
+                  actor.role === 'CLIENT'
+                    ? existing.notes
+                    : (dto.notes ?? existing.notes),
+                actorId: actor.id,
+              },
+            })
+          : await tx.kickoff.create({
+              data: {
+                projectId,
+                heldAt,
+                meetingId,
+                notes: actor.role === 'CLIENT' ? '' : (dto.notes ?? ''),
+                actorId: actor.id,
+              },
+            });
+        await tx.auditEvent.create({
+          data: {
+            actorId: actor.id,
+            action: existing ? 'KICKOFF_RESCHEDULED' : 'KICKOFF_SCHEDULED',
+            entityType: 'PROJECT',
+            entityId: String(projectId),
+            metadata: { scheduledAt: heldAt.toISOString() },
+          },
+        });
+        return result;
       },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 
   async addMember(
     projectId: number,
     actor: { id: number; role: string },
-    dto: { userId: number; memberRole: string; participationBasisPoints?: number },
+    dto: {
+      userId: number;
+      memberRole: string;
+      participationBasisPoints?: number;
+      technicalRole?: string;
+    },
   ) {
     await this.access(projectId, actor);
     if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER'].includes(actor.role)) {
@@ -351,31 +560,87 @@ export class KickoffService {
         );
       }
     }
-    const user = await this.prisma.user.findFirst({
-      where: { id: dto.userId, isActive: true },
-      include: { role: true },
-    });
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado o inactivo.');
-    }
-    const roleToAssign = dto.memberRole || user.role.name;
-    const basisPoints = dto.participationBasisPoints ?? 0;
-
-    return this.prisma.projectMember.upsert({
-      where: { projectId_userId: { projectId, userId: dto.userId } },
-      create: {
-        projectId,
-        userId: dto.userId,
-        memberRole: roleToAssign as any,
-        participationBasisPoints: basisPoints,
-        isActive: true,
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM Project WHERE id = ${projectId} FOR UPDATE`;
+        const project = await tx.project.findUniqueOrThrow({
+          where: { id: projectId },
+        });
+        if (
+          actor.role === 'PRODUCT_OWNER' &&
+          project.productOwnerId !== actor.id
+        )
+          throw new ForbiddenException('El Product Owner asignado cambió.');
+        if (!project.quoteId)
+          throw new ConflictException(
+            'El proyecto no tiene un acuerdo comercial.',
+          );
+        await this.payments.assertInitialPayment(project.quoteId, tx);
+        const user = await tx.user.findFirst({
+          where: { id: dto.userId, isActive: true },
+          include: { role: true },
+        });
+        if (!user) {
+          throw new NotFoundException('Usuario no encontrado o inactivo.');
+        }
+        const roleToAssign = dto.memberRole || user.role.name;
+        const basisPoints = dto.participationBasisPoints ?? 0;
+        if (roleToAssign !== 'DEVELOPER' || user.role.name !== 'DEVELOPER')
+          throw new BadRequestException(
+            'Esta operación solo permite agregar developers activos. Asigna el PO desde su operación específica.',
+          );
+        if (
+          !Number.isInteger(basisPoints) ||
+          basisPoints < 0 ||
+          basisPoints > 10000
+        )
+          throw new BadRequestException('Participación inválida.');
+        const others = await tx.projectMember.aggregate({
+          where: {
+            projectId,
+            isActive: true,
+            userId: { not: dto.userId },
+            memberRole: { not: 'CLIENT' },
+          },
+          _sum: { participationBasisPoints: true },
+        });
+        if ((others._sum.participationBasisPoints ?? 0) + basisPoints > 10000)
+          throw new BadRequestException(
+            'Las participaciones no pueden superar el 100%.',
+          );
+        const result = await tx.projectMember.upsert({
+          where: { projectId_userId: { projectId, userId: dto.userId } },
+          create: {
+            projectId,
+            userId: dto.userId,
+            memberRole: 'DEVELOPER',
+            technicalRole: dto.technicalRole?.trim() || null,
+            participationBasisPoints: basisPoints,
+            isActive: true,
+          },
+          update: {
+            memberRole: 'DEVELOPER',
+            technicalRole: dto.technicalRole?.trim() || null,
+            participationBasisPoints: basisPoints,
+            isActive: true,
+          },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorId: actor.id,
+            action: 'PROJECT_MEMBER_UPDATED',
+            entityType: 'PROJECT',
+            entityId: String(projectId),
+            metadata: {
+              userId: dto.userId,
+              participationBasisPoints: basisPoints,
+            },
+          },
+        });
+        return result;
       },
-      update: {
-        memberRole: roleToAssign as any,
-        participationBasisPoints: basisPoints,
-        isActive: true,
-      },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 
   async setTeam(
@@ -384,12 +649,29 @@ export class KickoffService {
     dto: ProjectTeamDto,
   ) {
     await this.access(projectId, actor);
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(actor.role))
+    if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER'].includes(actor.role))
       throw new ForbiddenException(
         'Solo administración puede reasignar equipo y participaciones.',
       );
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM Project WHERE id = ${projectId} FOR UPDATE`;
+      const project = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+      });
+      if (
+        actor.role === 'PRODUCT_OWNER' &&
+        (project.productOwnerId !== actor.id ||
+          dto.members.find((m) => m.role === 'PRODUCT_OWNER')?.userId !==
+            actor.id)
+      )
+        throw new ForbiddenException(
+          'El PO solo puede gestionar su equipo sin reasignar su cargo.',
+        );
+      if (!project.quoteId)
+        throw new ConflictException(
+          'El proyecto no tiene un acuerdo comercial.',
+        );
+      await this.payments.assertInitialPayment(project.quoteId, tx);
       await this.validateTeam(tx, dto.members);
       await tx.projectMember.updateMany({
         where: { projectId, memberRole: { not: 'CLIENT' } },
@@ -402,10 +684,12 @@ export class KickoffService {
             projectId,
             userId: m.userId,
             memberRole: m.role,
+            technicalRole: m.technicalRole?.trim() || null,
             participationBasisPoints: m.participationBasisPoints,
           },
           update: {
             memberRole: m.role,
+            technicalRole: m.technicalRole?.trim() || null,
             participationBasisPoints: m.participationBasisPoints,
             isActive: true,
           },

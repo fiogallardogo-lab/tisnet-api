@@ -16,6 +16,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 export class ProjectParticipantDto {
+  @IsOptional() @IsString() @MaxLength(80) technicalRole?: string;
   @IsInt() @Min(1) userId: number;
   @IsIn(['DEVELOPER', 'PRODUCT_OWNER']) role: 'DEVELOPER' | 'PRODUCT_OWNER';
   @IsInt() @Min(1) @Max(10000) participationBasisPoints: number;

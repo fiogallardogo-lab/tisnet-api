@@ -18,7 +18,6 @@ import { KickoffDto, ProjectTeamDto } from './kickoff.dto';
 import {
   ScheduleKickoffDto,
   AddMemberDto,
-  SetProjectTeamDto,
   AssignProductOwnerDto,
 } from './kickoff-sprint14.dto';
 import { ProjectEnablementService } from '../projects/project-enablement.service';
@@ -68,6 +67,16 @@ export class KickoffController {
     return this.service.scheduleKickoff(id, r.user, dto);
   }
 
+  @Patch('projects/:id/kickoff')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER', 'CLIENT')
+  updateKickoff(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() r: ActorRequest,
+    @Body() dto: ScheduleKickoffDto,
+  ) {
+    return this.service.scheduleKickoff(id, r.user, dto);
+  }
+
   // ─── Team management ────────────────────────────────────────────────────────
 
   @Get('projects/:id/members')
@@ -97,7 +106,7 @@ export class KickoffController {
    * Bulk replace team (ADMIN only): replaces all non-CLIENT members atomically.
    */
   @Patch('projects/:id/members')
-  @Roles('ADMIN', 'SUPER_ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER')
   setTeam(
     @Param('id', ParseIntPipe) id: number,
     @Request() r: ActorRequest,

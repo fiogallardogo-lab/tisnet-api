@@ -231,6 +231,7 @@ model Prospect {
 }
 
 model Meeting {
+  kickoff          Kickoff?
   id               Int            @id @default(autoincrement())
   prospectId       Int
   quoteId          Int?
@@ -370,6 +371,7 @@ model Project {
 }
 
 model ProjectMember {
+  technicalRole            String?           @db.VarChar(80)
   participationBasisPoints Int               @default(0)
   id                       Int               @id @default(autoincrement())
   projectId                Int
@@ -580,6 +582,8 @@ model MeetingEvent {
 model Kickoff {
   id        Int      @id @default(autoincrement())
   projectId Int      @unique
+  meetingId Int?     @unique
+  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: Restrict)
   actorId   Int
   heldAt    DateTime
   notes     String?  @db.VarChar(2000)

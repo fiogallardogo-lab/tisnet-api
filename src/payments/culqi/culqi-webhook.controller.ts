@@ -34,20 +34,30 @@ export class CulqiWebhookController {
   @Throttle({ webhook: { ttl: 60000, limit: 60 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Receives and handles asynchronous events from Culqi payment gateway',
+    summary:
+      'Receives and handles asynchronous events from Culqi payment gateway',
   })
-  @ApiResponse({ status: 200, description: 'Webhook acknowledged successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Webhook acknowledged successfully',
+  })
   async handleWebhook(
     @Body() payload: CulqiWebhookPayload,
     @Headers('authorization') authHeader?: string,
   ): Promise<{ received: boolean }> {
-    const expectedAuth = this.configService.get<string>('CULQI_WEBHOOK_BASIC_AUTH');
+    const expectedAuth = this.configService.get<string>(
+      'CULQI_WEBHOOK_BASIC_AUTH',
+    );
     if (!expectedAuth?.trim()) {
-      throw new ServiceUnavailableException('Webhook de Culqi pendiente de configuración.');
+      throw new ServiceUnavailableException(
+        'Webhook de Culqi pendiente de configuración.',
+      );
     }
     if (expectedAuth) {
       if (!authHeader || !authHeader.startsWith('Basic ')) {
-        throw new UnauthorizedException('Missing or invalid authorization header');
+        throw new UnauthorizedException(
+          'Missing or invalid authorization header',
+        );
       }
       const expectedBuffer = Buffer.from(`Basic ${expectedAuth}`);
       const actualBuffer = Buffer.from(authHeader);
@@ -60,12 +70,12 @@ export class CulqiWebhookController {
       }
     }
 
-    this.logger.log(`[CulqiWebhookController] Received webhook event: ${payload?.type}`);
+    this.logger.log(
+      `[CulqiWebhookController] Received webhook event: ${payload?.type}`,
+    );
 
     // Process asynchronously � respond immediately so Culqi does not retry on timeout
-    void this.webhookService.processEvent(payload).catch((err: Error) => {
-      this.logger.error(`Async webhook processing failed: ${err.message}`);
-    });
+    await this.webhookService.processEvent(payload);
 
     return { received: true };
   }
