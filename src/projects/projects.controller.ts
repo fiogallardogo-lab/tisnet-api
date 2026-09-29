@@ -8,8 +8,10 @@ import {
   Post,
   Query,
   Request,
+  Response,
   UseGuards,
 } from '@nestjs/common';
+import type { Response as ExpressResponse } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -19,6 +21,8 @@ import {
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { PLATFORM_ROLES } from '../common/constants/platform-roles';
+import { ReportsService } from '../reports/reports.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -30,7 +34,10 @@ import { ProjectsService } from './projects.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'SUPER_ADMIN')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly reportsService: ReportsService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Crear un proyecto administrativo' })
@@ -161,4 +168,54 @@ export class ProjectsController {
   archive(@Param('id', ParseIntPipe) id: number) {
     return this.projectsService.archive(id);
   }
+
+  @Post(':id/close')
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN, PLATFORM_ROLES.PRODUCT_OWNER)
+  @ApiOperation({ summary: 'Cerrar formalmente un proyecto (S15-B07)' })
+  @ApiResponse({ status: 200, description: 'Proyecto cerrado exitosamente' })
+  @ApiResponse({ status: 400, description: 'Hitos no aprobados o cuotas de pago impagas' })
+  @ApiResponse({ status: 403, description: 'Solo el PO o Admin puede cerrar el proyecto' })
+  close(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: { user: { id: number; role: string } },
+  ) {
+    return this.projectsService.closeProject(id, req.user);
+  }
+
+  @Get(':id/report')
+  @Roles(
+    PLATFORM_ROLES.CLIENT,
+    PLATFORM_ROLES.DEVELOPER,
+    PLATFORM_ROLES.PRODUCT_OWNER,
+    PLATFORM_ROLES.ADMIN,
+    PLATFORM_ROLES.SUPER_ADMIN,
+  )
+  @ApiOperation({ summary: 'Descargar informe oficial de trazabilidad del proyecto (S15-B06)' })
+  @ApiResponse({ status: 200, description: 'Informe en JSON o PDF descargable' })
+  async getReport(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('format') format: string | undefined,
+    @Request() req: { user: { id: number; role: string } },
+    @Response({ passthrough: true }) res: ExpressResponse,
+  ) {
+    const data = await this.reportsService.getProjectTraceabilityReport(req.user, id);
+
+    if (format === 'pdf' || (!format && req.user.role === 'CLIENT')) {
+      const pdfBuffer = await this.reportsService.renderProjectReportPdf(data);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="informe-proyecto-${id}.pdf"`,
+      );
+      res.send(pdfBuffer);
+      return;
+    }
+
+    return {
+      success: true,
+      message: 'Informe de trazabilidad generado exitosamente',
+      data,
+    };
+  }
 }
+

@@ -22,6 +22,7 @@ import {
   ReviewDeliverableDto,
 } from './dto/review-deliverable.dto';
 import { SubmitDeliverableDto } from './dto/submit-deliverable.dto';
+import { SubmitEvidenceDto } from './dto/submit-evidence.dto';
 
 export interface DeliverablesActor {
   id: number;
@@ -137,18 +138,179 @@ export class DeliverablesService {
         'Debes proporcionar fileUrl o externalLink como evidencia',
       );
     }
-    return this.prisma.projectDeliverable.update({
-      where: { id: deliverableId },
-      data: {
-        fileUrl,
-        externalLink,
-        status: DeliverableStatus.IN_REVIEW,
-        submittedAt: new Date(),
-        reviewedAt: null,
-        reviewedById: null,
-        feedbackNotes: null,
-      },
-      include: deliverableInclude,
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.projectDeliverable.update({
+        where: { id: deliverable.id },
+        data: {
+          fileUrl,
+          externalLink,
+          status: DeliverableStatus.IN_REVIEW,
+          submittedAt: new Date(),
+          reviewedAt: null,
+          reviewedById: null,
+          feedbackNotes: null,
+        },
+        include: deliverableInclude,
+      });
+
+      await tx.deliverableHistory.create({
+        data: {
+          deliverableId: deliverable.id,
+          actorId: actor.id,
+          action: 'SUBMITTED',
+          fileUrl,
+          externalLink,
+          feedbackNotes: null,
+        },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          actorId: actor.id,
+          action: 'DELIVERABLE_SUBMITTED',
+          entityType: 'PROJECT_DELIVERABLE',
+          entityId: String(deliverable.id),
+          metadata: {
+            projectId,
+            milestoneOrder: deliverable.milestoneOrder,
+            fileUrl,
+            externalLink,
+          },
+        },
+      });
+
+      return updated;
+    });
+  }
+
+  async submitEvidence(
+    projectId: number,
+    milestoneOrDeliverableId: number,
+    actor: DeliverablesActor,
+    file?: DeliverableFile,
+    dto?: SubmitEvidenceDto,
+  ) {
+    const membership = await this.requireProjectAccess(projectId, actor);
+    this.requirePermission(actor, membership?.memberRole, [
+      ProjectMemberRole.DEVELOPER,
+      ProjectMemberRole.PRODUCT_OWNER,
+    ]);
+    const deliverable = await this.findDeliverable(
+      projectId,
+      milestoneOrDeliverableId,
+    );
+    if (
+      deliverable.status !== DeliverableStatus.DRAFT &&
+      deliverable.status !== DeliverableStatus.OBSERVED
+    ) {
+      throw new ConflictException(
+        'El entregable no puede enviarse desde su estado actual',
+      );
+    }
+
+    let fileUrl =
+      dto?.pdfUrl?.trim() || dto?.fileUrl?.trim() || deliverable.fileUrl;
+
+    if (file) {
+      if (file.mimetype !== 'application/pdf') {
+        throw new BadRequestException(
+          'El archivo de evidencia técnica debe ser un documento PDF.',
+        );
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        throw new BadRequestException(
+          'El archivo PDF no puede exceder los 50 MB.',
+        );
+      }
+      const uploaded = await this.uploadFile(
+        projectId,
+        deliverable.id,
+        actor,
+        file,
+      );
+      fileUrl = uploaded.url;
+    }
+
+    const videoUrl = dto?.videoUrl?.trim() || deliverable.externalLink;
+
+    if (!fileUrl) {
+      throw new BadRequestException(
+        'El PDF técnico es obligatorio para enviar el hito a revisión.',
+      );
+    }
+    if (!videoUrl) {
+      throw new BadRequestException(
+        'El video o enlace de demostración es obligatorio para enviar el hito a revisión.',
+      );
+    }
+
+    try {
+      const parsedUrl = new URL(videoUrl);
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        throw new Error();
+      }
+    } catch {
+      throw new BadRequestException(
+        'El enlace de video/demostración debe ser una URL válida (http/https).',
+      );
+    }
+
+    const notes = dto?.notes?.trim() || null;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.projectDeliverable.update({
+        where: { id: deliverable.id },
+        data: {
+          fileUrl,
+          externalLink: videoUrl,
+          status: DeliverableStatus.IN_REVIEW,
+          submittedAt: new Date(),
+          reviewedAt: null,
+          reviewedById: null,
+          feedbackNotes: notes,
+        },
+        include: deliverableInclude,
+      });
+
+      await tx.deliverableHistory.create({
+        data: {
+          deliverableId: deliverable.id,
+          actorId: actor.id,
+          action: 'SUBMITTED',
+          fileUrl,
+          externalLink: videoUrl,
+          feedbackNotes: notes,
+        },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          actorId: actor.id,
+          action: 'DELIVERABLE_EVIDENCE_SUBMITTED',
+          entityType: 'PROJECT_DELIVERABLE',
+          entityId: String(deliverable.id),
+          metadata: {
+            projectId,
+            milestoneOrder: deliverable.milestoneOrder,
+            fileUrl,
+            videoUrl,
+            notes,
+          },
+        },
+      });
+
+      return {
+        id: updated.id,
+        milestoneId: updated.milestoneId ?? updated.milestoneOrder,
+        projectId,
+        title: updated.title,
+        status: updated.status,
+        pdfUrl: updated.fileUrl,
+        videoUrl: updated.externalLink,
+        notes: updated.feedbackNotes,
+        submittedAt: updated.submittedAt,
+      };
     });
   }
 
@@ -169,25 +331,95 @@ export class DeliverablesService {
         'Solo se pueden revisar entregables en estado IN_REVIEW',
       );
     }
-    const observed = dto.decision === DeliverableReviewDecision.OBSERVE;
-    const feedbackNotes = dto.feedbackNotes?.trim();
-    if (observed && !feedbackNotes) {
+    const isObserved =
+      dto.decision === DeliverableReviewDecision.OBSERVE ||
+      dto.status === 'OBSERVED';
+    const feedbackNotes = dto.feedbackNotes?.trim() || dto.comments?.trim();
+    if (isObserved && !feedbackNotes) {
       throw new BadRequestException(
-        'Las observaciones requieren feedbackNotes',
+        'Las observaciones requieren feedbackNotes o comments',
       );
     }
-    return this.prisma.projectDeliverable.update({
-      where: { id: deliverableId },
-      data: {
-        status: observed
-          ? DeliverableStatus.OBSERVED
-          : DeliverableStatus.APPROVED,
-        feedbackNotes: observed ? feedbackNotes : null,
-        reviewedAt: new Date(),
-        reviewedById: actor.id,
-      },
-      include: deliverableInclude,
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.projectDeliverable.update({
+        where: { id: deliverable.id },
+        data: {
+          status: isObserved
+            ? DeliverableStatus.OBSERVED
+            : DeliverableStatus.APPROVED,
+          feedbackNotes: isObserved ? feedbackNotes : null,
+          reviewedAt: new Date(),
+          reviewedById: actor.id,
+        },
+        include: deliverableInclude,
+      });
+
+      await tx.deliverableHistory.create({
+        data: {
+          deliverableId: deliverable.id,
+          actorId: actor.id,
+          action: isObserved ? 'OBSERVED' : 'APPROVED',
+          fileUrl: deliverable.fileUrl,
+          externalLink: deliverable.externalLink,
+          feedbackNotes: feedbackNotes || null,
+        },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          actorId: actor.id,
+          action: isObserved ? 'DELIVERABLE_OBSERVED' : 'DELIVERABLE_APPROVED',
+          entityType: 'PROJECT_DELIVERABLE',
+          entityId: String(deliverable.id),
+          metadata: {
+            projectId,
+            milestoneOrder: deliverable.milestoneOrder,
+            notes: feedbackNotes,
+          },
+        },
+      });
+
+      return updated;
     });
+  }
+
+  async getHistory(
+    projectId: number,
+    deliverableIdOrMilestone: number,
+    actor: DeliverablesActor,
+  ) {
+    await this.requireProjectAccess(projectId, actor);
+    const deliverable = await this.findDeliverable(
+      projectId,
+      deliverableIdOrMilestone,
+    );
+    const history = await this.prisma.deliverableHistory.findMany({
+      where: { deliverableId: deliverable.id },
+      include: {
+        actor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return history.map((item) => ({
+      id: item.id,
+      action: item.action,
+      actorId: item.actorId,
+      actorName: item.actor.name,
+      actorRole: item.actor.role.name,
+      fileUrl: item.fileUrl,
+      videoUrl: item.externalLink,
+      comments: item.feedbackNotes,
+      timestamp: item.createdAt,
+    }));
   }
 
   async uploadFile(
@@ -297,10 +529,24 @@ export class DeliverablesService {
     }
   }
 
-  private async findDeliverable(projectId: number, deliverableId: number) {
-    const deliverable = await this.prisma.projectDeliverable.findFirst({
-      where: { id: deliverableId, projectId },
+  async findDeliverable(
+    projectId: number,
+    deliverableIdOrMilestone: number,
+  ) {
+    let deliverable = await this.prisma.projectDeliverable.findFirst({
+      where: { id: deliverableIdOrMilestone, projectId },
     });
+    if (!deliverable) {
+      deliverable = await this.prisma.projectDeliverable.findFirst({
+        where: {
+          projectId,
+          OR: [
+            { milestoneId: deliverableIdOrMilestone },
+            { milestoneOrder: deliverableIdOrMilestone },
+          ],
+        },
+      });
+    }
     if (!deliverable) throw new NotFoundException('Entregable no encontrado');
     return deliverable;
   }

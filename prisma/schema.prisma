@@ -101,6 +101,8 @@ model User {
   commercialQuotes         QuoteVersion[]       @relation("QuoteVersionClient")
   acceptedQuoteVersions    QuoteVersion[]       @relation("QuoteVersionAccepter")
   reviewedTeamApplications TeamApplication[]    @relation("TeamApplicationReviewer")
+  milestoneContributions   MilestoneContribution[] @relation("UserMilestoneContributions")
+  deliverableHistories     DeliverableHistory[]    @relation("DeliverableHistoryActor")
 
   @@index([roleId, isActive])
 }
@@ -363,6 +365,7 @@ model Project {
   technologies     ProjectTechnology[]
   members          ProjectMember[]
   deliverables     ProjectDeliverable[]
+  contributions    MilestoneContribution[]
 
   @@index([clientUserId, status])
   @@index([prospectId])
@@ -409,6 +412,8 @@ model ProjectDeliverable {
   updatedAt      DateTime          @updatedAt
   project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   reviewedBy     User?             @relation("DeliverableReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  history        DeliverableHistory[]
+  contributions  MilestoneContribution[]
 
   @@unique([projectId, milestoneOrder])
   @@index([milestoneId])
@@ -607,6 +612,7 @@ model ProjectMilestone {
   project           Project              @relation(fields: [projectId], references: [id], onDelete: Restrict)
   paymentSchedule   PaymentSchedule      @relation(fields: [paymentScheduleId], references: [id], onDelete: Restrict)
   deliverables      ProjectDeliverable[]
+  contributions     MilestoneContribution[]
 
   @@unique([projectId, sequence])
 }
@@ -655,3 +661,50 @@ model ContactInquiry {
 
   @@index([createdAt])
 }
+
+enum DeliverableAction {
+  SUBMITTED
+  OBSERVED
+  APPROVED
+  EVIDENCE_UPDATED
+}
+
+model DeliverableHistory {
+  id            Int                @id @default(autoincrement())
+  deliverableId Int
+  actorId       Int
+  action        DeliverableAction
+  fileUrl       String?            @db.VarChar(500)
+  externalLink  String?            @db.VarChar(500)
+  feedbackNotes String?            @db.VarChar(2000)
+  createdAt     DateTime           @default(now())
+
+  deliverable   ProjectDeliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  actor         User               @relation("DeliverableHistoryActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([deliverableId, createdAt])
+  @@index([actorId])
+}
+
+model MilestoneContribution {
+  id            Int                 @id @default(autoincrement())
+  projectId     Int
+  milestoneId   Int?
+  deliverableId Int?
+  userId        Int
+  percentage    Int
+  description   String              @db.VarChar(500)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone     ProjectMilestone?   @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  deliverable   ProjectDeliverable? @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  user          User                @relation("UserMilestoneContributions", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, deliverableId, userId])
+  @@index([projectId])
+  @@index([milestoneId])
+  @@index([userId])
+}
+

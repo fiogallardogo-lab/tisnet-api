@@ -32,6 +32,7 @@ import {
 import { CreateDeliverableDto } from './dto/create-deliverable.dto';
 import { ReviewDeliverableDto } from './dto/review-deliverable.dto';
 import { SubmitDeliverableDto } from './dto/submit-deliverable.dto';
+import { SubmitEvidenceDto } from './dto/submit-evidence.dto';
 
 interface AuthenticatedRequest {
   user: DeliverablesActor & { email: string };
@@ -130,6 +131,59 @@ export class DeliverablesController {
       deliverableId,
       request.user,
       dto,
+    );
+  }
+
+  @Post(':deliverableId/review')
+  @ApiOperation({ summary: 'Aprobar u observar un entregable (alias POST)' })
+  reviewPost(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('deliverableId', ParseIntPipe) deliverableId: number,
+    @Request() request: AuthenticatedRequest,
+    @Body() dto: ReviewDeliverableDto,
+  ) {
+    return this.deliverablesService.review(
+      projectId,
+      deliverableId,
+      request.user,
+      dto,
+    );
+  }
+
+  @Post(':deliverableId/evidence')
+  @ApiOperation({ summary: 'Subir evidencia completa (PDF + Video)' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 50 * 1024 * 1024 },
+    }),
+  )
+  submitEvidence(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('deliverableId', ParseIntPipe) deliverableId: number,
+    @Request() request: AuthenticatedRequest,
+    @UploadedFile() file?: DeliverableFile,
+    @Body() dto?: SubmitEvidenceDto,
+  ) {
+    return this.deliverablesService.submitEvidence(
+      projectId,
+      deliverableId,
+      request.user,
+      file,
+      dto,
+    );
+  }
+
+  @Get(':deliverableId/history')
+  @ApiOperation({ summary: 'Consultar historial y trazabilidad del entregable' })
+  getHistory(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('deliverableId', ParseIntPipe) deliverableId: number,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.deliverablesService.getHistory(
+      projectId,
+      deliverableId,
+      request.user,
     );
   }
 

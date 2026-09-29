@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { ReportsModule } from '../reports/reports.module';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { PublicProjectsController } from './public-projects.controller';
@@ -14,6 +15,7 @@ import { ProjectEnablementService } from './project-enablement.service';
     PrismaModule,
     forwardRef(() => PaymentsModule),
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    ReportsModule,
   ],
   controllers: [ProjectsController, PublicProjectsController],
   providers: [ProjectsService, ProjectEnablementService, JwtAuthGuard, RolesGuard],
