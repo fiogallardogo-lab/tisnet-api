@@ -2,7 +2,7 @@
 
 ## Base y alcance
 
-Implementación sobre origin/develop 6b2c5fb en checkout aislado tisnet-api-s14. El checkout anterior tisnet-api contenía cambios locales y no fue sobrescrito. Backend comercial A01–A09. Pagos, proyectos, kickoff y equipos siguen siendo responsabilidad B; pantallas, accesibilidad y E2E de navegador corresponden a C.
+Implementación inicial sobre origin/develop 6b2c5fb en checkout aislado tisnet-api-s14, integrada después con los cuatro commits remotos de B hasta 013fc1d. El checkout anterior tisnet-api contenía cambios locales y no fue sobrescrito. Backend comercial A01–A09. Pagos, proyectos, kickoff y equipos siguen siendo responsabilidad B; pantallas, accesibilidad y E2E de navegador corresponden a C.
 
 ## Migración para B
 
@@ -37,3 +37,9 @@ B debe aplicar el procedimiento de migraciones de su entorno antes de arrancar e
 Instalar dependencias con npm ci --ignore-scripts y ejecutar npm run prisma:generate. Configurar .env.test con una base MySQL exclusiva cuyo nombre contenga test, JWT_SECRET, JWT_REFRESH_SECRET, TERMS_VERSION, PRIVACY_VERSION, NOTIFICATION_PROVIDER=fake y credenciales aleatorias SEED_ADMIN_EMAIL/PASSWORD, SEED_DEVELOPER_EMAIL/PASSWORD. No copiar secretos al repositorio.
 
 Para las pruebas locales se usó una instancia MySQL 8.0 independiente enlazada solo a 127.0.0.1:13316; esquema completo cargado únicamente en esa base por el bloqueo histórico citado. Preparar usuarios con npm run prisma:seed:test. Ejecutar npm test -- --maxWorkers=2 y npm run test:e2e -- --maxWorkers=1. E2E nuevo usa guards JWT/RBAC reales y MySQL; solo sustituye transporte de correo y limita rate limiting en el helper de pruebas existente. No equivale a demo con proveedor real.
+
+## Resultado integrado
+
+587 pruebas unitarias (77 archivos) y 223 E2E (12 archivos) aprobadas. Se recuperó el arranque y autenticación del E2E s14-concurrency recibido de develop: ahora comprueba un pago y un proyecto persistidos ante solicitudes concurrentes, reintento de webhook autenticado y 404 exactos para proyectos inexistentes. No acredita concurrencia de kickoff positivo ni gestión concurrente de equipos.
+
+Operación de B: la habilitación automática requiere al menos una Category activa; suites legacy sin ese fixture registraron el fallo esperado de esa dependencia sin invalidar sus propios contratos. La prueba integrada nueva sí incluye esa categoría y verifica PROJECT_ENABLED una vez. El webhook conserva auditoría de recepción por cada entrega; no confundirla con el evento único de habilitación.

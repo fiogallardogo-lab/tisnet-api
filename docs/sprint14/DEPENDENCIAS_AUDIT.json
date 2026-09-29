@@ -1,0 +1,111 @@
+{
+  "date": "2026-09-29",
+  "vulnerabilities": {
+    "info": 0,
+    "low": 2,
+    "moderate": 1,
+    "high": 8,
+    "critical": 0,
+    "total": 11
+  },
+  "packages": [
+    {
+      "name": "@nestjs/mau",
+      "severity": "moderate",
+      "isDirect": true,
+      "fixAvailable": {
+        "name": "@nestjs/mau",
+        "version": "0.0.6",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "@nestjs/platform-express",
+      "severity": "high",
+      "isDirect": true,
+      "fixAvailable": true
+    },
+    {
+      "name": "@prisma/config",
+      "severity": "high",
+      "isDirect": false,
+      "fixAvailable": {
+        "name": "prisma",
+        "version": "6.12.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "deepmerge-ts",
+      "severity": "high",
+      "isDirect": false,
+      "fixAvailable": {
+        "name": "prisma",
+        "version": "6.12.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "external-editor",
+      "severity": "low",
+      "isDirect": false,
+      "fixAvailable": {
+        "name": "@nestjs/mau",
+        "version": "0.0.6",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "fast-uri",
+      "severity": "high",
+      "isDirect": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "inquirer",
+      "severity": "low",
+      "isDirect": false,
+      "fixAvailable": {
+        "name": "@nestjs/mau",
+        "version": "0.0.6",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "multer",
+      "severity": "high",
+      "isDirect": false,
+      "fixAvailable": true
+    },
+    {
+      "name": "prisma",
+      "severity": "high",
+      "isDirect": true,
+      "fixAvailable": {
+        "name": "prisma",
+        "version": "6.12.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "tmp",
+      "severity": "high",
+      "isDirect": false,
+      "fixAvailable": {
+        "name": "@nestjs/mau",
+        "version": "0.0.6",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "name": "undici",
+      "severity": "high",
+      "isDirect": false,
+      "fixAvailable": {
+        "name": "@nestjs/mau",
+        "version": "0.0.6",
+        "isSemVerMajor": true
+      }
+    }
+  ]
+}
