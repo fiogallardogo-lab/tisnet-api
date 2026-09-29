@@ -126,4 +126,90 @@ describe('ReportsService', () => {
       expect(result.projects.length).toBe(0);
     });
   });
+
+  describe('getProjectTraceabilityReport and renderProjectReportPdf', () => {
+    it('generates traceability data and renders valid PDF buffer', async () => {
+      const mockProject = {
+        id: 10,
+        name: 'Plataforma E-commerce',
+        slug: 'plataforma-ecommerce',
+        status: 'IN_DEVELOPMENT',
+        createdAt: new Date(),
+        clientUserId: 4,
+        productOwnerId: 3,
+        client: { id: 4, name: 'Lucía López', email: 'lucia@example.com' },
+        productOwner: { id: 3, name: 'Pedro PO', email: 'pedro@example.com' },
+        members: [
+          {
+            userId: 2,
+            memberRole: 'DEVELOPER',
+            technicalRole: 'Backend Lead',
+            participationBasisPoints: 5000,
+            isActive: true,
+            user: { id: 2, name: 'Carlos Dev', email: 'carlos@example.com' },
+          },
+        ],
+        quote: {
+          publicCode: 'COT-2026-001',
+          versions: [
+            {
+              version: 1,
+              amountMinor: 150000,
+              currency: 'PEN',
+              schedules: [
+                { id: 1, sequence: 1, payments: [{ id: 1, status: 'CONFIRMED' }] },
+              ],
+            },
+          ],
+        },
+        deliverables: [
+          {
+            id: 101,
+            milestoneOrder: 1,
+            title: 'Hito 1: Arquitectura y API',
+            description: 'Modelos y pruebas base',
+            status: 'APPROVED',
+            dueDate: new Date('2026-10-15'),
+            fileUrl: 'https://files.example.com/arch.pdf',
+            externalLink: 'https://loom.com/share/demo',
+            feedbackNotes: 'Aprobado sin observaciones',
+            submittedAt: new Date(),
+            reviewedAt: new Date(),
+            reviewedBy: { id: 4, name: 'Lucía López' },
+            contributions: [
+              {
+                userId: 2,
+                percentage: 100,
+                description: 'Implementación completa',
+                user: { id: 2, name: 'Carlos Dev', email: 'carlos@example.com' },
+              },
+            ],
+            history: [
+              {
+                action: 'SUBMITTED',
+                actor: { id: 2, name: 'Carlos Dev', role: { name: 'DEVELOPER' } },
+                fileUrl: 'https://files.example.com/arch.pdf',
+                externalLink: 'https://loom.com/share/demo',
+                feedbackNotes: null,
+                createdAt: new Date(),
+              },
+            ],
+          },
+        ],
+      };
+
+      prisma.project.findUnique = vi.fn().mockResolvedValue(mockProject);
+
+      const report = await service.getProjectTraceabilityReport({ id: 1, role: 'ADMIN' }, 10);
+      expect(report.project.name).toBe('Plataforma E-commerce');
+      expect(report.milestones.length).toBe(1);
+      expect(report.milestones[0].contributions[0].percentage).toBe(100);
+
+      const pdf = await service.renderProjectReportPdf(report);
+      expect(Buffer.isBuffer(pdf)).toBe(true);
+      expect(pdf.length).toBeGreaterThan(100);
+      expect(pdf.subarray(0, 4).toString()).toBe('%PDF');
+    });
+  });
 });
+

@@ -32,6 +32,7 @@ import { AuditModule } from './audit/audit.module.js';
 import { SignedUrlModule } from './common/signed-urls/signed-url.module.js';
 import { SlaAlertsModule } from './common/sla-alerts/sla-alerts.module.js';
 import { ReportsModule } from './reports/reports.module.js';
+import { ContributionsModule } from './contributions/contributions.module.js';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { ReportsModule } from './reports/reports.module.js';
     SignedUrlModule,
     SlaAlertsModule,
     ReportsModule,
+    ContributionsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,0 +1,63 @@
+name: TISNET Backend CI/CD Pipeline
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  validate-and-test:
+    name: Lint, Unit Tests, Compile, Prisma & E2E
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tisnet_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Linter (oxlint)
+        run: npm run lint
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run Unit Tests
+        run: npm test
+
+      - name: Build NestJS Application
+        run: npm run build
+
+      - name: Run Prisma Migrations on Test Database
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/tisnet_test
+        run: npx prisma migrate deploy
+
+      - name: Seed Test Database
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/tisnet_test
+        run: node prisma/seed.cjs
+
+      - name: Run E2E Test Suite
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/tisnet_test
+          JWT_SECRET: ci-test-secret-min-32-chars-long-key
+        run: npm run test:e2e

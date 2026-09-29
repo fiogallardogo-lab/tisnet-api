@@ -5,6 +5,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
 import { DeliverablesController } from './deliverables.controller';
+import { MilestonesController } from './milestones.controller';
 import { DeliverablesService } from './deliverables.service';
 
 @Module({
@@ -13,7 +14,7 @@ import { DeliverablesService } from './deliverables.service';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     StorageModule,
   ],
-  controllers: [DeliverablesController],
+  controllers: [DeliverablesController, MilestonesController],
   providers: [DeliverablesService, JwtAuthGuard, RolesGuard],
   exports: [DeliverablesService],
 })

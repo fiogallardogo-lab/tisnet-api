@@ -20,6 +20,14 @@ describe('DeliverablesService', () => {
       create: vi.fn(),
       update: vi.fn(),
     },
+    deliverableHistory: {
+      create: vi.fn(),
+      findMany: vi.fn(),
+    },
+    auditEvent: {
+      create: vi.fn(),
+    },
+    $transaction: vi.fn(async (cb) => cb(prisma)),
   };
   const service = new DeliverablesService(prisma as unknown as PrismaService);
   const admin = { id: 1, role: 'ADMIN' };
@@ -239,4 +247,106 @@ describe('DeliverablesService', () => {
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  describe('Sprint 15 B: Evidencia completa e historial', () => {
+    it('S15-B01: exige PDF y video en submitEvidence para pasar a IN_REVIEW', async () => {
+      membership(ProjectMemberRole.DEVELOPER);
+
+      // Falta video
+      await expect(
+        service.submitEvidence(7, 10, developer, undefined, {
+          pdfUrl: 'https://example.com/doc.pdf',
+          videoUrl: '',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      // Falta PDF
+      await expect(
+        service.submitEvidence(7, 10, developer, undefined, {
+          videoUrl: 'https://loom.com/share/demo',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      // Con ambos válidos
+      const result = await service.submitEvidence(7, 10, developer, undefined, {
+        pdfUrl: 'https://example.com/doc.pdf',
+        videoUrl: 'https://loom.com/share/demo',
+        notes: 'Notas de entrega',
+      });
+
+      expect(result.status).toBe(DeliverableStatus.IN_REVIEW);
+      expect(result.pdfUrl).toBe('https://example.com/doc.pdf');
+      expect(result.videoUrl).toBe('https://loom.com/share/demo');
+      expect(prisma.deliverableHistory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'SUBMITTED',
+            fileUrl: 'https://example.com/doc.pdf',
+            externalLink: 'https://loom.com/share/demo',
+          }),
+        }),
+      );
+    });
+
+    it('S15-B05: registra historial cronológico y retorna eventos formateados', async () => {
+      membership(ProjectMemberRole.CLIENT);
+      prisma.deliverableHistory.findMany.mockResolvedValue([
+        {
+          id: 1,
+          action: 'SUBMITTED',
+          actorId: 2,
+          actor: { id: 2, name: 'Dev User', email: 'dev@test.com', role: { name: 'DEVELOPER' } },
+          fileUrl: 'https://example.com/doc.pdf',
+          externalLink: 'https://loom.com/share/demo',
+          feedbackNotes: null,
+          createdAt: new Date('2026-10-01T10:00:00Z'),
+        },
+        {
+          id: 2,
+          action: 'OBSERVED',
+          actorId: 4,
+          actor: { id: 4, name: 'Client User', email: 'cli@test.com', role: { name: 'CLIENT' } },
+          fileUrl: 'https://example.com/doc.pdf',
+          externalLink: 'https://loom.com/share/demo',
+          feedbackNotes: 'Ajustar contraste',
+          createdAt: new Date('2026-10-01T12:00:00Z'),
+        },
+      ]);
+
+      const history = await service.getHistory(7, 10, client);
+      expect(history.length).toBe(2);
+      expect(history[0].action).toBe('SUBMITTED');
+      expect(history[1].action).toBe('OBSERVED');
+      expect(history[1].comments).toBe('Ajustar contraste');
+    });
+
+    it('permite review con formato de Responsable C (status y comments)', async () => {
+      membership(ProjectMemberRole.PRODUCT_OWNER);
+      prisma.projectDeliverable.findFirst.mockResolvedValue({
+        ...deliverable,
+        status: DeliverableStatus.IN_REVIEW,
+      });
+
+      await service.review(7, 10, productOwner, {
+        status: 'APPROVED',
+        comments: 'Aprobación oficial',
+      });
+
+      expect(prisma.projectDeliverable.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: DeliverableStatus.APPROVED,
+          }),
+        }),
+      );
+      expect(prisma.deliverableHistory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'APPROVED',
+          }),
+        }),
+      );
+    });
+  });
 });
+

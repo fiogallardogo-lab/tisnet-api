@@ -463,6 +463,105 @@ export class ProjectsService {
     return value ? new Date(`${value.slice(0, 10)}T00:00:00.000Z`) : null;
   }
 
+  async closeProject(projectId: number, actor: { id: number; role: string }) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        quote: {
+          include: {
+            versions: {
+              where: { acceptedAt: { not: null } },
+              orderBy: { version: 'desc' },
+              take: 1,
+              include: {
+                schedules: {
+                  include: {
+                    payments: {
+                      where: { status: 'CONFIRMED' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        deliverables: true,
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Proyecto no encontrado');
+    }
+
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(actor.role);
+    const isPo = project.productOwnerId === actor.id;
+    if (!isAdmin && !isPo) {
+      throw new ForbiddenException(
+        'Solo el Product Owner asignado o un Administrador puede cerrar el proyecto.',
+      );
+    }
+
+    if (project.status === ProjectStatus.COMPLETED) {
+      return project;
+    }
+
+    if (project.status === ProjectStatus.ARCHIVED) {
+      throw new ConflictException('No se puede cerrar un proyecto archivado.');
+    }
+
+    // 1. Validar que todos los hitos estén aprobados (S15-B07)
+    if (project.deliverables.length === 0) {
+      throw new BadRequestException(
+        'No se puede cerrar el proyecto: no cuenta con hitos entregables registrados.',
+      );
+    }
+
+    const pendingDeliverables = project.deliverables.filter(
+      (d) => d.status !== 'APPROVED',
+    );
+    if (pendingDeliverables.length > 0) {
+      throw new BadRequestException(
+        `No se puede cerrar el proyecto: existen ${pendingDeliverables.length} hitos pendientes de aprobación. Todos deben estar en estado APPROVED.`,
+      );
+    }
+
+    // 2. Validar que las cuotas de pago estén confirmadas (S15-B07)
+    const activeVersion = project.quote?.versions?.[0];
+    if (activeVersion?.schedules?.length) {
+      const unpaidSchedules = activeVersion.schedules.filter(
+        (s) => s.payments.length === 0,
+      );
+      if (unpaidSchedules.length > 0) {
+        throw new BadRequestException(
+          `No se puede cerrar el proyecto: existen ${unpaidSchedules.length} cuotas de pago acordadas sin confirmar.`,
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.project.update({
+        where: { id: projectId },
+        data: { status: ProjectStatus.COMPLETED },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          actorId: actor.id,
+          action: 'PROJECT_CLOSED',
+          entityType: 'PROJECT',
+          entityId: String(projectId),
+          metadata: {
+            closedAt: new Date().toISOString(),
+            approvedDeliverables: project.deliverables.length,
+            quoteId: project.quoteId,
+          },
+        },
+      });
+
+      return updated;
+    });
+  }
+
   private handleUniqueSlugError(error: unknown): void {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -472,3 +571,4 @@ export class ProjectsService {
     }
   }
 }
+

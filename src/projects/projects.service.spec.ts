@@ -51,13 +51,16 @@ describe('ProjectsService', () => {
     technology: {
       findMany: vi.fn(),
     },
+    auditEvent: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn(),
   };
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    prismaMock.$transaction.mockImplementation(async (operations: Promise<unknown>[]) =>
-      Promise.all(operations),
+    prismaMock.$transaction.mockImplementation(async (operations: any) =>
+      typeof operations === 'function' ? operations(prismaMock) : Promise.all(operations),
     );
 
     const module: TestingModule = await Test.createTestingModule({
@@ -419,6 +422,110 @@ describe('ProjectsService', () => {
 
       await expect(service.findPublicBySlug('no-publicado')).rejects.toThrow(
         NotFoundException,
+      );
+    });
+  });
+
+  describe('closeProject (S15-B07)', () => {
+    const admin = { id: 1, role: 'ADMIN' };
+    const po = { id: 5, role: 'PRODUCT_OWNER' };
+    const dev = { id: 2, role: 'DEVELOPER' };
+
+    it('cierra exitosamente cuando todos los hitos están APPROVED y cuotas CONFIRMED', async () => {
+      prismaMock.project.findUnique.mockResolvedValue({
+        id: 1,
+        status: ProjectStatus.IN_DEVELOPMENT,
+        productOwnerId: 5,
+        deliverables: [
+          { id: 10, status: 'APPROVED' },
+          { id: 11, status: 'APPROVED' },
+        ],
+        quote: {
+          versions: [
+            {
+              version: 1,
+              schedules: [
+                { id: 1, payments: [{ id: 1, status: 'CONFIRMED' }] },
+                { id: 2, payments: [{ id: 2, status: 'CONFIRMED' }] },
+              ],
+            },
+          ],
+        },
+      });
+      prismaMock.project.update.mockResolvedValue({
+        id: 1,
+        status: ProjectStatus.COMPLETED,
+      });
+
+      const result = await service.closeProject(1, po);
+      expect(result.status).toBe(ProjectStatus.COMPLETED);
+      expect(prismaMock.project.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1 },
+          data: { status: ProjectStatus.COMPLETED },
+        }),
+      );
+      expect(prismaMock.auditEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'PROJECT_CLOSED',
+            entityType: 'PROJECT',
+          }),
+        }),
+      );
+    });
+
+    it('rechaza el cierre si hay entregables pendientes de aprobación', async () => {
+      prismaMock.project.findUnique.mockResolvedValue({
+        id: 1,
+        status: ProjectStatus.IN_DEVELOPMENT,
+        productOwnerId: 5,
+        deliverables: [
+          { id: 10, status: 'APPROVED' },
+          { id: 11, status: 'IN_REVIEW' },
+        ],
+        quote: null,
+      });
+
+      await expect(service.closeProject(1, admin)).rejects.toThrow(
+        /pendientes de aprobación/,
+      );
+    });
+
+    it('rechaza el cierre si hay cuotas de pago acordadas sin confirmar', async () => {
+      prismaMock.project.findUnique.mockResolvedValue({
+        id: 1,
+        status: ProjectStatus.IN_DEVELOPMENT,
+        productOwnerId: 5,
+        deliverables: [{ id: 10, status: 'APPROVED' }],
+        quote: {
+          versions: [
+            {
+              version: 1,
+              schedules: [
+                { id: 1, payments: [{ id: 1, status: 'CONFIRMED' }] },
+                { id: 2, payments: [] }, // Sin pago confirmado
+              ],
+            },
+          ],
+        },
+      });
+
+      await expect(service.closeProject(1, po)).rejects.toThrow(
+        /cuotas de pago acordadas sin confirmar/,
+      );
+    });
+
+    it('rechaza si un DEVELOPER intenta cerrar el proyecto', async () => {
+      prismaMock.project.findUnique.mockResolvedValue({
+        id: 1,
+        status: ProjectStatus.IN_DEVELOPMENT,
+        productOwnerId: 5,
+        deliverables: [{ id: 10, status: 'APPROVED' }],
+      });
+
+      await expect(service.closeProject(1, dev)).rejects.toThrow(
+        /Solo el Product Owner asignado o un Administrador/,
       );
     });
   });
