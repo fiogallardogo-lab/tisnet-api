@@ -1,3 +1,4 @@
+import { auditRecord } from '../audit/audit.service';
 import {
   ConflictException,
   ForbiddenException,
@@ -37,6 +38,7 @@ export class ProspectsService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM Quote WHERE publicCode = ${code} FOR UPDATE`;
         const quote = await tx.quote.findUnique({
           where: { publicCode: code },
           include: { prospect: true },
@@ -60,6 +62,18 @@ export class ProspectsService {
           );
         }
 
+        if (
+          await tx.auditEvent.findFirst({
+            where: {
+              action: 'QUOTE_LINKED',
+              entityType: 'QUOTE',
+              entityId: String(quote.id),
+            },
+          })
+        )
+          throw new ConflictException(
+            'El código ya fue utilizado para vincular esta cotización.',
+          );
         let prospect = await tx.prospect.findFirst({
           where: { OR: [{ email }, { userId }] },
         });
@@ -106,6 +120,12 @@ export class ProspectsService {
           });
         }
 
+        await auditRecord(tx, {
+          actorId: userId,
+          action: 'QUOTE_LINKED',
+          entityType: 'QUOTE',
+          entityId: String(quote.id),
+        });
         return this.findProspectById(tx, prospect.id);
       });
     } catch (error) {

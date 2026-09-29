@@ -1,9 +1,13 @@
+import { CommercialModule } from '../commercial/commercial.module';
 import { Module, forwardRef } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { PrismaModule } from '../prisma/prisma.module';
-import { paymentsConfig, validatePaymentsConfig } from '../config/payments.config';
+import {
+  paymentsConfig,
+  validatePaymentsConfig,
+} from '../config/payments.config';
 import type { PaymentsConfig } from '../config/payments.config';
 
 import { PAYMENT_PROVIDER } from './payment-provider.interface';
@@ -17,6 +21,7 @@ import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
   imports: [
+    CommercialModule,
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     ConfigModule.forFeature(paymentsConfig),

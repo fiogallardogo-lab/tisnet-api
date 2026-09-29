@@ -1,3 +1,4 @@
+import { CommercialMailService } from '../commercial/commercial-mail.service';
 import { auditRecord } from '../audit/audit.service';
 import {
   BadRequestException,
@@ -42,7 +43,12 @@ export function allocateInstallments(
       throw new BadRequestException(
         'Cada cuota debe tener un importe positivo.',
       );
-    if (!Number.isFinite(Date.parse(x.dueDate)) || !x.milestone.trim())
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(x.dueDate) ||
+      !Number.isFinite(Date.parse(x.dueDate)) ||
+      new Date(x.dueDate).toISOString().slice(0, 10) !== x.dueDate ||
+      !x.milestone.trim()
+    )
       throw new BadRequestException('Fecha e hito obligatorios.');
     if (i && Date.parse(x.dueDate) < Date.parse(installments[i - 1].dueDate))
       throw new BadRequestException(
@@ -65,10 +71,11 @@ export class PaymentsService {
     @Optional()
     @Inject(forwardRef(() => ProjectEnablementService))
     private readonly enablement?: ProjectEnablementService,
+    @Optional() private readonly mail?: CommercialMailService,
   ) {}
   async officialize(id: number, authorId: number, dto: OfficialQuoteDto) {
     const schedules = allocateInstallments(dto.amountMinor, dto.installments);
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM Quote WHERE id = ${id} FOR UPDATE`;
       const quote = await tx.quote.findUnique({
         where: { id },
@@ -134,6 +141,8 @@ export class PaymentsService {
       });
       return version;
     });
+    await this.mail?.quoteAfterCommit(id, result.id);
+    return result;
   }
   versions(quoteId: number) {
     return this.prisma.quoteVersion.findMany({

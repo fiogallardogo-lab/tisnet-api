@@ -1,5 +1,5 @@
 import { createAppTestModule } from './helpers/create-app-test-module';
-﻿import {
+import {
   INestApplication,
   ValidationPipe,
   UnauthorizedException,
@@ -26,7 +26,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       scheduleId: number,
       versionId: number;
     const email = `client-${randomUUID()}@example.test`;
-    
+
     const req = () => request(app.getHttpServer());
     const adminHeaders = () => ({
       'x-user': String(admin),
@@ -39,7 +39,8 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       'x-email': email,
     });
 
-    beforeAll(async () => { process.env.CULQI_WEBHOOK_BASIC_AUTH = 'test-secret';
+    beforeAll(async () => {
+      process.env.CULQI_WEBHOOK_BASIC_AUTH = 'test-secret';
       const module = await createAppTestModule()
         .overrideGuard(JwtAuthGuard)
         .useValue({
@@ -90,14 +91,14 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         },
       });
       client = createdClient.id;
-      
+
       const prospect = await db.prospect.create({
         data: {
           userId: client,
           name: 'Client Flow Test',
           email,
           source: 'MANUAL',
-        }
+        },
       });
       const q = await db.quote.create({
         data: {
@@ -113,7 +114,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
           currency: 'PEN',
           deliveryMode: 'NORMAL',
           activeVersion: 1,
-        }
+        },
       });
       quoteId = q.id;
 
@@ -126,9 +127,9 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
           amountMinor: 500000,
           currency: 'PEN',
           scope: { description: 'test scope' },
-        }
+        },
       });
-      versionId = qv.version;
+      versionId = qv.id;
 
       const sch = await db.paymentSchedule.create({
         data: {
@@ -138,7 +139,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
           amountMinor: 500000,
           dueDate: new Date(),
           milestone: 'Pago inicial',
-        }
+        },
       });
       scheduleId = sch.id;
     });
@@ -149,21 +150,26 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
 
     describe('Agreement GET and ACCEPT', () => {
       it('GET /client/quotes/:id/agreement (propio)', async () => {
-        const res = await req().get(`/api/v1/client/quotes/${quoteId}/agreement`).set(clientHeaders());
+        const res = await req()
+          .get(`/api/v1/client/quotes/${quoteId}/agreement`)
+          .set(clientHeaders());
         expect(res.status).toBe(200);
         expect(res.body.data.quoteId).toBe(quoteId);
         expect(res.body.data.acceptedAt).toBeNull();
       });
 
       it('GET /client/quotes/:id/agreement (ajeno) - should 403 or 404', async () => {
-        const res = await req().get(`/api/v1/client/quotes/${quoteId}/agreement`).set(adminHeaders()); 
+        const res = await req()
+          .get(`/api/v1/client/quotes/${quoteId}/agreement`)
+          .set(adminHeaders());
         // Admin headers emulate a client requesting something they shouldn't if they aren't the linked client.
         // Or if the guard requires 'CLIENT' role, admin might fail.
         expect([403, 404]).toContain(res.status);
       });
 
       it('POST /client/quotes/:id/accept (válida)', async () => {
-        const res = await req().post(`/api/v1/client/quotes/${quoteId}/accept`)
+        const res = await req()
+          .post(`/api/v1/client/quotes/${quoteId}/accept`)
           .set(clientHeaders())
           .send({ versionId, accepted: true });
         expect(res.status).toBe(201);
@@ -172,7 +178,8 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       });
 
       it('POST /client/quotes/:id/accept (repetida - idempotente)', async () => {
-        const res = await req().post(`/api/v1/client/quotes/${quoteId}/accept`)
+        const res = await req()
+          .post(`/api/v1/client/quotes/${quoteId}/accept`)
           .set(clientHeaders())
           .send({ versionId, accepted: true });
         expect(res.status).toBe(201);
@@ -181,13 +188,15 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
 
     describe('Checkout', () => {
       it('POST /client/payments/:installmentId/checkout (cuota propia)', async () => {
-        const res = await req().post(`/api/v1/client/payments/${scheduleId}/checkout`)
+        const res = await req()
+          .post(`/api/v1/client/payments/${scheduleId}/checkout`)
           .set(clientHeaders());
         expect(res.status).toBe(503); // Gateway stays disabled without credentials.
       });
 
       it('POST /client/payments/:installmentId/checkout (cuota ajena)', async () => {
-        const res = await req().post(`/api/v1/client/payments/${scheduleId}/checkout`)
+        const res = await req()
+          .post(`/api/v1/client/payments/${scheduleId}/checkout`)
           .set(adminHeaders());
         expect([403, 404]).toContain(res.status);
       });
@@ -195,15 +204,20 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
 
     describe('Webhook and Kickoff', () => {
       const extId = 'evt_' + randomUUID();
-      
+
       it('webhook authenticity - valid/invalid', async () => {
-        await req().post('/api/v1/payments/culqi/webhook')
+        await req()
+          .post('/api/v1/payments/culqi/webhook')
           .set('authorization', 'Basic invalid')
           .send({ type: 'charge.creation.succeeded', data: {} })
           .expect(401);
 
-        await req().post('/api/v1/payments/culqi/webhook')
-          .set('authorization', 'Basic ' + (process.env.CULQI_WEBHOOK_BASIC_AUTH || 'test-secret'))
+        await req()
+          .post('/api/v1/payments/culqi/webhook')
+          .set(
+            'authorization',
+            'Basic ' + (process.env.CULQI_WEBHOOK_BASIC_AUTH || 'test-secret'),
+          )
           .send({
             type: 'charge.creation.succeeded',
             id: extId,
@@ -212,34 +226,38 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
               amount: 500000,
               currency_code: 'PEN',
               email,
-              metadata: { scheduleId: String(scheduleId) }
-            }
+              metadata: { scheduleId: String(scheduleId) },
+            },
           })
           .expect(200);
 
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 200));
 
-        const count = await db.payment.count({ where: { scheduleId, status: 'CONFIRMED' } });
+        const count = await db.payment.count({
+          where: { scheduleId, status: 'CONFIRMED' },
+        });
         expect(count).toBeGreaterThan(0);
       });
 
       it('Kickoff after webhook payment', async () => {
-        const res = await req().post('/api/v1/kickoff')
+        const res = await req()
+          .post('/api/v1/kickoff')
           .set(adminHeaders())
-          .send({ 
-            quoteId, 
+          .send({
+            quoteId,
             name: 'Kickoff Test',
             slug: 'ko-' + randomUUID(),
             categoryId: 1, // Need category
             heldAt: new Date().toISOString(),
-            members: [] 
+            members: [],
           });
         // We might get 409 or 400 or 404 depending on dummy data, but it should NOT be 409 for initial payment missing.
         // Actually, we didn't mock enough for kickoff, just expect it not to crash on DB
       });
-      
+
       it('checkout (cuota ya pagada)', async () => {
-        const res = await req().post(`/api/v1/client/payments/${scheduleId}/checkout`)
+        const res = await req()
+          .post(`/api/v1/client/payments/${scheduleId}/checkout`)
           .set(clientHeaders());
         expect(res.status).toBe(409);
       });

@@ -1,3 +1,4 @@
+import { CommercialModule } from '../commercial/commercial.module';
 import { DocumentsModule } from '../documents/documents.module';
 import {
   QuoteLookupController,
@@ -31,6 +32,7 @@ export interface QuotesModuleOptions {
 
 @Module({
   imports: [
+    CommercialModule,
     PrismaModule,
     DocumentsModule,
     PassportModule.register({

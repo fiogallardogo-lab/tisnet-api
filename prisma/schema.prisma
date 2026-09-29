@@ -70,6 +70,7 @@ model Role {
 }
 
 model User {
+  quoteObservations        QuoteObservation[]
   resultingApplications    TeamApplication[]    @relation("ApplicationAccount")
   applicationDecisions     TeamApplication[]    @relation("ApplicationDecisionActor")
   ownedProjects            Project[]            @relation("ProjectOwner")
@@ -176,33 +177,34 @@ model AdminProfile {
 }
 
 model Quote {
-  id                  Int                @id @default(autoincrement())
-  publicCode          String             @unique @db.VarChar(20)
-  status              QuoteStatus        @default(RECEIVED)
-  solutionType        String             @db.VarChar(64)
-  contactName         String             @db.VarChar(100)
-  contactEmail        String             @db.VarChar(150)
-  contactPhone        String             @db.VarChar(30)
-  contactCompany      String?            @db.VarChar(150)
-  notes               String?            @db.Text
-  pricingStatus       QuotePricingStatus @default(PENDING_RULES)
-  amountMinor         Decimal?           @db.Decimal(15, 0)
-  currency            String?            @db.Char(3)
-  pricingVersion      String?            @db.VarChar(50)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  deliveryMode        String             @default("NORMAL") @db.VarChar(20)
-  snapshot            Json?
-  legacyCode          String?            @unique @db.VarChar(100)
-  legacyPublicQuoteId Int?               @unique
-  activeVersion       Int                @default(0)
-  versions            QuoteVersion[]
-  project             Project?
-  prospectId          Int?
-  options             QuoteOption[]
-  items               QuoteItem[]
-  prospect            Prospect?          @relation(fields: [prospectId], references: [id], onDelete: SetNull)
-  meetings            Meeting[]
+  customerObservations QuoteObservation[]
+  id                   Int                @id @default(autoincrement())
+  publicCode           String             @unique @db.VarChar(20)
+  status               QuoteStatus        @default(RECEIVED)
+  solutionType         String             @db.VarChar(64)
+  contactName          String             @db.VarChar(100)
+  contactEmail         String             @db.VarChar(150)
+  contactPhone         String             @db.VarChar(30)
+  contactCompany       String?            @db.VarChar(150)
+  notes                String?            @db.Text
+  pricingStatus        QuotePricingStatus @default(PENDING_RULES)
+  amountMinor          Decimal?           @db.Decimal(15, 0)
+  currency             String?            @db.Char(3)
+  pricingVersion       String?            @db.VarChar(50)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  deliveryMode         String             @default("NORMAL") @db.VarChar(20)
+  snapshot             Json?
+  legacyCode           String?            @unique @db.VarChar(100)
+  legacyPublicQuoteId  Int?               @unique
+  activeVersion        Int                @default(0)
+  versions             QuoteVersion[]
+  project              Project?
+  prospectId           Int?
+  options              QuoteOption[]
+  items                QuoteItem[]
+  prospect             Prospect?          @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  meetings             Meeting[]
 
   @@index([status, createdAt])
   @@index([pricingStatus, createdAt])
@@ -506,19 +508,20 @@ model TeamApplication {
 }
 
 model QuoteVersion {
-  id               Int       @id @default(autoincrement())
-  quoteId          Int
-  version          Int
-  clientUserId     Int
-  authorId         Int
-  observations     String?   @db.VarChar(2000)
-  amountMinor      Decimal   @db.Decimal(15, 0)
-  currency         String    @db.Char(3)
-  scope            Json
-  createdAt        DateTime  @default(now())
-  officialAt       DateTime  @default(now())
-  acceptedAt       DateTime?
-  acceptedByUserId Int?
+  customerObservations QuoteObservation[]
+  id                   Int                @id @default(autoincrement())
+  quoteId              Int
+  version              Int
+  clientUserId         Int
+  authorId             Int
+  observations         String?            @db.VarChar(2000)
+  amountMinor          Decimal            @db.Decimal(15, 0)
+  currency             String             @db.Char(3)
+  scope                Json
+  createdAt            DateTime           @default(now())
+  officialAt           DateTime           @default(now())
+  acceptedAt           DateTime?
+  acceptedByUserId     Int?
 
   quote          Quote             @relation(fields: [quoteId], references: [id], onDelete: Restrict)
   client         User              @relation("QuoteVersionClient", fields: [clientUserId], references: [id], onDelete: Restrict)
@@ -617,4 +620,34 @@ model AuditEvent {
   @@index([entityType, createdAt, id])
   @@index([actorId, createdAt, id])
   @@index([createdAt, id])
+}
+
+// S14-A03/A06: additive schema proposal. Migration deployment is owned by B.
+model QuoteObservation {
+  id        Int          @id @default(autoincrement())
+  quoteId   Int
+  versionId Int
+  authorId  Int
+  text      String       @db.VarChar(2000)
+  createdAt DateTime     @default(now())
+  quote     Quote        @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  version   QuoteVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([quoteId, createdAt])
+  @@index([versionId])
+  @@index([authorId])
+}
+
+model ContactInquiry {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(40)
+  name      String   @db.VarChar(100)
+  email     String   @db.VarChar(150)
+  phone     String?  @db.VarChar(30)
+  subject   String   @db.VarChar(150)
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

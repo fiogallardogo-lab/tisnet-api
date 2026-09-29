@@ -1,3 +1,5 @@
+import { Optional } from '@nestjs/common';
+import { CommercialMailService } from '../commercial/commercial-mail.service';
 import {
   BadRequestException,
   ConflictException,
@@ -23,6 +25,7 @@ export class MeetingPersistenceService {
     private readonly prisma: PrismaService,
     @Inject(SCHEDULING_PROVIDER)
     private readonly scheduling: SchedulingProvider,
+    @Optional() private readonly mail?: CommercialMailService,
   ) {}
   private range(start: string, end: string, maximumDays: number) {
     const a = new Date(start),
@@ -109,7 +112,7 @@ export class MeetingPersistenceService {
     const { a, b } = this.range(dto.start, dto.end, 1);
     if (a <= new Date())
       throw new BadRequestException('La reunión debe ser futura.');
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM AdminProfile WHERE id = ${dto.advisorId} FOR UPDATE`;
       const advisor = await tx.adminProfile.findFirst({
         where: {
@@ -171,6 +174,8 @@ export class MeetingPersistenceService {
         advisorId: advisor.id,
       };
     });
+    await this.mail?.meeting(result.id);
+    return result;
   }
   async list(
     query: MeetingListQuery,
@@ -210,12 +215,18 @@ export class MeetingPersistenceService {
   async manageMeeting(
     id: number,
     actor: { id: number; role: string },
-    change: { status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' } | { start: string; end: string },
+    change:
+      | { status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' }
+      | { start: string; end: string },
   ) {
-    const scope = actor.role === 'SUPER_ADMIN' ? {} : { advisorProfile: { userId: actor.id } };
-    return this.prisma.$transaction(async tx => {
+    const scope =
+      actor.role === 'SUPER_ADMIN'
+        ? {}
+        : { advisorProfile: { userId: actor.id } };
+    const result = await this.prisma.$transaction(async (tx) => {
       const initial = await tx.meeting.findFirst({ where: { id, ...scope } });
-      if (!initial) throw new NotFoundException('Reunión no encontrada para tu cuenta.');
+      if (!initial)
+        throw new NotFoundException('Reunión no encontrada para tu cuenta.');
       if ('start' in change && initial.advisorProfileId) {
         await tx.$queryRaw`SELECT id FROM AdminProfile WHERE id = ${initial.advisorProfileId} FOR UPDATE`;
       }
@@ -223,31 +234,91 @@ export class MeetingPersistenceService {
       const meeting = await tx.meeting.findFirst({ where: { id, ...scope } });
       if (!meeting) throw new NotFoundException('Reunión no encontrada.');
       if (meeting.externalProvider || meeting.externalEventUri) {
-        throw new ConflictException('Gestiona esta reunión desde el proveedor externo.');
+        throw new ConflictException(
+          'Gestiona esta reunión desde el proveedor externo.',
+        );
       }
       if ('status' in change) {
         const allowed: Record<MeetingStatus, MeetingStatus[]> = {
-          PENDING: ['SCHEDULED', 'CANCELLED'], SCHEDULED: ['COMPLETED', 'CANCELLED'], COMPLETED: [], CANCELLED: [],
+          PENDING: ['SCHEDULED', 'CANCELLED'],
+          SCHEDULED: ['COMPLETED', 'CANCELLED'],
+          COMPLETED: [],
+          CANCELLED: [],
         };
         if (meeting.status !== change.status) {
-          if (!allowed[meeting.status].includes(change.status)) throw new ConflictException('Transición de reunión inválida.');
-          await tx.meeting.update({ where: { id }, data: { status: change.status, ...(change.status === 'CANCELLED' ? { bookingKey: null } : {}) } });
-          await tx.meetingEvent.create({ data: { meetingId: id, externalEventId: 'manual:' + actor.id + ':' + randomUUID(), status: change.status, occurredAt: new Date() } });
+          if (!allowed[meeting.status].includes(change.status))
+            throw new ConflictException('Transición de reunión inválida.');
+          await tx.meeting.update({
+            where: { id },
+            data: {
+              status: change.status,
+              ...(change.status === 'CANCELLED' ? { bookingKey: null } : {}),
+            },
+          });
+          await tx.meetingEvent.create({
+            data: {
+              meetingId: id,
+              externalEventId: 'manual:' + actor.id + ':' + randomUUID(),
+              status: change.status,
+              occurredAt: new Date(),
+            },
+          });
         }
       } else {
-        if (!['PENDING', 'SCHEDULED'].includes(meeting.status) || !meeting.advisorProfileId) throw new ConflictException('La reunión no puede reprogramarse.');
+        if (
+          !['PENDING', 'SCHEDULED'].includes(meeting.status) ||
+          !meeting.advisorProfileId
+        )
+          throw new ConflictException('La reunión no puede reprogramarse.');
         const { a, b } = this.range(change.start, change.end, 1);
-        if (a <= new Date()) throw new BadRequestException('La reunión debe ser futura.');
-        const overlap = await tx.meeting.findFirst({ where: {
-          id: { not: id }, advisorProfileId: meeting.advisorProfileId, status: { in: ['PENDING', 'SCHEDULED'] }, scheduledAt: { lt: b },
-          OR: [{ endsAt: { gt: a } }, { endsAt: null, scheduledAt: { gt: new Date(a.getTime() - 3600000) } }],
-        } });
-        if (overlap) throw new ConflictException('El horario ya está reservado.');
-        await tx.meeting.update({ where: { id }, data: { scheduledAt: a, endsAt: b, bookingKey: meeting.advisorProfileId + ':' + a.toISOString() } });
-        await tx.auditEvent.create({ data: { actorId: actor.id, action: 'MEETING_RESCHEDULED', entityType: 'MEETING', entityId: String(id), metadata: { start: a.toISOString(), end: b.toISOString() } } });
+        if (a <= new Date())
+          throw new BadRequestException('La reunión debe ser futura.');
+        const overlap = await tx.meeting.findFirst({
+          where: {
+            id: { not: id },
+            advisorProfileId: meeting.advisorProfileId,
+            status: { in: ['PENDING', 'SCHEDULED'] },
+            scheduledAt: { lt: b },
+            OR: [
+              { endsAt: { gt: a } },
+              {
+                endsAt: null,
+                scheduledAt: { gt: new Date(a.getTime() - 3600000) },
+              },
+            ],
+          },
+        });
+        if (overlap)
+          throw new ConflictException('El horario ya está reservado.');
+        await tx.meeting.update({
+          where: { id },
+          data: {
+            scheduledAt: a,
+            endsAt: b,
+            bookingKey: meeting.advisorProfileId + ':' + a.toISOString(),
+          },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorId: actor.id,
+            action: 'MEETING_RESCHEDULED',
+            entityType: 'MEETING',
+            entityId: String(id),
+            metadata: { start: a.toISOString(), end: b.toISOString() },
+          },
+        });
       }
-      return tx.meeting.findUniqueOrThrow({ where: { id }, include: { prospect: { select: { name: true, email: true, phone: true } }, quote: { select: { publicCode: true } }, advisorProfile: { select: { user: { select: { name: true } } } } } });
+      return tx.meeting.findUniqueOrThrow({
+        where: { id },
+        include: {
+          prospect: { select: { name: true, email: true, phone: true } },
+          quote: { select: { publicCode: true } },
+          advisorProfile: { select: { user: { select: { name: true } } } },
+        },
+      });
     });
+    await this.mail?.meeting(id);
+    return result;
   }
   // B calls this after authenticating Calendly events. No external provider implementation here.
   async recordExternalEvent(input: {

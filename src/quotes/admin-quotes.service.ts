@@ -100,6 +100,7 @@ export class AdminQuotesService {
       status: item.pricingStatus,
       pricingStatus: item.pricingStatus,
       createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
       notes: item.notes,
       selections:
         item.snapshot ??

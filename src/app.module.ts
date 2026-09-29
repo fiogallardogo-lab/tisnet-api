@@ -1,3 +1,4 @@
+import { CommercialModule } from './commercial/commercial.module';
 import { KickoffModule } from './kickoff/kickoff.module';
 import { ClientPortalModule } from './client-portal/client-portal.module';
 import { IntakeModule } from './public-intake/intake.module';
@@ -34,6 +35,7 @@ import { ReportsModule } from './reports/reports.module.js';
 
 @Module({
   imports: [
+    CommercialModule,
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
@@ -49,8 +51,8 @@ import { ReportsModule } from './reports/reports.module.js';
      */
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60000, limit: 120 },
-      { name: 'auth',    ttl: 60000, limit: 10 },
-      { name: 'public',  ttl: 60000, limit: 30 },
+      { name: 'auth', ttl: 60000, limit: 10 },
+      { name: 'public', ttl: 60000, limit: 30 },
       { name: 'webhook', ttl: 60000, limit: 60 },
     ]),
     PrismaModule,

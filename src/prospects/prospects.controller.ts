@@ -50,7 +50,7 @@ export class ProspectsController {
   @ApiResponse({ status: 404, description: 'Cotización no encontrada' })
   @ApiResponse({
     status: 409,
-    description: 'La cotización ya pertenece a otro prospecto',
+    description: 'Código reutilizado o cotización vinculada a otro prospecto',
   })
   linkQuote(
     @Request() request: AuthenticatedRequest,
@@ -79,7 +79,9 @@ export class ProspectsController {
 
   @Get(':id')
   @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Consultar el detalle administrativo de un prospecto' })
+  @ApiOperation({
+    summary: 'Consultar el detalle administrativo de un prospecto',
+  })
   @ApiResponse({ status: 200, description: 'Prospecto encontrado' })
   @ApiResponse({ status: 404, description: 'Prospecto no encontrado' })
   findOne(@Param('id', ParseIntPipe) id: number) {

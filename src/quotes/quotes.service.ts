@@ -1,3 +1,4 @@
+import { CommercialMailService } from '../commercial/commercial-mail.service';
 import {
   Inject,
   Injectable,
@@ -43,6 +44,7 @@ export class QuotesService {
     @Optional()
     @Inject(QUOTE_CODE_GENERATOR)
     private readonly codeGenerator: QuoteCodeGenerator = generateQuoteCode,
+    @Optional() private readonly mail?: CommercialMailService,
   ) {}
 
   async createPublic(
@@ -107,6 +109,7 @@ export class QuotesService {
           items: pricing?.items ?? [],
         });
 
+        await this.mail?.quoteByCode(created.publicCode);
         return toPublicQuoteResponse(created);
       } catch (error) {
         if (!(error instanceof QuoteCodeCollisionError)) throw error;
