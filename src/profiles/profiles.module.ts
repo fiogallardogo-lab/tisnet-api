@@ -7,6 +7,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { UsersModule } from '../users/users.module';
 import { ProfilesController } from './profiles.controller';
 import { ProfilesService } from './profiles.service';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ProfilesService } from './profiles.service';
     UsersModule,
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    StorageModule,
   ],
   controllers: [ProfilesController],
   providers: [ProfilesService, JwtAuthGuard, RolesGuard],

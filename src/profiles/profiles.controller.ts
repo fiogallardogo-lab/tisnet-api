@@ -3,9 +3,13 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -41,6 +45,30 @@ export class ProfilesController {
   })
   getOwnProfile(@Request() request: ProfileRequest) {
     return this.profilesService.getOwnProfile(request.user.id);
+  }
+
+  @Post('photo')
+  @UseInterceptors(
+    FileInterceptor('photo', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  @ApiOperation({
+    summary: 'Subir y guardar la fotografía del perfil autenticado',
+  })
+  uploadPhoto(
+    @Request() request: ProfileRequest,
+    @UploadedFile()
+    file?: {
+      buffer: Buffer;
+      mimetype: string;
+      size: number;
+      originalname: string;
+    },
+  ) {
+    return this.profilesService.uploadProfilePhoto(
+      request.user.id,
+      request.user.role,
+      file,
+    );
   }
 
   @Patch()

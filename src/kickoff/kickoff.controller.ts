@@ -45,6 +45,12 @@ export class KickoffController {
 
   // ─── Project Operations ──────────────────────────────────────────────────────
 
+  @Get('workspace/projects')
+  @Roles('DEVELOPER', 'PRODUCT_OWNER')
+  assignedProjects(@Request() r: ActorRequest) {
+    return this.service.listAssignedProjects(r.user);
+  }
+
   @Get('projects/:id/operations')
   @Roles('ADMIN', 'SUPER_ADMIN', 'CLIENT', 'DEVELOPER', 'PRODUCT_OWNER')
   detail(@Param('id', ParseIntPipe) id: number, @Request() r: ActorRequest) {
