@@ -52,7 +52,9 @@ export class CalendlyWebhookController {
     } else {
       const rawBody = req.rawBody;
       if (!rawBody) {
-        throw new BadRequestException('Raw body not available; check rawBody: true in NestJS bootstrap');
+        throw new BadRequestException(
+          'Raw body not available; check rawBody: true in NestJS bootstrap',
+        );
       }
       const valid = this.signature.verify(signingKey, sigHeader, rawBody);
       if (!valid) {
@@ -65,14 +67,11 @@ export class CalendlyWebhookController {
       throw new BadRequestException('Malformed Calendly webhook payload');
     }
 
-    this.logger.log('[Calendly] Received event=' + body.event);
+    this.logger.log('[Calendly] Received scheduling event');
 
     // Process asynchronously — webhook must return 200 immediately.
-    void this.webhook.process(body).catch((err: unknown) => {
-      this.logger.error(
-        '[Calendly] Unhandled error processing event=' + body.event,
-        err instanceof Error ? err.stack : String(err),
-      );
+    void this.webhook.process(body).catch(() => {
+      this.logger.error('[Calendly] Event processing failed');
     });
 
     return { received: true };

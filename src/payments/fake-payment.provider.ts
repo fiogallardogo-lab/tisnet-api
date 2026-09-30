@@ -15,7 +15,9 @@ export class FakePaymentProvider implements PaymentProvider {
   private readonly orders = new Map<string, PaymentOrder>();
 
   async createCharge(input: CreateChargeInput): Promise<PaymentCharge> {
-    this.logger.log(`[FakePayment] Creating charge: amount=${input.amount} ${input.currency}, email=${input.email}`);
+    this.logger.log(
+      `[FakePayment] Creating charge: amount=${input.amount} ${input.currency}`,
+    );
 
     if (!input.amount || input.amount <= 0) {
       throw new PaymentProviderError(
@@ -34,7 +36,10 @@ export class FakePaymentProvider implements PaymentProvider {
     }
 
     // Deterministic simulation for tests
-    if (input.tokenId.includes('fail') || input.tokenId === 'tkn_test_declined') {
+    if (
+      input.tokenId.includes('fail') ||
+      input.tokenId === 'tkn_test_declined'
+    ) {
       throw new PaymentProviderError(
         'La tarjeta fue rechazada por el banco emisor.',
         'CARD_DECLINED',
@@ -72,7 +77,9 @@ export class FakePaymentProvider implements PaymentProvider {
   }
 
   async createOrder(input: CreateOrderInput): Promise<PaymentOrder> {
-    this.logger.log(`[FakePayment] Creating order: ${input.orderNumber}, amount=${input.amount}`);
+    this.logger.log(
+      `[FakePayment] Creating order: ${input.orderNumber}, amount=${input.amount}`,
+    );
 
     const orderId = `ord_fake_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const cipCode = `CIP-${Math.floor(1000000 + Math.random() * 9000000)}`;

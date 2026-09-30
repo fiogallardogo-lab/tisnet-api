@@ -61,7 +61,8 @@ export class CulqiPaymentProvider implements PaymentProvider {
       body: JSON.stringify(payload),
     });
 
-    const isSucceeded = response.outcome?.type === 'venta_exitosa' || response.capture === true;
+    const isSucceeded =
+      response.outcome?.type === 'venta_exitosa' || response.capture === true;
     const status = isSucceeded ? 'SUCCEEDED' : 'PENDING';
 
     return {
@@ -72,18 +73,24 @@ export class CulqiPaymentProvider implements PaymentProvider {
       description: response.description ?? input.description,
       customerEmail: response.email ?? input.email,
       referenceCode: response.reference_code,
-      paidAt: response.capture_date ? new Date(response.capture_date * 1000) : new Date(),
+      paidAt: response.capture_date
+        ? new Date(response.capture_date * 1000)
+        : new Date(),
       rawResponse: response,
     };
   }
 
   async getCharge(chargeId: string): Promise<PaymentCharge | null> {
     try {
-      const response = await this.request<any>(`/charges/${encodeURIComponent(chargeId)}`, {
-        method: 'GET',
-      });
+      const response = await this.request<any>(
+        `/charges/${encodeURIComponent(chargeId)}`,
+        {
+          method: 'GET',
+        },
+      );
 
-      const isSucceeded = response.outcome?.type === 'venta_exitosa' || response.capture === true;
+      const isSucceeded =
+        response.outcome?.type === 'venta_exitosa' || response.capture === true;
       return {
         id: response.id,
         amount: response.amount,
@@ -92,7 +99,9 @@ export class CulqiPaymentProvider implements PaymentProvider {
         description: response.description,
         customerEmail: response.email,
         referenceCode: response.reference_code,
-        paidAt: response.capture_date ? new Date(response.capture_date * 1000) : undefined,
+        paidAt: response.capture_date
+          ? new Date(response.capture_date * 1000)
+          : undefined,
         rawResponse: response,
       };
     } catch (err) {
@@ -104,7 +113,9 @@ export class CulqiPaymentProvider implements PaymentProvider {
   }
 
   async createOrder(input: CreateOrderInput): Promise<PaymentOrder> {
-    const expirationTimestamp = Math.floor(input.expirationDate.getTime() / 1000);
+    const expirationTimestamp = Math.floor(
+      input.expirationDate.getTime() / 1000,
+    );
 
     const payload = {
       amount: input.amount,
@@ -141,16 +152,24 @@ export class CulqiPaymentProvider implements PaymentProvider {
 
   async getOrder(orderId: string): Promise<PaymentOrder | null> {
     try {
-      const response = await this.request<any>(`/orders/${encodeURIComponent(orderId)}`, {
-        method: 'GET',
-      });
+      const response = await this.request<any>(
+        `/orders/${encodeURIComponent(orderId)}`,
+        {
+          method: 'GET',
+        },
+      );
 
       return {
         id: response.id,
         orderNumber: response.order_number,
         paymentCode: response.payment_code,
         qrCode: response.qr,
-        status: response.state === 'paid' ? 'SUCCEEDED' : response.state === 'expired' ? 'EXPIRED' : 'PENDING',
+        status:
+          response.state === 'paid'
+            ? 'SUCCEEDED'
+            : response.state === 'expired'
+              ? 'EXPIRED'
+              : 'PENDING',
         amount: response.amount,
         currency: response.currency_code,
         expirationDate: new Date(response.expiration_date * 1000),
@@ -197,7 +216,7 @@ export class CulqiPaymentProvider implements PaymentProvider {
           `Culqi API returned status ${res.status}`;
         const errorCode = parsed.code || 'CULQI_API_ERROR';
 
-        this.logger.warn(`[CulqiPaymentProvider] Request failed ${res.status}: ${errorMsg}`);
+        this.logger.warn(`[CulqiPaymentProvider] Request failed ${res.status}`);
         throw new PaymentProviderError(errorMsg, errorCode, res.status, parsed);
       }
 

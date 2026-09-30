@@ -1,3 +1,4 @@
+import { CommercialOperationsModule } from '../commercial-operations/operations.module';
 import { Module, forwardRef } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -12,13 +13,19 @@ import { ProjectEnablementService } from './project-enablement.service';
 
 @Module({
   imports: [
+    CommercialOperationsModule,
     PrismaModule,
     forwardRef(() => PaymentsModule),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     ReportsModule,
   ],
   controllers: [ProjectsController, PublicProjectsController],
-  providers: [ProjectsService, ProjectEnablementService, JwtAuthGuard, RolesGuard],
+  providers: [
+    ProjectsService,
+    ProjectEnablementService,
+    JwtAuthGuard,
+    RolesGuard,
+  ],
   exports: [ProjectsService, ProjectEnablementService],
 })
 export class ProjectsModule {}

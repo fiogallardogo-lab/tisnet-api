@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ProjectStatus } from '@prisma/client';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,9 +32,7 @@ const project = {
   createdAt: new Date('2026-09-04T17:00:00.000Z'),
   updatedAt: new Date('2026-09-04T17:00:00.000Z'),
   category: { id: 1, name: 'Logística', isActive: true },
-  technologies: [
-    { technology: { id: 1, name: 'React', icon: 'react.svg' } },
-  ],
+  technologies: [{ technology: { id: 1, name: 'React', icon: 'react.svg' } }],
 };
 
 describe('ProjectsService', () => {
@@ -60,7 +62,9 @@ describe('ProjectsService', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     prismaMock.$transaction.mockImplementation(async (operations: any) =>
-      typeof operations === 'function' ? operations(prismaMock) : Promise.all(operations),
+      typeof operations === 'function'
+        ? operations(prismaMock)
+        : Promise.all(operations),
     );
 
     const module: TestingModule = await Test.createTestingModule({
@@ -181,13 +185,13 @@ describe('ProjectsService', () => {
       prismaMock.project.findUnique.mockResolvedValue({ id: 1 });
       prismaMock.technology.findMany.mockResolvedValue([]);
 
-      await expect(
-        service.update(1, { technologyIds: [99] }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.update(1, { technologyIds: [99] })).rejects.toThrow(
+        BadRequestException,
+      );
 
-      await expect(
-        service.update(1, { technologyIds: [99] }),
-      ).rejects.toThrow('Una o más tecnologías no existen o están inactivas');
+      await expect(service.update(1, { technologyIds: [99] })).rejects.toThrow(
+        'Una o más tecnologías no existen o están inactivas',
+      );
     });
 
     it('debe rechazar actualización si technologyIds contiene tecnologías inactivas', async () => {
@@ -227,7 +231,9 @@ describe('ProjectsService', () => {
       });
 
       await expect(service.publish(1)).rejects.toThrow(BadRequestException);
-      await expect(service.publish(1)).rejects.toThrow('Un proyecto archivado no puede publicarse');
+      await expect(service.publish(1)).rejects.toThrow(
+        'Un proyecto archivado no puede publicarse',
+      );
       expect(prismaMock.project.update).not.toHaveBeenCalled();
     });
 
@@ -294,7 +300,9 @@ describe('ProjectsService', () => {
       });
 
       await expect(service.publish(1)).rejects.toThrow(BadRequestException);
-      await expect(service.publish(1)).rejects.toThrow('La categoría del proyecto está inactiva');
+      await expect(service.publish(1)).rejects.toThrow(
+        'La categoría del proyecto está inactiva',
+      );
       expect(prismaMock.project.update).not.toHaveBeenCalled();
     });
 
@@ -364,7 +372,9 @@ describe('ProjectsService', () => {
 
   describe('findPublic', () => {
     it('debe forzar el filtro de publicados y no archivados en el listado público', async () => {
-      prismaMock.project.findMany.mockResolvedValue([{ ...project, isPublished: true }]);
+      prismaMock.project.findMany.mockResolvedValue([
+        { ...project, isPublished: true },
+      ]);
       prismaMock.project.count.mockResolvedValue(1);
 
       const result = await service.findPublic({ page: 1, limit: 12 });
@@ -382,7 +392,9 @@ describe('ProjectsService', () => {
     });
 
     it('debe aplicar filtro por technologyId en el listado público manteniendo publicados y no archivados', async () => {
-      prismaMock.project.findMany.mockResolvedValue([{ ...project, isPublished: true }]);
+      prismaMock.project.findMany.mockResolvedValue([
+        { ...project, isPublished: true },
+      ]);
       prismaMock.project.count.mockResolvedValue(1);
 
       await service.findPublic({ page: 1, limit: 12, technologyId: 5 });
@@ -399,7 +411,9 @@ describe('ProjectsService', () => {
     });
 
     it('debe aplicar filtro por isFeatured en el listado público manteniendo publicados y no archivados', async () => {
-      prismaMock.project.findMany.mockResolvedValue([{ ...project, isPublished: true, isFeatured: true }]);
+      prismaMock.project.findMany.mockResolvedValue([
+        { ...project, isPublished: true, isFeatured: true },
+      ]);
       prismaMock.project.count.mockResolvedValue(1);
 
       await service.findPublic({ page: 1, limit: 12, isFeatured: true });
@@ -426,107 +440,74 @@ describe('ProjectsService', () => {
     });
   });
 
-  describe('closeProject (S15-B07)', () => {
-    const admin = { id: 1, role: 'ADMIN' };
-    const po = { id: 5, role: 'PRODUCT_OWNER' };
-    const dev = { id: 2, role: 'DEVELOPER' };
-
-    it('cierra exitosamente cuando todos los hitos están APPROVED y cuotas CONFIRMED', async () => {
-      prismaMock.project.findUnique.mockResolvedValue({
+  describe('closeProject: official financial state', () => {
+    const actor = { id: 5, role: 'PRODUCT_OWNER' };
+    let project: any;
+    let financial: any;
+    beforeEach(() => {
+      project = {
         id: 1,
+        name: 'Project',
+        quoteId: 7,
         status: ProjectStatus.IN_DEVELOPMENT,
         productOwnerId: 5,
-        deliverables: [
-          { id: 10, status: 'APPROVED' },
-          { id: 11, status: 'APPROVED' },
-        ],
-        quote: {
-          versions: [
-            {
-              version: 1,
-              schedules: [
-                { id: 1, payments: [{ id: 1, status: 'CONFIRMED' }] },
-                { id: 2, payments: [{ id: 2, status: 'CONFIRMED' }] },
-              ],
-            },
-          ],
-        },
-      });
-      prismaMock.project.update.mockResolvedValue({
+        milestones: [{ id: 3, paymentScheduleId: 11 }],
+        deliverables: [{ id: 10, milestoneId: 3, status: 'APPROVED' }],
+      };
+      const tx = prismaMock as any;
+      tx.$queryRawUnsafe = vi.fn().mockResolvedValue([]);
+      tx.project.findUnique.mockImplementation(async () => project);
+      tx.project.findUniqueOrThrow = vi
+        .fn()
+        .mockImplementation(async () => project);
+      financial = {
+        assertComplete: vi
+          .fn()
+          .mockResolvedValue({ complete: true, installments: [{ id: 11 }] }),
+      };
+      service = new ProjectsService(prismaMock as any, undefined, financial);
+    });
+    it('checks the current version inside the closure transaction and omits financial fields', async () => {
+      expect(await service.closeProject(1, actor)).toEqual({
         id: 1,
+        name: 'Project',
         status: ProjectStatus.COMPLETED,
       });
-
-      const result = await service.closeProject(1, po);
-      expect(result.status).toBe(ProjectStatus.COMPLETED);
-      expect(prismaMock.project.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 1 },
-          data: { status: ProjectStatus.COMPLETED },
-        }),
+      expect(financial.assertComplete).toHaveBeenCalledWith(7, prismaMock);
+      expect(prismaMock.auditEvent.create).toHaveBeenCalled();
+    });
+    it('rejects unpaid current installments without closing', async () => {
+      financial.assertComplete.mockRejectedValue(
+        new Error('Unpaid official version'),
       );
-      expect(prismaMock.auditEvent.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            action: 'PROJECT_CLOSED',
-            entityType: 'PROJECT',
-          }),
-        }),
+      await expect(service.closeProject(1, actor)).rejects.toThrow(
+        'Unpaid official version',
+      );
+      expect(prismaMock.project.update).not.toHaveBeenCalled();
+    });
+    it('rejects an official milestone without an approved deliverable', async () => {
+      project.milestones.push({ id: 4 });
+      await expect(service.closeProject(1, actor)).rejects.toThrow(
+        /hitos oficiales/,
       );
     });
-
-    it('rechaza el cierre si hay entregables pendientes de aprobación', async () => {
-      prismaMock.project.findUnique.mockResolvedValue({
-        id: 1,
-        status: ProjectStatus.IN_DEVELOPMENT,
-        productOwnerId: 5,
-        deliverables: [
-          { id: 10, status: 'APPROVED' },
-          { id: 11, status: 'IN_REVIEW' },
-        ],
-        quote: null,
-      });
-
-      await expect(service.closeProject(1, admin)).rejects.toThrow(
-        /pendientes de aprobación/,
+    it('rejects unapproved evidence', async () => {
+      project.deliverables[0].status = 'IN_REVIEW';
+      await expect(service.closeProject(1, actor)).rejects.toThrow(
+        /hitos oficiales/,
       );
     });
-
-    it('rechaza el cierre si hay cuotas de pago acordadas sin confirmar', async () => {
-      prismaMock.project.findUnique.mockResolvedValue({
-        id: 1,
-        status: ProjectStatus.IN_DEVELOPMENT,
-        productOwnerId: 5,
-        deliverables: [{ id: 10, status: 'APPROVED' }],
-        quote: {
-          versions: [
-            {
-              version: 1,
-              schedules: [
-                { id: 1, payments: [{ id: 1, status: 'CONFIRMED' }] },
-                { id: 2, payments: [] }, // Sin pago confirmado
-              ],
-            },
-          ],
-        },
-      });
-
-      await expect(service.closeProject(1, po)).rejects.toThrow(
-        /cuotas de pago acordadas sin confirmar/,
-      );
+    it('rejects Developer even when assigned as PO incorrectly', async () => {
+      await expect(
+        service.closeProject(1, { ...actor, role: 'DEVELOPER' }),
+      ).rejects.toThrow(/Solo el PO/);
     });
-
-    it('rechaza si un DEVELOPER intenta cerrar el proyecto', async () => {
-      prismaMock.project.findUnique.mockResolvedValue({
-        id: 1,
-        status: ProjectStatus.IN_DEVELOPMENT,
-        productOwnerId: 5,
-        deliverables: [{ id: 10, status: 'APPROVED' }],
-      });
-
-      await expect(service.closeProject(1, dev)).rejects.toThrow(
-        /Solo el Product Owner asignado o un Administrador/,
+    it('returns an idempotent safe response for completed projects', async () => {
+      project.status = ProjectStatus.COMPLETED;
+      expect((await service.closeProject(1, actor)).status).toBe(
+        ProjectStatus.COMPLETED,
       );
+      expect(financial.assertComplete).not.toHaveBeenCalled();
     });
   });
 });

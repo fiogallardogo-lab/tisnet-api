@@ -133,7 +133,9 @@ describe('ProfilesService', () => {
   });
 
   it('validates and persists renewed acceptance together with the name', async () => {
-    config.get.mockReturnValue('v2');
+    config.get.mockImplementation((key: string) =>
+      ['TERMS_VERSION', 'PRIVACY_VERSION'].includes(key) ? 'v2' : undefined,
+    );
     users.updateOwnUser.mockResolvedValue({
       id: 7,
       name: 'Nuevo',
@@ -161,7 +163,9 @@ describe('ProfilesService', () => {
   });
 
   it('rejects unauthorized versions before writing the user', async () => {
-    config.get.mockReturnValue('v2');
+    config.get.mockImplementation((key: string) =>
+      ['TERMS_VERSION', 'PRIVACY_VERSION'].includes(key) ? 'v2' : undefined,
+    );
     await expect(
       service.updateOwnUser(7, {
         name: 'No guardar',

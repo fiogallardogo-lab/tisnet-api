@@ -1,3 +1,4 @@
+import { RemindersService } from '../commercial-operations/reminders.service';
 import {
   BadRequestException,
   ConflictException,
@@ -51,6 +52,7 @@ export class DeliverablesService {
     @Optional()
     @Inject(STORAGE_PROVIDER)
     private readonly storageProvider?: StorageProvider,
+    @Optional() private readonly reminders?: RemindersService,
   ) {}
 
   async list(projectId: number, actor: DeliverablesActor) {
@@ -140,6 +142,14 @@ export class DeliverablesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRawUnsafe<Array<{ status: string }>>(
+        'SELECT id, status FROM ProjectDeliverable WHERE id = ? FOR UPDATE',
+        deliverable.id,
+      );
+      if (locked?.[0] && !['DRAFT', 'OBSERVED'].includes(locked[0].status))
+        throw new ConflictException(
+          'El entregable cambió de estado; recarga antes de continuar.',
+        );
       const updated = await tx.projectDeliverable.update({
         where: { id: deliverable.id },
         data: {
@@ -174,12 +184,13 @@ export class DeliverablesService {
           metadata: {
             projectId,
             milestoneOrder: deliverable.milestoneOrder,
-            fileUrl,
-            externalLink,
+            hasPdf: !!fileUrl,
+            hasVideo: !!externalLink,
           },
         },
       });
 
+      await this.reminders?.schedule(tx, deliverable.id, 'SUBMITTED', actor.id);
       return updated;
     });
   }
@@ -259,6 +270,14 @@ export class DeliverablesService {
     const notes = dto?.notes?.trim() || null;
 
     return this.prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRawUnsafe<Array<{ status: string }>>(
+        'SELECT id, status FROM ProjectDeliverable WHERE id = ? FOR UPDATE',
+        deliverable.id,
+      );
+      if (locked?.[0] && !['DRAFT', 'OBSERVED'].includes(locked[0].status))
+        throw new ConflictException(
+          'El entregable cambió de estado; recarga antes de continuar.',
+        );
       const updated = await tx.projectDeliverable.update({
         where: { id: deliverable.id },
         data: {
@@ -293,13 +312,14 @@ export class DeliverablesService {
           metadata: {
             projectId,
             milestoneOrder: deliverable.milestoneOrder,
-            fileUrl,
-            videoUrl,
-            notes,
+            hasPdf: !!fileUrl,
+            hasVideo: !!videoUrl,
+            hasNotes: !!notes,
           },
         },
       });
 
+      await this.reminders?.schedule(tx, deliverable.id, 'SUBMITTED', actor.id);
       return {
         id: updated.id,
         milestoneId: updated.milestoneId ?? updated.milestoneOrder,
@@ -342,6 +362,14 @@ export class DeliverablesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRawUnsafe<Array<{ status: string }>>(
+        'SELECT id, status FROM ProjectDeliverable WHERE id = ? FOR UPDATE',
+        deliverable.id,
+      );
+      if (locked?.[0] && !['IN_REVIEW'].includes(locked[0].status))
+        throw new ConflictException(
+          'El entregable cambió de estado; recarga antes de continuar.',
+        );
       const updated = await tx.projectDeliverable.update({
         where: { id: deliverable.id },
         data: {
@@ -375,11 +403,18 @@ export class DeliverablesService {
           metadata: {
             projectId,
             milestoneOrder: deliverable.milestoneOrder,
-            notes: feedbackNotes,
+            hasFeedback: !!feedbackNotes,
           },
         },
       });
 
+      if (!isObserved)
+        await this.reminders?.schedule(
+          tx,
+          deliverable.id,
+          'APPROVED',
+          actor.id,
+        );
       return updated;
     });
   }
@@ -401,7 +436,7 @@ export class DeliverablesService {
           select: {
             id: true,
             name: true,
-            email: true,
+
             role: { select: { name: true } },
           },
         },
@@ -440,11 +475,7 @@ export class DeliverablesService {
     ]);
     await this.findDeliverable(projectId, deliverableId);
 
-    const allowedMimes = [
-      'application/pdf',
-      'video/mp4',
-      'video/webm',
-    ];
+    const allowedMimes = ['application/pdf', 'video/mp4', 'video/webm'];
     if (!allowedMimes.includes(file.mimetype)) {
       throw new BadRequestException(
         'Formato no permitido. Solo se aceptan archivos PDF, MP4 o WebM.',
@@ -529,10 +560,7 @@ export class DeliverablesService {
     }
   }
 
-  async findDeliverable(
-    projectId: number,
-    deliverableIdOrMilestone: number,
-  ) {
+  async findDeliverable(projectId: number, deliverableIdOrMilestone: number) {
     let deliverable = await this.prisma.projectDeliverable.findFirst({
       where: { id: deliverableIdOrMilestone, projectId },
     });

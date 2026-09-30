@@ -28,9 +28,8 @@ export class SlaJobsService {
       this.logger.log(
         `[SLA-JOB] Quotes: checked=${summary.checkedCount} expired=${summary.expiredCount} warning=${summary.warningCount}`,
       );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`[SLA-JOB] Quotes SLA check failed: ${msg}`);
+    } catch {
+      this.logger.error(`[SLA-JOB] Quotes SLA check failed`);
     }
   }
 
@@ -50,9 +49,8 @@ export class SlaJobsService {
       this.logger.log(
         `[SLA-JOB] Applications: checked=${summary.checkedCount} expired=${summary.expiredCount} warning=${summary.warningCount}`,
       );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`[SLA-JOB] Applications SLA check failed: ${msg}`);
+    } catch {
+      this.logger.error(`[SLA-JOB] Applications SLA check failed`);
     }
   }
 }

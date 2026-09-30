@@ -1,3 +1,4 @@
+import { FinancialService } from '../commercial-operations/financial.service';
 import {
   BadRequestException,
   ForbiddenException,
@@ -47,6 +48,7 @@ export class ProjectsService {
     @Optional()
     @Inject(forwardRef(() => PaymentsService))
     private readonly payments?: PaymentsService,
+    @Optional() private readonly financial?: FinancialService,
   ) {}
 
   async create(dto: CreateProjectDto) {
@@ -464,102 +466,81 @@ export class ProjectsService {
   }
 
   async closeProject(projectId: number, actor: { id: number; role: string }) {
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-      include: {
-        quote: {
-          include: {
-            versions: {
-              where: { acceptedAt: { not: null } },
-              orderBy: { version: 'desc' },
-              take: 1,
-              include: {
-                schedules: {
-                  include: {
-                    payments: {
-                      where: { status: 'CONFIRMED' },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        deliverables: true,
-      },
-    });
-
-    if (!project) {
-      throw new NotFoundException('Proyecto no encontrado');
-    }
-
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(actor.role);
-    const isPo = project.productOwnerId === actor.id;
-    if (!isAdmin && !isPo) {
-      throw new ForbiddenException(
-        'Solo el Product Owner asignado o un Administrador puede cerrar el proyecto.',
-      );
-    }
-
-    if (project.status === ProjectStatus.COMPLETED) {
-      return project;
-    }
-
-    if (project.status === ProjectStatus.ARCHIVED) {
-      throw new ConflictException('No se puede cerrar un proyecto archivado.');
-    }
-
-    // 1. Validar que todos los hitos estén aprobados (S15-B07)
-    if (project.deliverables.length === 0) {
-      throw new BadRequestException(
-        'No se puede cerrar el proyecto: no cuenta con hitos entregables registrados.',
-      );
-    }
-
-    const pendingDeliverables = project.deliverables.filter(
-      (d) => d.status !== 'APPROVED',
-    );
-    if (pendingDeliverables.length > 0) {
-      throw new BadRequestException(
-        `No se puede cerrar el proyecto: existen ${pendingDeliverables.length} hitos pendientes de aprobación. Todos deben estar en estado APPROVED.`,
-      );
-    }
-
-    // 2. Validar que las cuotas de pago estén confirmadas (S15-B07)
-    const activeVersion = project.quote?.versions?.[0];
-    if (activeVersion?.schedules?.length) {
-      const unpaidSchedules = activeVersion.schedules.filter(
-        (s) => s.payments.length === 0,
-      );
-      if (unpaidSchedules.length > 0) {
-        throw new BadRequestException(
-          `No se puede cerrar el proyecto: existen ${unpaidSchedules.length} cuotas de pago acordadas sin confirmar.`,
+    return this.prisma.$transaction(
+      async (tx) => {
+        const reference = await tx.project.findUnique({
+          where: { id: projectId },
+          select: { quoteId: true },
+        });
+        if (!reference) throw new NotFoundException('Proyecto no encontrado');
+        if (reference.quoteId)
+          await tx.$queryRawUnsafe(
+            'SELECT id FROM Quote WHERE id = ? FOR UPDATE',
+            reference.quoteId,
+          );
+        await tx.$queryRawUnsafe(
+          'SELECT id FROM Project WHERE id = ? FOR UPDATE',
+          projectId,
         );
-      }
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.project.update({
-        where: { id: projectId },
-        data: { status: ProjectStatus.COMPLETED },
-      });
-
-      await tx.auditEvent.create({
-        data: {
-          actorId: actor.id,
-          action: 'PROJECT_CLOSED',
-          entityType: 'PROJECT',
-          entityId: String(projectId),
-          metadata: {
-            closedAt: new Date().toISOString(),
-            approvedDeliverables: project.deliverables.length,
-            quoteId: project.quoteId,
+        const project = await tx.project.findUniqueOrThrow({
+          where: { id: projectId },
+          include: { deliverables: true, milestones: true },
+        });
+        const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(actor.role);
+        if (
+          !isAdmin &&
+          !(
+            actor.role === 'PRODUCT_OWNER' &&
+            project.productOwnerId === actor.id
+          )
+        )
+          throw new ForbiddenException(
+            'Solo el PO asignado o administración puede cerrar el proyecto.',
+          );
+        const response = {
+          id: project.id,
+          name: project.name,
+          status: project.status,
+        };
+        if (project.status === ProjectStatus.COMPLETED) return response;
+        if (project.status === ProjectStatus.ARCHIVED)
+          throw new ConflictException(
+            'No se puede cerrar un proyecto archivado.',
+          );
+        if (
+          !project.deliverables.length ||
+          project.deliverables.some((d) => d.status !== 'APPROVED') ||
+          project.milestones.some(
+            (m) =>
+              !project.deliverables.some(
+                (d) => d.milestoneId === m.id && d.status === 'APPROVED',
+              ),
+          )
+        )
+          throw new BadRequestException(
+            'Todos los hitos oficiales deben tener entregables aprobados.',
+          );
+        if (project.quoteId)
+          await (
+            this.financial || new FinancialService(this.prisma)
+          ).assertComplete(project.quoteId, tx);
+        await tx.project.update({
+          where: { id: projectId },
+          data: { status: ProjectStatus.COMPLETED },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorId: actor.id,
+            action: 'PROJECT_CLOSED',
+            entityType: 'PROJECT',
+            entityId: String(projectId),
+            metadata: { approvedDeliverables: project.deliverables.length },
           },
-        },
-      });
-
-      return updated;
-    });
+        });
+        return { ...response, status: ProjectStatus.COMPLETED };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 
   private handleUniqueSlugError(error: unknown): void {
@@ -571,4 +552,3 @@ export class ProjectsService {
     }
   }
 }
-

@@ -1,3 +1,4 @@
+import { CommercialOperationsModule } from './commercial-operations/operations.module';
 import { CommercialModule } from './commercial/commercial.module';
 import { KickoffModule } from './kickoff/kickoff.module';
 import { ClientPortalModule } from './client-portal/client-portal.module';
@@ -36,6 +37,7 @@ import { ContributionsModule } from './contributions/contributions.module.js';
 
 @Module({
   imports: [
+    CommercialOperationsModule,
     CommercialModule,
     ConfigModule.forRoot({
       isGlobal: true,

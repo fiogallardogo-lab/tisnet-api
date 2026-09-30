@@ -70,39 +70,41 @@ model Role {
 }
 
 model User {
+  publicTeamProfile        PublicTeamProfile?
+  reminderDeliveries       PaymentReminderDelivery[]
   quoteObservations        QuoteObservation[]
-  resultingApplications    TeamApplication[]    @relation("ApplicationAccount")
-  applicationDecisions     TeamApplication[]    @relation("ApplicationDecisionActor")
-  ownedProjects            Project[]            @relation("ProjectOwner")
-  clientProjects           Project[]            @relation("ProjectClient")
+  resultingApplications    TeamApplication[]         @relation("ApplicationAccount")
+  applicationDecisions     TeamApplication[]         @relation("ApplicationDecisionActor")
+  ownedProjects            Project[]                 @relation("ProjectOwner")
+  clientProjects           Project[]                 @relation("ProjectClient")
   kickoffs                 Kickoff[]
   auditEvents              AuditEvent[]
-  id                       Int                  @id @default(autoincrement())
-  name                     String               @db.VarChar(100)
-  email                    String               @unique @db.VarChar(150)
-  passwordHash             String               @db.VarChar(255)
+  id                       Int                       @id @default(autoincrement())
+  name                     String                    @db.VarChar(100)
+  email                    String                    @unique @db.VarChar(150)
+  passwordHash             String                    @db.VarChar(255)
   roleId                   Int
-  isActive                 Boolean              @default(true)
+  isActive                 Boolean                   @default(true)
   acceptedTermsAt          DateTime?
-  termsVersion             String?              @db.VarChar(50)
-  privacyVersion           String?              @db.VarChar(50)
-  createdAt                DateTime             @default(now())
-  updatedAt                DateTime             @updatedAt
-  tokenVersion             Int                  @default(0)
-  role                     Role                 @relation(fields: [roleId], references: [id])
+  termsVersion             String?                   @db.VarChar(50)
+  privacyVersion           String?                   @db.VarChar(50)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  tokenVersion             Int                       @default(0)
+  role                     Role                      @relation(fields: [roleId], references: [id])
   clientProfile            ClientProfile?
   developerProfile         DeveloperProfile?
   productOwnerProfile      ProductOwnerProfile?
   adminProfile             AdminProfile?
   prospect                 Prospect?
   projectMemberships       ProjectMember[]
-  reviewedDeliverables     ProjectDeliverable[] @relation("DeliverableReviewer")
-  authoredQuoteVersions    QuoteVersion[]       @relation("QuoteVersionAuthor")
-  commercialQuotes         QuoteVersion[]       @relation("QuoteVersionClient")
-  acceptedQuoteVersions    QuoteVersion[]       @relation("QuoteVersionAccepter")
-  reviewedTeamApplications TeamApplication[]    @relation("TeamApplicationReviewer")
-  milestoneContributions   MilestoneContribution[] @relation("UserMilestoneContributions")
-  deliverableHistories     DeliverableHistory[]    @relation("DeliverableHistoryActor")
+  reviewedDeliverables     ProjectDeliverable[]      @relation("DeliverableReviewer")
+  authoredQuoteVersions    QuoteVersion[]            @relation("QuoteVersionAuthor")
+  commercialQuotes         QuoteVersion[]            @relation("QuoteVersionClient")
+  acceptedQuoteVersions    QuoteVersion[]            @relation("QuoteVersionAccepter")
+  reviewedTeamApplications TeamApplication[]         @relation("TeamApplicationReviewer")
+  milestoneContributions   MilestoneContribution[]   @relation("UserMilestoneContributions")
+  deliverableHistories     DeliverableHistory[]      @relation("DeliverableHistoryActor")
 
   @@index([roleId, isActive])
 }
@@ -333,35 +335,35 @@ model Project {
   clientUserId     Int?
   prospectId       Int?
   productOwnerId   Int?
-  client           User?                @relation("ProjectClient", fields: [clientUserId], references: [id], onDelete: Restrict)
-  prospect         Prospect?            @relation(fields: [prospectId], references: [id], onDelete: Restrict)
-  productOwner     User?                @relation("ProjectOwner", fields: [productOwnerId], references: [id], onDelete: Restrict)
+  client           User?                   @relation("ProjectClient", fields: [clientUserId], references: [id], onDelete: Restrict)
+  prospect         Prospect?               @relation(fields: [prospectId], references: [id], onDelete: Restrict)
+  productOwner     User?                   @relation("ProjectOwner", fields: [productOwnerId], references: [id], onDelete: Restrict)
   kickoff          Kickoff?
   milestones       ProjectMilestone[]
-  id               Int                  @id @default(autoincrement())
-  name             String               @db.VarChar(150)
-  slug             String               @unique @db.VarChar(180)
-  shortDescription String               @db.VarChar(300)
-  description      String               @db.Text
-  problem          String?              @db.Text
-  solution         String?              @db.Text
-  objective        String?              @db.Text
+  id               Int                     @id @default(autoincrement())
+  name             String                  @db.VarChar(150)
+  slug             String                  @unique @db.VarChar(180)
+  shortDescription String                  @db.VarChar(300)
+  description      String                  @db.Text
+  problem          String?                 @db.Text
+  solution         String?                 @db.Text
+  objective        String?                 @db.Text
   features         Json?
   categoryId       Int
-  status           ProjectStatus        @default(DRAFT)
-  developmentDate  DateTime?            @db.Date
-  clientName       String?              @db.VarChar(150)
-  demoUrl          String?              @db.VarChar(500)
-  externalUrl      String?              @db.VarChar(500)
-  coverImageUrl    String?              @db.VarChar(500)
-  isFeatured       Boolean              @default(false)
-  isPublished      Boolean              @default(false)
-  displayOrder     Int                  @default(0)
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  quoteId          Int?                 @unique
-  quote            Quote?               @relation(fields: [quoteId], references: [id], onDelete: Restrict)
-  category         Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  status           ProjectStatus           @default(DRAFT)
+  developmentDate  DateTime?               @db.Date
+  clientName       String?                 @db.VarChar(150)
+  demoUrl          String?                 @db.VarChar(500)
+  externalUrl      String?                 @db.VarChar(500)
+  coverImageUrl    String?                 @db.VarChar(500)
+  isFeatured       Boolean                 @default(false)
+  isPublished      Boolean                 @default(false)
+  displayOrder     Int                     @default(0)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  quoteId          Int?                    @unique
+  quote            Quote?                  @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  category         Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   technologies     ProjectTechnology[]
   members          ProjectMember[]
   deliverables     ProjectDeliverable[]
@@ -393,27 +395,28 @@ model ProjectMember {
 }
 
 model ProjectDeliverable {
-  milestoneId    Int?
-  milestone      ProjectMilestone? @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
-  id             Int               @id @default(autoincrement())
-  projectId      Int
-  title          String            @db.VarChar(150)
-  description    String            @db.Text
-  milestoneOrder Int
-  dueDate        DateTime          @db.Date
-  status         DeliverableStatus @default(DRAFT)
-  fileUrl        String?           @db.VarChar(500)
-  externalLink   String?           @db.VarChar(500)
-  feedbackNotes  String?           @db.VarChar(2000)
-  submittedAt    DateTime?
-  reviewedAt     DateTime?
-  reviewedById   Int?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  reviewedBy     User?             @relation("DeliverableReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  history        DeliverableHistory[]
-  contributions  MilestoneContribution[]
+  paymentReminders PaymentReminder[]
+  milestoneId      Int?
+  milestone        ProjectMilestone?       @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
+  id               Int                     @id @default(autoincrement())
+  projectId        Int
+  title            String                  @db.VarChar(150)
+  description      String                  @db.Text
+  milestoneOrder   Int
+  dueDate          DateTime                @db.Date
+  status           DeliverableStatus       @default(DRAFT)
+  fileUrl          String?                 @db.VarChar(500)
+  externalLink     String?                 @db.VarChar(500)
+  feedbackNotes    String?                 @db.VarChar(2000)
+  submittedAt      DateTime?
+  reviewedAt       DateTime?
+  reviewedById     Int?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  project          Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewedBy       User?                   @relation("DeliverableReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  history          DeliverableHistory[]
+  contributions    MilestoneContribution[]
 
   @@unique([projectId, milestoneOrder])
   @@index([milestoneId])
@@ -542,6 +545,7 @@ model QuoteVersion {
 }
 
 model PaymentSchedule {
+  reminder              PaymentReminder?
   milestoneRecord       ProjectMilestone?
   id                    Int               @id @default(autoincrement())
   quoteVersionId        Int
@@ -603,14 +607,14 @@ model Kickoff {
 }
 
 model ProjectMilestone {
-  id                Int                  @id @default(autoincrement())
+  id                Int                     @id @default(autoincrement())
   projectId         Int
-  paymentScheduleId Int                  @unique
-  title             String               @db.VarChar(150)
-  dueDate           DateTime             @db.Date
+  paymentScheduleId Int                     @unique
+  title             String                  @db.VarChar(150)
+  dueDate           DateTime                @db.Date
   sequence          Int
-  project           Project              @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  paymentSchedule   PaymentSchedule      @relation(fields: [paymentScheduleId], references: [id], onDelete: Restrict)
+  project           Project                 @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  paymentSchedule   PaymentSchedule         @relation(fields: [paymentScheduleId], references: [id], onDelete: Restrict)
   deliverables      ProjectDeliverable[]
   contributions     MilestoneContribution[]
 
@@ -670,37 +674,37 @@ enum DeliverableAction {
 }
 
 model DeliverableHistory {
-  id            Int                @id @default(autoincrement())
+  id            Int               @id @default(autoincrement())
   deliverableId Int
   actorId       Int
   action        DeliverableAction
-  fileUrl       String?            @db.VarChar(500)
-  externalLink  String?            @db.VarChar(500)
-  feedbackNotes String?            @db.VarChar(2000)
-  createdAt     DateTime           @default(now())
+  fileUrl       String?           @db.VarChar(500)
+  externalLink  String?           @db.VarChar(500)
+  feedbackNotes String?           @db.VarChar(2000)
+  createdAt     DateTime          @default(now())
 
-  deliverable   ProjectDeliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
-  actor         User               @relation("DeliverableHistoryActor", fields: [actorId], references: [id], onDelete: Restrict)
+  deliverable ProjectDeliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  actor       User               @relation("DeliverableHistoryActor", fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([deliverableId, createdAt])
   @@index([actorId])
 }
 
 model MilestoneContribution {
-  id            Int                 @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   projectId     Int
   milestoneId   Int?
   deliverableId Int?
   userId        Int
   percentage    Int
-  description   String              @db.VarChar(500)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  description   String   @db.VarChar(500)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  milestone     ProjectMilestone?   @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
-  deliverable   ProjectDeliverable? @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
-  user          User                @relation("UserMilestoneContributions", fields: [userId], references: [id], onDelete: Restrict)
+  project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone   ProjectMilestone?   @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  deliverable ProjectDeliverable? @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  user        User                @relation("UserMilestoneContributions", fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([projectId, deliverableId, userId])
   @@index([projectId])
@@ -708,3 +712,55 @@ model MilestoneContribution {
   @@index([userId])
 }
 
+// S15-A: durable reminder outbox and explicitly approved public presentation.
+model PaymentReminder {
+  id              Int                       @id @default(autoincrement())
+  scheduleId      Int                       @unique
+  deliverableId   Int
+  trigger         String                    @db.VarChar(20)
+  occurredAt      DateTime
+  dueAt           DateTime
+  calendarVersion String                    @db.VarChar(100)
+  cutoff          String                    @db.VarChar(5)
+  createdAt       DateTime                  @default(now())
+  schedule        PaymentSchedule           @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  deliverable     ProjectDeliverable        @relation(fields: [deliverableId], references: [id], onDelete: Restrict)
+  deliveries      PaymentReminderDelivery[]
+
+  @@index([dueAt])
+}
+
+model PaymentReminderDelivery {
+  id            Int             @id @default(autoincrement())
+  reminderId    Int
+  userId        Int
+  audience      String          @db.VarChar(10)
+  status        String          @default("PENDING") @db.VarChar(12)
+  attempts      Int             @default(0)
+  nextAttemptAt DateTime
+  leaseUntil    DateTime?
+  claimToken    String?         @db.VarChar(36)
+  sentAt        DateTime?
+  messageId     String?         @db.VarChar(255)
+  lastErrorCode String?         @db.VarChar(50)
+  reminder      PaymentReminder @relation(fields: [reminderId], references: [id], onDelete: Restrict)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([reminderId, userId])
+  @@index([status, nextAttemptAt, leaseUntil])
+}
+
+model PublicTeamProfile {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @unique
+  displayName     String    @db.VarChar(100)
+  biography       String    @db.VarChar(1000)
+  specialty       String    @db.VarChar(150)
+  photoUrl        String?   @db.VarChar(500)
+  approved        Boolean   @default(false)
+  consentRecorded Boolean   @default(false)
+  approvedById    Int
+  approvedAt      DateTime?
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -220,8 +220,7 @@ export class ProjectEnablementService {
         throw err;
       }
       this.logger.error(
-        `[Enablement] Error enabling project for scheduleId=${scheduleId}: ${err.message}`,
-        err.stack,
+        '[Enablement] Project enablement failed; scheduleId=' + scheduleId,
       );
       throw err;
     }

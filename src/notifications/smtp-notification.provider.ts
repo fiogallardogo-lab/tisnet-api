@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
@@ -41,13 +41,16 @@ export class SmtpNotificationProvider
   }
 
   async send(input: SendNotificationInput): Promise<NotificationResult> {
-    const messageId = randomUUID();
+    const messageId = input.idempotencyKey
+      ? createHash('sha256').update(input.idempotencyKey).digest('hex')
+      : randomUUID();
     const attachments = input.attachments?.map((att) => ({
       filename: att.filename,
       contentType: att.mimeType,
       content: att.content,
     }));
 
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       await Promise.race([
         this.transporter.sendMail({
@@ -59,30 +62,40 @@ export class SmtpNotificationProvider
           html: input.html,
           attachments,
         }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new NotificationTimeoutError()), SEND_TIMEOUT_MS),
+        new Promise<never>(
+          (_, reject) =>
+            (timer = setTimeout(
+              () => reject(new NotificationTimeoutError()),
+              SEND_TIMEOUT_MS,
+            )),
         ),
       ]);
 
-      this.logger.log('[SMTP] Delivered messageId=' + messageId + ' to=' + input.recipient);
+      this.logger.log('[SMTP] Delivered messageId=' + messageId);
 
       return { messageId, recipient: input.recipient, sentAt: new Date() };
     } catch (error) {
       if (error instanceof NotificationDeliveryError) throw error;
 
-      const responseCode: number | undefined =
-        (error as { responseCode?: number }).responseCode;
+      const responseCode: number | undefined = (
+        error as { responseCode?: number }
+      ).responseCode;
 
       if (typeof responseCode === 'number') {
-        if (PERMANENT_SMTP_CODES.has(responseCode)) throw new NotificationPermanentError();
+        if (PERMANENT_SMTP_CODES.has(responseCode))
+          throw new NotificationPermanentError();
         throw new NotificationTransientError();
       }
 
       const message: string = (error as Error).message ?? '';
-      if (/timeout|ETIMEDOUT/i.test(message)) throw new NotificationTimeoutError();
-      if (/ECONNREFUSED|ENOTFOUND|ECONNRESET/i.test(message)) throw new NotificationTransientError();
+      if (/timeout|ETIMEDOUT/i.test(message))
+        throw new NotificationTimeoutError();
+      if (/ECONNREFUSED|ENOTFOUND|ECONNRESET/i.test(message))
+        throw new NotificationTransientError();
 
       throw new NotificationTransientError();
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
 

@@ -12,6 +12,7 @@ import { DeliverableReviewDecision } from './dto/review-deliverable.dto';
 
 describe('DeliverablesService', () => {
   const prisma = {
+    $queryRawUnsafe: vi.fn(),
     project: { findUnique: vi.fn() },
     projectMember: { findUnique: vi.fn() },
     projectDeliverable: {
@@ -295,7 +296,12 @@ describe('DeliverablesService', () => {
           id: 1,
           action: 'SUBMITTED',
           actorId: 2,
-          actor: { id: 2, name: 'Dev User', email: 'dev@test.com', role: { name: 'DEVELOPER' } },
+          actor: {
+            id: 2,
+            name: 'Dev User',
+            email: 'dev@test.com',
+            role: { name: 'DEVELOPER' },
+          },
           fileUrl: 'https://example.com/doc.pdf',
           externalLink: 'https://loom.com/share/demo',
           feedbackNotes: null,
@@ -305,7 +311,12 @@ describe('DeliverablesService', () => {
           id: 2,
           action: 'OBSERVED',
           actorId: 4,
-          actor: { id: 4, name: 'Client User', email: 'cli@test.com', role: { name: 'CLIENT' } },
+          actor: {
+            id: 4,
+            name: 'Client User',
+            email: 'cli@test.com',
+            role: { name: 'CLIENT' },
+          },
           fileUrl: 'https://example.com/doc.pdf',
           externalLink: 'https://loom.com/share/demo',
           feedbackNotes: 'Ajustar contraste',
@@ -349,4 +360,3 @@ describe('DeliverablesService', () => {
     });
   });
 });
-

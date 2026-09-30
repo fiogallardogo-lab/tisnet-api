@@ -38,25 +38,31 @@ describe('ReportsService', () => {
           id: 101,
           name: 'Test Project',
           quote: {
-            amountMinor: 50000,
+            activeVersion: 2,
+            amountMinor: 999999,
             currency: 'PEN',
             versions: [
               {
+                version: 1,
+                amountMinor: 999999,
+                schedules: [
+                  { payments: [{ amountMinor: 999999, status: 'CONFIRMED' }] },
+                ],
+              },
+              {
+                version: 2,
+                currency: 'PEN',
+                amountMinor: 50000,
                 schedules: [
                   {
-                    payments: [
-                      { amountMinor: 25000, status: 'CONFIRMED' },
-                    ]
-                  }
-                ]
-              }
-            ]
+                    payments: [{ amountMinor: 25000, status: 'CONFIRMED' }],
+                  },
+                ],
+              },
+            ],
           },
-          deliverables: [
-            { status: 'APPROVED' },
-            { status: 'PENDING' },
-          ]
-        }
+          deliverables: [{ status: 'APPROVED' }, { status: 'PENDING' }],
+        },
       ];
 
       (prisma.project.findMany as any).mockResolvedValue(mockProjects);
@@ -65,7 +71,7 @@ describe('ReportsService', () => {
 
       expect(result.canViewFinance).toBe(true);
       expect(result.projects.length).toBe(1);
-      
+
       const p = result.projects[0];
       expect(p.projectId).toBe(101);
       expect(p.name).toBe('Test Project');
@@ -88,10 +94,10 @@ describe('ReportsService', () => {
           quote: {
             amountMinor: 10000,
             currency: 'USD',
-            versions: []
+            versions: [],
           },
-          deliverables: []
-        }
+          deliverables: [],
+        },
       ];
 
       (prisma.project.findMany as any).mockResolvedValue(mockProjects);
@@ -101,9 +107,9 @@ describe('ReportsService', () => {
       expect(prisma.project.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            members: { some: { userId: 2, isActive: true } }
-          })
-        })
+            members: { some: { userId: 2, isActive: true } },
+          }),
+        }),
       );
 
       expect(result.canViewFinance).toBe(false);
@@ -120,8 +126,8 @@ describe('ReportsService', () => {
 
       expect(prisma.project.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ id: 999 })
-        })
+          where: expect.objectContaining({ id: 999 }),
+        }),
       );
       expect(result.projects.length).toBe(0);
     });
@@ -157,7 +163,11 @@ describe('ReportsService', () => {
               amountMinor: 150000,
               currency: 'PEN',
               schedules: [
-                { id: 1, sequence: 1, payments: [{ id: 1, status: 'CONFIRMED' }] },
+                {
+                  id: 1,
+                  sequence: 1,
+                  payments: [{ id: 1, status: 'CONFIRMED' }],
+                },
               ],
             },
           ],
@@ -181,13 +191,21 @@ describe('ReportsService', () => {
                 userId: 2,
                 percentage: 100,
                 description: 'Implementación completa',
-                user: { id: 2, name: 'Carlos Dev', email: 'carlos@example.com' },
+                user: {
+                  id: 2,
+                  name: 'Carlos Dev',
+                  email: 'carlos@example.com',
+                },
               },
             ],
             history: [
               {
                 action: 'SUBMITTED',
-                actor: { id: 2, name: 'Carlos Dev', role: { name: 'DEVELOPER' } },
+                actor: {
+                  id: 2,
+                  name: 'Carlos Dev',
+                  role: { name: 'DEVELOPER' },
+                },
                 fileUrl: 'https://files.example.com/arch.pdf',
                 externalLink: 'https://loom.com/share/demo',
                 feedbackNotes: null,
@@ -200,7 +218,10 @@ describe('ReportsService', () => {
 
       prisma.project.findUnique = vi.fn().mockResolvedValue(mockProject);
 
-      const report = await service.getProjectTraceabilityReport({ id: 1, role: 'ADMIN' }, 10);
+      const report = await service.getProjectTraceabilityReport(
+        { id: 1, role: 'ADMIN' },
+        10,
+      );
       expect(report.project.name).toBe('Plataforma E-commerce');
       expect(report.milestones.length).toBe(1);
       expect(report.milestones[0].contributions[0].percentage).toBe(100);
@@ -212,4 +233,3 @@ describe('ReportsService', () => {
     });
   });
 });
-

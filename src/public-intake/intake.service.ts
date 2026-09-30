@@ -2,7 +2,14 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Inject,
 } from '@nestjs/common';
+import {
+  NOTIFICATION_PROVIDER,
+  type NotificationProvider,
+} from '../notifications/notification-provider.interface';
+import { renderApplicationReceived } from '../notifications/templates/application-notifications';
+import { auditRecord } from '../audit/audit.service';
 import { Prisma } from '@prisma/client';
 import { QuotesService } from '../quotes/quotes.service';
 import { QuoteDeliveryMode } from '../quotes/domain/quote.enums';
@@ -67,6 +74,9 @@ export class IntakeService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly quotes?: QuotesService,
+    @Optional()
+    @Inject(NOTIFICATION_PROVIDER)
+    private readonly mail?: NotificationProvider,
   ) {}
   async createQuote(input: CreateQuoteDto) {
     if (!this.quotes) throw new Error('QuotesService no disponible');
@@ -98,7 +108,30 @@ export class IntakeService {
           photoMime: files.photo![0].mimetype,
         },
       });
+      let notificationStatus: 'SENT' | 'FAILED' = 'FAILED';
+      if (this.mail) {
+        try {
+          await this.mail.send({
+            ...renderApplicationReceived({
+              recipient: result.email,
+              applicationCode: result.code,
+              candidateName: input.fullName,
+              requestedRole,
+            }),
+            idempotencyKey: 'application-received-' + result.id,
+          });
+          notificationStatus = 'SENT';
+        } catch {
+          /* preserve the submitted application, never expose delivery credentials */
+        }
+        await auditRecord(this.prisma, {
+          action: 'APPLICATION_RECEIPT_' + notificationStatus,
+          entityType: 'TEAM_APPLICATION',
+          entityId: String(result.id),
+        });
+      }
       return {
+        notificationStatus,
         code: result.code,
         status: result.status,
         createdAt: result.createdAt,

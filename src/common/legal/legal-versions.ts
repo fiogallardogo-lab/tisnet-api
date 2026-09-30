@@ -1,3 +1,4 @@
+import { approvedLegalContent } from '../../commercial-operations/legal-content';
 import {
   BadRequestException,
   ServiceUnavailableException,
@@ -9,6 +10,12 @@ export function validateLegalVersions(
   config: ConfigService,
   input: { termsVersion?: string; privacyVersion?: string },
 ) {
+  if (
+    config.get('LEGAL_CONTENT_FILE') ||
+    config.get('LEGAL_REQUIRE_PUBLISHED') === 'true' ||
+    ['production', 'staging'].includes(config.get<string>('NODE_ENV') || '')
+  )
+    approvedLegalContent(config);
   const termsVersion = config.get<string>('TERMS_VERSION')?.trim();
   const privacyVersion = config.get<string>('PRIVACY_VERSION')?.trim();
   if (

@@ -33,9 +33,10 @@ export class CalendlyWebhookService {
     if (!event) return;
 
     this.logger.log(
-      '[Calendly] Processing event=' + event.type +
-      ' meetingId=' + event.meetingId +
-      ' attendee=' + event.attendeeEmail,
+      '[Calendly] Processing event=' +
+        event.type +
+        ' meetingId=' +
+        event.meetingId,
     );
 
     await this.sendAttendeeNotification(event);
@@ -43,7 +44,9 @@ export class CalendlyWebhookService {
 
   // ─── Normalization ───────────────────────────────────────────────────────
 
-  private normalize(payload: CalendlyWebhookPayload): NormalizedCalendlyEvent | null {
+  private normalize(
+    payload: CalendlyWebhookPayload,
+  ): NormalizedCalendlyEvent | null {
     const { event, payload: p } = payload;
     const { invitee, scheduled_event: se } = p;
 
@@ -75,7 +78,9 @@ export class CalendlyWebhookService {
 
   // ─── Notification dispatch ───────────────────────────────────────────────
 
-  private async sendAttendeeNotification(event: NormalizedCalendlyEvent): Promise<void> {
+  private async sendAttendeeNotification(
+    event: NormalizedCalendlyEvent,
+  ): Promise<void> {
     // Advisor name will come from the advisor profile lookup once A's Meeting
     // model is available. For now we use a safe placeholder.
     const advisorName = 'tu asesor TISNET';
@@ -106,13 +111,17 @@ export class CalendlyWebhookService {
         });
       } else {
         // invitee_no_show — log only, no attendee email.
-        this.logger.log('[Calendly] No-show registered for meetingId=' + event.meetingId);
+        this.logger.log(
+          '[Calendly] No-show registered for meetingId=' + event.meetingId,
+        );
         return;
       }
     } catch (renderError) {
       this.logger.warn(
-        '[Calendly] Failed to render notification template event=' + event.type +
-        ' meetingId=' + event.meetingId,
+        '[Calendly] Failed to render notification template event=' +
+          event.type +
+          ' meetingId=' +
+          event.meetingId,
       );
       return;
     }
@@ -122,10 +131,14 @@ export class CalendlyWebhookService {
     } catch (error) {
       const failure = describeNotificationFailure(error);
       this.logger.warn(
-        '[Calendly] Notification delivery failed event=' + event.type +
-        ' meetingId=' + event.meetingId +
-        ' code=' + failure.code +
-        ' retryable=' + String(failure.retryable),
+        '[Calendly] Notification delivery failed event=' +
+          event.type +
+          ' meetingId=' +
+          event.meetingId +
+          ' code=' +
+          failure.code +
+          ' retryable=' +
+          String(failure.retryable),
       );
       // Notification failure never rolls back the webhook processing.
     }

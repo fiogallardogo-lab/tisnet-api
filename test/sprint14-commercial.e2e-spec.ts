@@ -6,7 +6,8 @@ import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { FakeNotificationProvider } from '../src/notifications/fake-notification.provider';
+import { LocalSmtp } from './helpers/local-smtp';
+import { NOTIFICATION_PROVIDER } from '../src/notifications/notification-provider.interface';
 import { TransformInterceptor } from '../src/common/interceptors/transform/transform.interceptor';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception/http-exception.filter';
 
@@ -16,9 +17,7 @@ const dbName = new URL(
 describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
   'Sprint 14 A: real HTTP + JWT + MySQL',
   () => {
-    let app: INestApplication,
-      db: PrismaService,
-      mail: FakeNotificationProvider;
+    let app: INestApplication, db: PrismaService, mail: LocalSmtp;
     let adminToken: string,
       otherToken: string,
       clientToken: string,
@@ -58,7 +57,11 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       ],
     });
     beforeAll(async () => {
-      const module = await createAppTestModule().compile();
+      mail = await new LocalSmtp().start();
+      const module = await createAppTestModule()
+        .overrideProvider(NOTIFICATION_PROVIDER)
+        .useValue(mail)
+        .compile();
       app = module.createNestApplication();
       app.setGlobalPrefix('api/v1');
       app.useGlobalPipes(
@@ -72,7 +75,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       app.useGlobalFilters(new HttpExceptionFilter());
       await app.init();
       db = app.get(PrismaService);
-      mail = app.get(FakeNotificationProvider);
+
       mail.clear();
       const roles: Record<string, number> = {};
       for (const name of [
@@ -115,6 +118,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
     }, 30000);
     afterAll(async () => {
       if (app) await app.close();
+      if (mail) await mail.close();
     });
     it('documents payloads in Swagger and protects admin routes (401/403)', async () => {
       const doc = SwaggerModule.createDocument(
@@ -484,6 +488,20 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         expect(message.text).toContain('Reunión confirmada');
         expect(message.text).toContain('/register');
       }
+    });
+    it('delivers activation, attached quote and meeting into a real local SMTP inbox', () => {
+      expect(mail.inbox.length).toBe(mail.getSentNotifications().length);
+      expect(
+        mail.inbox.some((message) => message.includes('application/pdf')),
+      ).toBe(true);
+      expect(
+        mail
+          .getSentNotifications()
+          .some((message) => message.text?.includes('Reunión confirmada')),
+      ).toBe(true);
+      expect(
+        mail.inbox.every((message) => message.includes('Message-ID:')),
+      ).toBe(true);
     });
     it('records mail failure and supports explicit retry without losing version (201)', async () => {
       mail.simulateFailure(true);

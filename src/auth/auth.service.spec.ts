@@ -17,8 +17,14 @@ import { UsersService } from '../users/users.service';
 describe('AuthService', () => {
   let service: AuthService;
 
-    const notificationProviderMock = {
-    send: vi.fn().mockResolvedValue({ messageId: 'msg_1', recipient: 'test@example.com', sentAt: new Date() }),
+  const notificationProviderMock = {
+    send: vi
+      .fn()
+      .mockResolvedValue({
+        messageId: 'msg_1',
+        recipient: 'test@example.com',
+        sentAt: new Date(),
+      }),
   };
 
   const usersServiceMock = {
@@ -204,7 +210,9 @@ describe('AuthService', () => {
   });
 
   it('rechaza versiones legales desactualizadas', async () => {
-    configServiceMock.get.mockReturnValue('v2.0');
+    configServiceMock.get.mockImplementation((key: string) =>
+      ['TERMS_VERSION', 'PRIVACY_VERSION'].includes(key) ? 'v2.0' : undefined,
+    );
 
     await expect(
       service.register({
@@ -252,7 +260,9 @@ describe('AuthService', () => {
         expect.objectContaining({
           recipient: 'cliente@tisnet.pe',
           subject: expect.stringContaining('Restablecimiento de contraseña'),
-          html: expect.stringContaining('https://tisnet.pe/auth/reset-password?token=jwt_reset_token_xyz'),
+          html: expect.stringContaining(
+            'https://tisnet.pe/auth/reset-password?token=jwt_reset_token_xyz',
+          ),
         }),
       );
     });
@@ -260,7 +270,9 @@ describe('AuthService', () => {
     it('devuelve éxito genérico sin enviar correo cuando el usuario no existe', async () => {
       usersServiceMock.findByEmail.mockResolvedValue(null);
 
-      const res = await service.forgotPassword({ email: 'inexistente@tisnet.pe' });
+      const res = await service.forgotPassword({
+        email: 'inexistente@tisnet.pe',
+      });
 
       expect(res.success).toBe(true);
       expect(notificationProviderMock.send).not.toHaveBeenCalled();

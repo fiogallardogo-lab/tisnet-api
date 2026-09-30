@@ -29,7 +29,9 @@ export class InMemoryAuditProvider implements AuditProvider {
       severity: input.severity ?? 'INFO',
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
-      previousState: input.previousState ? { ...input.previousState } : undefined,
+      previousState: input.previousState
+        ? { ...input.previousState }
+        : undefined,
       newState: input.newState ? { ...input.newState } : undefined,
       metadata: input.metadata ? { ...input.metadata } : undefined,
       timestamp: new Date(),
@@ -43,7 +45,7 @@ export class InMemoryAuditProvider implements AuditProvider {
     }
 
     this.logger.debug(
-      `[Audit] Action=${event.action} Entity=${event.entityType}:${event.entityId} Actor=${event.actorEmail ?? 'SYSTEM'} Severity=${event.severity}`,
+      `[Audit] Action=${event.action} Entity=${event.entityType}:${event.entityId} Actor=${event.actorId ?? 'SYSTEM'} Severity=${event.severity}`,
     );
 
     return event;

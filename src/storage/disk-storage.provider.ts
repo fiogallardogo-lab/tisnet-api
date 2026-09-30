@@ -25,7 +25,7 @@ export class DiskStorageProvider implements StorageProvider {
     this.baseUrl =
       options?.baseUrl ??
       process.env.STORAGE_BASE_URL ??
-      ('file://' + this.basePath.replace(/\\/g, '/'));
+      'file://' + this.basePath.replace(/\\/g, '/');
   }
 
   async save(input: SaveFileInput): Promise<StoredFileReference> {
@@ -35,9 +35,9 @@ export class DiskStorageProvider implements StorageProvider {
     const filePath = nodePath.join(this.basePath, sanitizedKey);
     try {
       await fsNode.writeFile(filePath, input.content);
-    } catch (cause) {
+    } catch {
       throw new StorageProviderError(
-        'DiskStorageProvider: failed to write file "' + sanitizedKey + '": ' + String(cause),
+        'DiskStorageProvider: failed to write file',
       );
     }
     const sidecar = {
@@ -52,10 +52,8 @@ export class DiskStorageProvider implements StorageProvider {
         nodePath.join(this.basePath, sanitizedKey + '.meta.json'),
         JSON.stringify(sidecar, null, 2),
       );
-    } catch (cause) {
-      this.logger.warn(
-        'DiskStorageProvider: failed to write sidecar for "' + sanitizedKey + '": ' + String(cause),
-      );
+    } catch {
+      this.logger.warn('DiskStorageProvider: failed to write sidecar');
     }
     return {
       storageKey: sanitizedKey,
@@ -75,7 +73,10 @@ export class DiskStorageProvider implements StorageProvider {
     } catch (cause: unknown) {
       if ((cause as NodeJS.ErrnoException).code === 'ENOENT') return null;
       throw new StorageProviderError(
-        'DiskStorageProvider: failed to read file "' + sanitizedKey + '": ' + String(cause),
+        'DiskStorageProvider: failed to read file "' +
+          sanitizedKey +
+          '": ' +
+          String(cause),
       );
     }
     const sidecar = await this.readSidecar(sanitizedKey);
@@ -108,21 +109,28 @@ export class DiskStorageProvider implements StorageProvider {
     } catch (cause: unknown) {
       if ((cause as NodeJS.ErrnoException).code === 'ENOENT') return false;
       throw new StorageProviderError(
-        'DiskStorageProvider: failed to delete file "' + sanitizedKey + '": ' + String(cause),
+        'DiskStorageProvider: failed to delete file "' +
+          sanitizedKey +
+          '": ' +
+          String(cause),
       );
     }
     try {
-      await fsNode.unlink(nodePath.join(this.basePath, sanitizedKey + '.meta.json'));
-    } catch { /* ignore missing sidecar */ }
+      await fsNode.unlink(
+        nodePath.join(this.basePath, sanitizedKey + '.meta.json'),
+      );
+    } catch {
+      /* ignore missing sidecar */
+    }
     return true;
   }
 
   private async ensureDir(): Promise<void> {
     try {
       await fsNode.mkdir(this.basePath, { recursive: true });
-    } catch (cause) {
+    } catch {
       throw new StorageProviderError(
-        'DiskStorageProvider: cannot create storage directory "' + this.basePath + '": ' + String(cause),
+        'DiskStorageProvider: cannot create storage directory',
       );
     }
   }

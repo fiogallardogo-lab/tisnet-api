@@ -44,32 +44,45 @@ export class ResendNotificationProvider implements NotificationProvider {
     });
 
     let response: Response;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
     try {
       const fetchPromise = fetch('https://api.resend.com/emails', {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           Authorization: 'Bearer ' + this.apiKey,
           'Content-Type': 'application/json',
+          ...(input.idempotencyKey
+            ? { 'Idempotency-Key': input.idempotencyKey }
+            : {}),
         },
         body,
       });
       response = await Promise.race([
         fetchPromise,
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new NotificationTimeoutError()), SEND_TIMEOUT_MS),
+        new Promise<never>(
+          (_, reject) =>
+            (timer = setTimeout(() => {
+              reject(new NotificationTimeoutError());
+              controller.abort();
+            }, SEND_TIMEOUT_MS)),
         ),
       ]);
     } catch (error) {
       if (error instanceof NotificationDeliveryError) throw error;
       throw new NotificationTransientError();
+    } finally {
+      if (timer) clearTimeout(timer);
     }
 
     if (!response.ok) {
-      if (PERMANENT_HTTP_CODES.has(response.status)) throw new NotificationPermanentError();
+      if (PERMANENT_HTTP_CODES.has(response.status))
+        throw new NotificationPermanentError();
       throw new NotificationTransientError();
     }
 
-    this.logger.log('[Resend] Delivered messageId=' + messageId + ' to=' + input.recipient);
+    this.logger.log('[Resend] Delivered messageId=' + messageId);
     return { messageId, recipient: input.recipient, sentAt: new Date() };
   }
 }

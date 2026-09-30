@@ -175,8 +175,8 @@ export class AuditService {
           metadata: safeAuditMetadata(input.metadata),
         },
       });
-    } catch (err: any) {
-      this.logger.warn(`Failed to record audit event: ${err.message}`);
+    } catch {
+      this.logger.warn('Failed to record audit event');
       return null as any;
     }
   }

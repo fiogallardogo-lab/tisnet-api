@@ -72,6 +72,10 @@ describe('ClientPaymentsService payment boundaries', () => {
     await expect(
       service.createCharge(1, actor, 'tkn_test_unit'),
     ).rejects.toMatchObject({ status: 409 });
+    await expect(service.createCheckout(1, actor)).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(provider.createOrder).not.toHaveBeenCalled();
     schedule.quoteVersion.quote.activeVersion = 2;
     schedule.payments[0].amountMinor = 10000n;
     await expect(

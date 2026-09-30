@@ -235,8 +235,31 @@ export class ProspectsService {
 
     return advisors.map(({ user, ...advisor }) => ({
       ...advisor,
+      photoUrl: this.publicAdvisorUrl(advisor.photoUrl),
+      calendlyUrl: this.publicAdvisorUrl(advisor.calendlyUrl),
       name: user.name,
     }));
+  }
+
+  private publicAdvisorUrl(value: string | null): string | null {
+    if (!value) return null;
+    try {
+      const url = new URL(value);
+      if (
+        url.protocol !== 'https:' ||
+        url.username ||
+        url.password ||
+        url.search ||
+        url.hash ||
+        /cv|curriculum|team-applications|private|token/i.test(
+          decodeURIComponent(url.pathname),
+        )
+      )
+        return null;
+      return url.href;
+    } catch {
+      return null;
+    }
   }
 
   async setAdvisorVisibility(profileId: number, isPublicAdvisor: boolean) {

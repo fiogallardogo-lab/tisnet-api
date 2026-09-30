@@ -11,16 +11,23 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getProjectsReport(user: { id: number; role: string }, projectId?: number) {
-    const canViewFinance = ['ADMIN', 'SUPER_ADMIN', 'CLIENT'].includes(user.role);
-    
-    const where: Prisma.ProjectWhereInput = { status: { notIn: [ProjectStatus.DRAFT, ProjectStatus.ARCHIVED] } };
+  async getProjectsReport(
+    user: { id: number; role: string },
+    projectId?: number,
+  ) {
+    const canViewFinance = ['ADMIN', 'SUPER_ADMIN', 'CLIENT'].includes(
+      user.role,
+    );
+
+    const where: Prisma.ProjectWhereInput = {
+      status: { notIn: [ProjectStatus.DRAFT, ProjectStatus.ARCHIVED] },
+    };
     if (projectId) {
       where.id = projectId;
     }
-    
+
     if (['CLIENT', 'DEVELOPER', 'PRODUCT_OWNER'].includes(user.role)) {
-       where.members = { some: { userId: user.id, isActive: true } };
+      where.members = { some: { userId: user.id, isActive: true } };
     }
 
     const projects = await this.prisma.project.findMany({
@@ -33,26 +40,36 @@ export class ReportsService {
                 schedules: {
                   include: {
                     payments: {
-                      where: { status: PaymentStatus.CONFIRMED }
-                    }
-                  }
-                }
-              }
-            }
-          }
+                      where: { status: PaymentStatus.CONFIRMED },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
-        deliverables: true
-      }
+        deliverables: true,
+      },
     });
 
-    const reportProjects = projects.map(p => {
-      const approvedDeliverables = p.deliverables.filter((d: any) => d.status === 'APPROVED').length;
+    const reportProjects = projects.map((p) => {
+      const approvedDeliverables = p.deliverables.filter(
+        (d: any) => d.status === 'APPROVED',
+      ).length;
       const totalDeliverables = p.deliverables.length;
-      const progress = totalDeliverables > 0 ? Math.round((approvedDeliverables / totalDeliverables) * 100) : 0;
-      
+      const progress =
+        totalDeliverables > 0
+          ? Math.round((approvedDeliverables / totalDeliverables) * 100)
+          : 0;
+
+      const officialVersion = p.quote?.versions.find(
+        (v) => v.version === p.quote?.activeVersion,
+      );
       let paidMinor = 0;
       if (p.quote?.versions) {
-        for (const version of p.quote.versions) {
+        for (const version of p.quote.versions.filter(
+          (v) => v.version === p.quote?.activeVersion,
+        )) {
           for (const schedule of version.schedules) {
             for (const pay of schedule.payments) {
               paidMinor += Number(pay.amountMinor);
@@ -67,38 +84,46 @@ export class ReportsService {
         progress,
         approvedDeliverables,
         pendingDeliverables: totalDeliverables - approvedDeliverables,
-        ...(canViewFinance ? {
-          totalMinor: p.quote?.amountMinor ? Number(p.quote.amountMinor) : undefined,
-          paidMinor,
-          currency: p.quote?.currency ?? undefined
-        } : {})
+        ...(canViewFinance &&
+        (user.role !== 'CLIENT' || p.clientUserId === user.id)
+          ? {
+              totalMinor: officialVersion
+                ? Number(officialVersion.amountMinor)
+                : undefined,
+              paidMinor,
+              currency: officialVersion?.currency,
+            }
+          : {}),
       };
     });
 
     return {
       canViewFinance,
       projects: reportProjects,
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
     };
   }
 
-  async getProjectTraceabilityReport(user: { id: number; role: string }, projectId: number) {
+  async getProjectTraceabilityReport(
+    user: { id: number; role: string },
+    projectId: number,
+  ) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       include: {
-        client: { select: { id: true, name: true, email: true } },
-        productOwner: { select: { id: true, name: true, email: true } },
+        client: { select: { id: true, name: true } },
+        productOwner: { select: { id: true, name: true } },
         members: {
           where: { isActive: true },
           include: {
-            user: { select: { id: true, name: true, email: true } },
+            user: { select: { id: true, name: true } },
           },
         },
         quote: {
           include: {
             versions: {
               orderBy: { version: 'desc' },
-              take: 1,
+
               include: {
                 schedules: {
                   orderBy: { sequence: 'asc' },
@@ -116,13 +141,19 @@ export class ReportsService {
             reviewedBy: { select: { id: true, name: true } },
             history: {
               include: {
-                actor: { select: { id: true, name: true, role: { select: { name: true } } } },
+                actor: {
+                  select: {
+                    id: true,
+                    name: true,
+                    role: { select: { name: true } },
+                  },
+                },
               },
               orderBy: { createdAt: 'asc' },
             },
             contributions: {
               include: {
-                user: { select: { id: true, name: true, email: true } },
+                user: { select: { id: true, name: true } },
               },
             },
           },
@@ -140,16 +171,36 @@ export class ReportsService {
     const isPo = project.productOwnerId === user.id;
 
     if (!isAdmin && !isMember && !isClient && !isPo) {
-      throw new ForbiddenException('No tienes permisos para ver el informe de este proyecto.');
+      throw new ForbiddenException(
+        'No tienes permisos para ver el informe de este proyecto.',
+      );
     }
 
-    const activeVersion = project.quote?.versions?.[0];
+    const activeVersion =
+      isAdmin || (user.role === 'CLIENT' && isClient)
+        ? project.quote?.versions?.find(
+            (v) => v.version === project.quote?.activeVersion,
+          )
+        : undefined;
     const totalDeliverables = project.deliverables.length;
-    const approvedDeliverables = project.deliverables.filter((d) => d.status === 'APPROVED').length;
-    const progress = totalDeliverables > 0 ? Math.round((approvedDeliverables / totalDeliverables) * 100) : 0;
+    const approvedDeliverables = project.deliverables.filter(
+      (d) => d.status === 'APPROVED',
+    ).length;
+    const progress =
+      totalDeliverables > 0
+        ? Math.round((approvedDeliverables / totalDeliverables) * 100)
+        : 0;
 
     // Aggregate team contributions
-    const contributionMap = new Map<number, { user: { id: number; name: string }; percentageSum: number; count: number; tasks: string[] }>();
+    const contributionMap = new Map<
+      number,
+      {
+        user: { id: number; name: string };
+        percentageSum: number;
+        count: number;
+        tasks: string[];
+      }
+    >();
     for (const d of project.deliverables) {
       for (const c of d.contributions) {
         const item = contributionMap.get(c.userId) ?? {
@@ -168,7 +219,8 @@ export class ReportsService {
     const teamContributions = Array.from(contributionMap.values()).map((c) => ({
       userId: c.user.id,
       name: c.user.name,
-      averagePercentage: Math.round((c.percentageSum / (totalDeliverables || 1)) * 100) / 100,
+      averagePercentage:
+        Math.round((c.percentageSum / (totalDeliverables || 1)) * 100) / 100,
       milestonesContributed: c.count,
       tasks: c.tasks,
     }));
@@ -181,8 +233,10 @@ export class ReportsService {
         status: project.status,
         progress,
         createdAt: project.createdAt,
-        client: project.client ? { name: project.client.name, email: project.client.email } : null,
-        productOwner: project.productOwner ? { name: project.productOwner.name, email: project.productOwner.email } : null,
+        client: project.client ? { name: project.client.name } : null,
+        productOwner: project.productOwner
+          ? { name: project.productOwner.name }
+          : null,
       },
       commercial: activeVersion
         ? {
@@ -196,7 +250,6 @@ export class ReportsService {
       team: project.members.map((m) => ({
         id: m.userId,
         name: m.user.name,
-        email: m.user.email,
         memberRole: m.memberRole,
         technicalRole: m.technicalRole,
         participationBasisPoints: m.participationBasisPoints,
@@ -244,7 +297,13 @@ export class ReportsService {
     let y = 790;
     const writeLine = (
       text: string,
-      options?: { bold?: boolean; size?: number; spacing?: number; indent?: number; color?: any }
+      options?: {
+        bold?: boolean;
+        size?: number;
+        spacing?: number;
+        indent?: number;
+        color?: any;
+      },
     ) => {
       const size = options?.size ?? 10;
       const spacing = options?.spacing ?? 14;
@@ -269,47 +328,110 @@ export class ReportsService {
     };
 
     // Header
-    writeLine('TISNET SOLUCIONES TECNOLÓGICAS', { bold: true, size: 16, spacing: 20 });
-    writeLine('Informe Oficial de Trazabilidad y Cierre de Proyecto', { bold: true, size: 12, spacing: 25 });
+    writeLine('TISNET SOLUCIONES TECNOLÓGICAS', {
+      bold: true,
+      size: 16,
+      spacing: 20,
+    });
+    writeLine('Informe Oficial de Trazabilidad y Cierre de Proyecto', {
+      bold: true,
+      size: 12,
+      spacing: 25,
+    });
 
     // Project Info
     writeLine('1. DATOS DEL PROYECTO', { bold: true, size: 11, spacing: 16 });
-    writeLine(`Proyecto: ${reportData.project.name} (ID: ${reportData.project.id})`, { indent: 60 });
-    writeLine(`Estado: ${reportData.project.status} | Avance: ${reportData.project.progress}%`, { indent: 60 });
-    writeLine(`Cliente: ${reportData.project.client?.name ?? 'No asignado'} (${reportData.project.client?.email ?? '-'})`, { indent: 60 });
-    writeLine(`Product Owner: ${reportData.project.productOwner?.name ?? 'No asignado'} (${reportData.project.productOwner?.email ?? '-'})`, { indent: 60, spacing: 20 });
+    writeLine(
+      `Proyecto: ${reportData.project.name} (ID: ${reportData.project.id})`,
+      { indent: 60 },
+    );
+    writeLine(
+      `Estado: ${reportData.project.status} | Avance: ${reportData.project.progress}%`,
+      { indent: 60 },
+    );
+    writeLine(
+      `Cliente: ${reportData.project.client?.name ?? 'No asignado'} (${reportData.project.client?.email ?? '-'})`,
+      { indent: 60 },
+    );
+    writeLine(
+      `Product Owner: ${reportData.project.productOwner?.name ?? 'No asignado'} (${reportData.project.productOwner?.email ?? '-'})`,
+      { indent: 60, spacing: 20 },
+    );
 
     // Commercial Info
     if (reportData.commercial) {
-      writeLine('2. ACUERDO COMERCIAL Y FINANCIERO', { bold: true, size: 11, spacing: 16 });
-      writeLine(`Cotización: ${reportData.commercial.quoteCode ?? 'N/A'} (Versión ${reportData.commercial.version})`, { indent: 60 });
-      writeLine(`Monto Total: ${reportData.commercial.currency} ${(reportData.commercial.amountMinor / 100).toFixed(2)}`, { indent: 60 });
-      writeLine(`Cuotas Acordadas: ${reportData.commercial.schedulesCount}`, { indent: 60, spacing: 20 });
+      writeLine('2. ACUERDO COMERCIAL Y FINANCIERO', {
+        bold: true,
+        size: 11,
+        spacing: 16,
+      });
+      writeLine(
+        `Cotización: ${reportData.commercial.quoteCode ?? 'N/A'} (Versión ${reportData.commercial.version})`,
+        { indent: 60 },
+      );
+      writeLine(
+        `Monto Total: ${reportData.commercial.currency} ${(reportData.commercial.amountMinor / 100).toFixed(2)}`,
+        { indent: 60 },
+      );
+      writeLine(`Cuotas Acordadas: ${reportData.commercial.schedulesCount}`, {
+        indent: 60,
+        spacing: 20,
+      });
     }
 
     // Team Members
     writeLine('3. EQUIPO DEL PROYECTO', { bold: true, size: 11, spacing: 16 });
     for (const member of reportData.team) {
-      const roleStr = member.technicalRole ? `${member.memberRole} · ${member.technicalRole}` : member.memberRole;
-      writeLine(`• ${member.name} (${member.email}) - Rol: ${roleStr}`, { indent: 60 });
+      const roleStr = member.technicalRole
+        ? `${member.memberRole} · ${member.technicalRole}`
+        : member.memberRole;
+      writeLine(`• ${member.name} (${member.email}) - Rol: ${roleStr}`, {
+        indent: 60,
+      });
     }
     y -= 10;
 
     // Milestones & Deliverables
-    writeLine('4. EJECUCIÓN POR HITOS Y EVIDENCIAS', { bold: true, size: 11, spacing: 16 });
+    writeLine('4. EJECUCIÓN POR HITOS Y EVIDENCIAS', {
+      bold: true,
+      size: 11,
+      spacing: 16,
+    });
     for (const m of reportData.milestones) {
-      writeLine(`Hito #${m.milestoneOrder}: ${m.title} [${m.status}]`, { bold: true, indent: 60, spacing: 14 });
-      if (m.dueDate) writeLine(`Fecha límite: ${new Date(m.dueDate).toISOString().slice(0, 10)}`, { indent: 70, size: 9 });
-      if (m.pdfUrl) writeLine(`PDF Técnico: ${m.pdfUrl}`, { indent: 70, size: 9 });
-      if (m.videoUrl) writeLine(`Video Demo: ${m.videoUrl}`, { indent: 70, size: 9 });
-      if (m.reviewedBy) writeLine(`Revisado por: ${m.reviewedBy} (${m.reviewedAt ? new Date(m.reviewedAt).toISOString().slice(0, 10) : ''})`, { indent: 70, size: 9 });
-      if (m.feedbackNotes) writeLine(`Observaciones: ${m.feedbackNotes}`, { indent: 70, size: 9 });
-      
+      writeLine(`Hito #${m.milestoneOrder}: ${m.title} [${m.status}]`, {
+        bold: true,
+        indent: 60,
+        spacing: 14,
+      });
+      if (m.dueDate)
+        writeLine(
+          `Fecha límite: ${new Date(m.dueDate).toISOString().slice(0, 10)}`,
+          { indent: 70, size: 9 },
+        );
+      if (m.pdfUrl)
+        writeLine(`PDF Técnico: ${m.pdfUrl}`, { indent: 70, size: 9 });
+      if (m.videoUrl)
+        writeLine(`Video Demo: ${m.videoUrl}`, { indent: 70, size: 9 });
+      if (m.reviewedBy)
+        writeLine(
+          `Revisado por: ${m.reviewedBy} (${m.reviewedAt ? new Date(m.reviewedAt).toISOString().slice(0, 10) : ''})`,
+          { indent: 70, size: 9 },
+        );
+      if (m.feedbackNotes)
+        writeLine(`Observaciones: ${m.feedbackNotes}`, { indent: 70, size: 9 });
+
       // Milestone Contributions
       if (m.contributions?.length) {
-        writeLine('Distribución del Hito:', { bold: true, indent: 70, size: 9 });
+        writeLine('Distribución del Hito:', {
+          bold: true,
+          indent: 70,
+          size: 9,
+        });
         for (const c of m.contributions) {
-          writeLine(`- ${c.name}: ${c.percentage}% (${c.description})`, { indent: 80, size: 8 });
+          writeLine(`- ${c.name}: ${c.percentage}% (${c.description})`, {
+            indent: 80,
+            size: 8,
+          });
         }
       }
       y -= 8;
@@ -317,20 +439,30 @@ export class ReportsService {
 
     // Team Summary
     if (reportData.teamContributions?.length) {
-      writeLine('5. RESUMEN DE CONTRIBUCIONES DEL EQUIPO', { bold: true, size: 11, spacing: 16 });
+      writeLine('5. RESUMEN DE CONTRIBUCIONES DEL EQUIPO', {
+        bold: true,
+        size: 11,
+        spacing: 16,
+      });
       for (const tc of reportData.teamContributions) {
-        writeLine(`• ${tc.name}: ${tc.averagePercentage}% de contribución promedio en ${tc.milestonesContributed} hitos`, { indent: 60 });
+        writeLine(
+          `• ${tc.name}: ${tc.averagePercentage}% de contribución promedio en ${tc.milestonesContributed} hitos`,
+          { indent: 60 },
+        );
       }
       y -= 10;
     }
 
     // Footer
-    writeLine(`Generado el: ${new Date(reportData.generatedAt).toLocaleString('es-PE')} · TISNET Plataforma`, {
-      size: 8,
-      indent: 50,
-      color: rgb(0.4, 0.4, 0.4),
-      spacing: 10,
-    });
+    writeLine(
+      `Generado el: ${new Date(reportData.generatedAt).toLocaleString('es-PE')} · TISNET Plataforma`,
+      {
+        size: 8,
+        indent: 50,
+        color: rgb(0.4, 0.4, 0.4),
+        spacing: 10,
+      },
+    );
 
     const pdfBytes = await pdfDoc.save();
     return Buffer.from(pdfBytes);
