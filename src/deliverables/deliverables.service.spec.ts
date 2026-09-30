@@ -331,7 +331,7 @@ describe('DeliverablesService', () => {
       expect(history[1].comments).toBe('Ajustar contraste');
     });
 
-    it('permite review con formato de Responsable C (status y comments)', async () => {
+    it('permite review con decision explícita y comments', async () => {
       membership(ProjectMemberRole.PRODUCT_OWNER);
       prisma.projectDeliverable.findFirst.mockResolvedValue({
         ...deliverable,
@@ -339,7 +339,7 @@ describe('DeliverablesService', () => {
       });
 
       await service.review(7, 10, productOwner, {
-        status: 'APPROVED',
+        decision: DeliverableReviewDecision.APPROVE,
         comments: 'Aprobación oficial',
       });
 
@@ -358,5 +358,12 @@ describe('DeliverablesService', () => {
         }),
       );
     });
+  });
+
+  it('rejects missing decision without approving or writing history', async () => {
+    prisma.projectDeliverable.findFirst.mockResolvedValue({...deliverable,status:DeliverableStatus.IN_REVIEW});
+    await expect(service.review(7,10,admin,{} as any)).rejects.toThrow('decision debe ser');
+    expect(prisma.projectDeliverable.update).not.toHaveBeenCalled();
+    expect(prisma.deliverableHistory.create).not.toHaveBeenCalled();
   });
 });

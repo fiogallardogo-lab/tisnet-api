@@ -351,9 +351,10 @@ export class DeliverablesService {
         'Solo se pueden revisar entregables en estado IN_REVIEW',
       );
     }
-    const isObserved =
-      dto.decision === DeliverableReviewDecision.OBSERVE ||
-      dto.status === 'OBSERVED';
+    if (!Object.values(DeliverableReviewDecision).includes(dto.decision)) {
+      throw new BadRequestException('decision debe ser APPROVE u OBSERVE');
+    }
+    const isObserved = dto.decision === DeliverableReviewDecision.OBSERVE;
     const feedbackNotes = dto.feedbackNotes?.trim() || dto.comments?.trim();
     if (isObserved && !feedbackNotes) {
       throw new BadRequestException(

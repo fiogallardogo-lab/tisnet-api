@@ -1,3 +1,5 @@
+> Actualización posterior a 7af3ed8: ver [CIERRE_INTEGRACION.md](CIERRE_INTEGRACION.md). Se exige decision, las rutas /deliverables/.../contributions resuelven ID exacto y CORS expone Content-Disposition. Las observaciones históricas de abajo sobre esos tres puntos quedan sustituidas. Despliegue sin confirmar.
+
 # Informe de auditoría técnica y entregables — contratos Frontend A
 
 Fecha: 30/09/2026. Código auditado: 0ef120d. Alcance: contratos Cliente y Developer del backend TISNET, sin cambios de ejecución.

@@ -1,0 +1,124 @@
+{
+  "environment": "LOCAL_ISOLATED_NOT_STAGING",
+  "authentication": "stubbed",
+  "database": "stubbed",
+  "createdAt": "2026-09-30T18:24:45.485Z",
+  "evidence": [
+    {
+      "method": "OPTIONS",
+      "url": "http://127.0.0.1:53135/api/v1/projects/7/deliverables/10/review",
+      "request": {
+        "headers": {
+          "Origin": "http://localhost:5173",
+          "Access-Control-Request-Method": "PATCH",
+          "Access-Control-Request-Headers": "authorization,content-type"
+        }
+      },
+      "http": 204,
+      "responseHeaders": {
+        "access-control-allow-headers": "Content-Type,Authorization",
+        "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "access-control-allow-origin": "http://localhost:5173",
+        "access-control-expose-headers": "Content-Disposition",
+        "connection": "keep-alive",
+        "content-length": "0",
+        "date": "Wed, 30 Sep 2026 18:24:45 GMT",
+        "keep-alive": "timeout=5",
+        "vary": "Origin",
+        "x-powered-by": "Express"
+      },
+      "response": null
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:53135/api/v1/projects/7/deliverables/10/review",
+      "request": {},
+      "http": 400,
+      "response": {
+        "success": false,
+        "message": [
+          "decision must be one of the following values: APPROVE, OBSERVE"
+        ],
+        "error": "BadRequestException"
+      }
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:53135/api/v1/projects/7/deliverables/10/review",
+      "request": {
+        "decision": null
+      },
+      "http": 400,
+      "response": {
+        "success": false,
+        "message": [
+          "decision must be one of the following values: APPROVE, OBSERVE"
+        ],
+        "error": "BadRequestException"
+      }
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:53135/api/v1/projects/7/deliverables/10/review",
+      "request": {
+        "decision": "INVALID"
+      },
+      "http": 400,
+      "response": {
+        "success": false,
+        "message": [
+          "decision must be one of the following values: APPROVE, OBSERVE"
+        ],
+        "error": "BadRequestException"
+      }
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:53135/api/v1/projects/7/deliverables/10/review",
+      "request": {
+        "status": "APPROVED"
+      },
+      "http": 400,
+      "response": {
+        "success": false,
+        "message": [
+          "property status should not exist",
+          "decision must be one of the following values: APPROVE, OBSERVE"
+        ],
+        "error": "BadRequestException"
+      }
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:53135/api/v1/projects/7/deliverables/10/review",
+      "request": {
+        "decision": "APPROVE",
+        "status": "OBSERVED"
+      },
+      "http": 400,
+      "response": {
+        "success": false,
+        "message": [
+          "property status should not exist"
+        ],
+        "error": "BadRequestException"
+      }
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:53135/api/v1/projects/7/deliverables/10/review",
+      "request": {
+        "decision": "APPROVE"
+      },
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 10,
+          "status": "APPROVED"
+        }
+      }
+    }
+  ]
+}

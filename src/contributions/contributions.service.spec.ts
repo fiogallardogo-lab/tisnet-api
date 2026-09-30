@@ -225,4 +225,17 @@ describe('ContributionsService', () => {
     expect(dev10Summary?.averagePercentage).toBe(70); // (60 + 80) / 2
     expect(dev10Summary?.milestonesContributed).toBe(2);
   });
+
+  it('exact ID lookup never falls back to a colliding milestone or sequence', async () => {
+    prisma.projectDeliverable.findFirst.mockImplementation(({where}) =>
+      where.OR.length === 1 && where.OR[0].id === 5 ? null : mockDeliverable);
+    await expect(service.getMilestoneContributions(100, 5, po, true)).rejects.toThrow('Entregable no encontrado');
+    expect(prisma.projectMilestone.findFirst).not.toHaveBeenCalled();
+    expect(prisma.milestoneContribution.findMany).not.toHaveBeenCalled();
+  });
+  it('exact write rejects a colliding ID before deleting contributions', async () => {
+    prisma.projectDeliverable.findFirst.mockResolvedValue(null);
+    await expect(service.recordContributions(100, 5, po, {contributions:[{userId:10,percentage:100,description:'Trabajo'}]}, true)).rejects.toThrow('Entregable no encontrado');
+    expect(prisma.milestoneContribution.deleteMany).not.toHaveBeenCalled();
+  });
 });

@@ -5088,7 +5088,7 @@
             "bearer": []
           }
         ],
-        "summary": "Alias para registrar contribuciones por ID de entregable",
+        "summary": "Registrar contribuciones por ID exacto de entregable",
         "tags": [
           "Project contributions"
         ]
@@ -5123,7 +5123,7 @@
             "bearer": []
           }
         ],
-        "summary": "Alias para consultar contribuciones por entregable",
+        "summary": "Consultar contribuciones por ID exacto de entregable",
         "tags": [
           "Project contributions"
         ]
@@ -5160,9 +5160,9 @@
     }
   },
   "info": {
-    "title": "TISNET API snapshot 2026-09-30",
+    "title": "TISNET API",
     "description": "",
-    "version": "0ef120d",
+    "version": "1.0",
     "contact": {}
   },
   "tags": [],
@@ -6312,11 +6312,6 @@
             ],
             "example": "APPROVE"
           },
-          "status": {
-            "type": "string",
-            "example": "APPROVED",
-            "description": "Valores admitidos: APPROVED | OBSERVED (alias de decision)"
-          },
           "feedbackNotes": {
             "type": "string",
             "example": "Corrige el enlace de evidencia y agrega la versión para móviles.",
@@ -6327,7 +6322,10 @@
             "example": "La funcionalidad cumple con los criterios de aceptación.",
             "description": "Alias de feedbackNotes."
           }
-        }
+        },
+        "required": [
+          "decision"
+        ]
       },
       "SubmitEvidenceDto": {
         "type": "object",

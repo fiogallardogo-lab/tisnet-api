@@ -188,7 +188,7 @@ describe('Sprint 15 B: Evidencias, Contribuciones, Informe y Cierre (E2E MySQL)'
       .post(`/api/v1/projects/${projectId}/milestones/1/review`)
       .set('Authorization', `Bearer ${tokens.client}`)
       .send({
-        status: 'APPROVED',
+        decision: 'APPROVE',
         comments: 'Aprobado sin observaciones técnicas.',
       });
 

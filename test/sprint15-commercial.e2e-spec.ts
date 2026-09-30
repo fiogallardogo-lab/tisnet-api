@@ -356,7 +356,7 @@ describe('Sprint15 A MySQL + HTTP + real local SMTP', () => {
     expect(await db.paymentReminder.count({ where: { scheduleId } })).toBe(0);
     config.set('PAYMENT_REMINDER_CUTOFF', '');
     await auth(req().post(path + '/review'), 'CLIENT')
-      .send({ status: 'APPROVED' })
+      .send({ decision: 'APPROVE' })
       .expect(503);
     expect(
       (
@@ -367,7 +367,7 @@ describe('Sprint15 A MySQL + HTTP + real local SMTP', () => {
     ).toBe('IN_REVIEW');
     config.set('PAYMENT_REMINDER_CUTOFF', '18:00');
     await auth(req().post(path + '/review'), 'CLIENT')
-      .send({ status: 'APPROVED' })
+      .send({ decision: 'APPROVE' })
       .expect(201);
     const reminder = await db.paymentReminder.findUniqueOrThrow({
       where: { scheduleId },

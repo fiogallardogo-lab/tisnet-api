@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "TISNET — Frontend A (Cliente/Developer)",
-    "version": "2026-09-30.0ef120d",
+    "version": "2026-09-30.integration-hardening",
     "description": "Contrato revisado contra controladores/servicios. Solo rutas implementadas. Ejemplos sintéticos. Fecha de despliegue no confirmada; ver README y pendientes."
   },
   "servers": [
@@ -7951,7 +7951,7 @@
       "patch": {
         "operationId": "reviewDeliverable",
         "summary": "PATCH /projects/{projectId}/deliverables/{deliverableId}/review",
-        "description": "Permisos: CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403. Estados: IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes.  Disponible en código al 2026-09-30; despliegue no confirmado.",
+        "description": "Permisos: CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403. Estados: IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes. decision obligatorio: APPROVE u OBSERVE. status no se admite. OBSERVE exige feedbackNotes o comments no vacíos. Disponible en código al 2026-09-30; despliegue no confirmado.",
         "tags": [
           "projects"
         ],
@@ -8037,7 +8037,7 @@
             }
           },
           "400": {
-            "description": "Observación sin notas, notas >2000",
+            "description": "decision ausente/inválido, status no admitido u observación sin notas",
             "content": {
               "application/json": {
                 "schema": {
@@ -8045,7 +8045,7 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "Observación sin notas, notas >2000",
+                  "message": "decision ausente/inválido, status no admitido u observación sin notas",
                   "error": "HttpException"
                 }
               }
@@ -8178,7 +8178,7 @@
       "post": {
         "operationId": "reviewPost",
         "summary": "POST /projects/{projectId}/deliverables/{deliverableId}/review",
-        "description": "Permisos: CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403. Estados: IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes.  Disponible en código al 2026-09-30; despliegue no confirmado.",
+        "description": "Permisos: CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403. Estados: IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes. decision obligatorio: APPROVE u OBSERVE. status no se admite. OBSERVE exige feedbackNotes o comments no vacíos. Disponible en código al 2026-09-30; despliegue no confirmado.",
         "tags": [
           "projects"
         ],
@@ -8264,7 +8264,7 @@
             }
           },
           "400": {
-            "description": "Observación sin notas, notas >2000",
+            "description": "decision ausente/inválido, status no admitido u observación sin notas",
             "content": {
               "application/json": {
                 "schema": {
@@ -8272,7 +8272,7 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "Observación sin notas, notas >2000",
+                  "message": "decision ausente/inválido, status no admitido u observación sin notas",
                   "error": "HttpException"
                 }
               }
@@ -9490,7 +9490,7 @@
       "get": {
         "operationId": "getContributions",
         "summary": "GET /projects/{projectId}/deliverables/{deliverableId}/contributions",
-        "description": "Permisos: Miembro activo o cliente/PO titular; ADMIN/SUPER_ADMIN. Estados: Sin restricción por estado del entregable.  Disponible en código al 2026-09-30; despliegue no confirmado.",
+        "description": "Permisos: Miembro activo o cliente/PO titular; ADMIN/SUPER_ADMIN. Estados: Sin restricción por estado del entregable. deliverableId es exclusivamente ProjectDeliverable.id dentro del proyecto. Sin fallback a milestoneId ni milestoneOrder. ID ajeno/inexistente devuelve 404. Disponible en código al 2026-09-30; despliegue no confirmado.",
         "tags": [
           "projects"
         ],
@@ -9658,7 +9658,7 @@
       "post": {
         "operationId": "saveContributions",
         "summary": "POST /projects/{projectId}/deliverables/{deliverableId}/contributions",
-        "description": "Permisos: PO/ADMIN/SUPER_ADMIN. Cliente y Developer: lectura. Estados: Reemplaza el reparto previo; no exige APPROVED.  Disponible en código al 2026-09-30; despliegue no confirmado.",
+        "description": "Permisos: PO/ADMIN/SUPER_ADMIN. Cliente y Developer: lectura. Estados: Reemplaza el reparto previo; no exige APPROVED. deliverableId es exclusivamente ProjectDeliverable.id dentro del proyecto. Sin fallback a milestoneId ni milestoneOrder. ID ajeno/inexistente devuelve 404. Disponible en código al 2026-09-30; despliegue no confirmado.",
         "tags": [
           "projects"
         ],
@@ -12066,7 +12066,7 @@
       "post": {
         "operationId": "milestoneReview",
         "summary": "POST /projects/{projectId}/milestones/{milestoneId}/review",
-        "description": "Permisos: CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403. Estados: IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes.  Disponible en código al 2026-09-30; despliegue no confirmado.",
+        "description": "Permisos: CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403. Estados: IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes. decision obligatorio: APPROVE u OBSERVE. status no se admite. OBSERVE exige feedbackNotes o comments no vacíos. Disponible en código al 2026-09-30; despliegue no confirmado.",
         "tags": [
           "projects"
         ],
@@ -12152,7 +12152,7 @@
             }
           },
           "400": {
-            "description": "Observación sin notas, notas >2000",
+            "description": "decision ausente/inválido, status no admitido u observación sin notas",
             "content": {
               "application/json": {
                 "schema": {
@@ -12160,7 +12160,7 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "Observación sin notas, notas >2000",
+                  "message": "decision ausente/inválido, status no admitido u observación sin notas",
                   "error": "HttpException"
                 }
               }
@@ -12457,7 +12457,7 @@
       "get": {
         "operationId": "milestoneContributions",
         "summary": "GET /projects/{projectId}/milestones/{milestoneId}/contributions",
-        "description": "Permisos: Miembro activo o cliente/PO titular; ADMIN/SUPER_ADMIN. Estados: Sin restricción por estado del entregable.  Disponible en código al 2026-09-30; despliegue no confirmado.",
+        "description": "Permisos: Miembro activo o cliente/PO titular; ADMIN/SUPER_ADMIN. Estados: Sin restricción por estado del entregable. Ruta legacy ambigua. Para nuevas integraciones usar /deliverables/{deliverableId}/contributions con ID exacto. Disponible en código al 2026-09-30; despliegue no confirmado.",
         "tags": [
           "projects"
         ],
@@ -12625,7 +12625,7 @@
       "post": {
         "operationId": "saveMilestoneContributions",
         "summary": "POST /projects/{projectId}/milestones/{milestoneId}/contributions",
-        "description": "Permisos: PO/ADMIN/SUPER_ADMIN. Cliente y Developer: lectura. Estados: Reemplaza el reparto previo; no exige APPROVED.  Disponible en código al 2026-09-30; despliegue no confirmado.",
+        "description": "Permisos: PO/ADMIN/SUPER_ADMIN. Cliente y Developer: lectura. Estados: Reemplaza el reparto previo; no exige APPROVED. Ruta legacy ambigua. Para nuevas integraciones usar /deliverables/{deliverableId}/contributions con ID exacto. Disponible en código al 2026-09-30; despliegue no confirmado.",
         "tags": [
           "projects"
         ],

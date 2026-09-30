@@ -1,3 +1,5 @@
+> Actualización posterior a 7af3ed8: ver [CIERRE_INTEGRACION.md](CIERRE_INTEGRACION.md). Se exige decision, las rutas /deliverables/.../contributions resuelven ID exacto y CORS expone Content-Disposition. Las observaciones históricas de abajo sobre esos tres puntos quedan sustituidas. Despliegue sin confirmar.
+
 # Disponibilidad y contratos propuestos — no implementados
 
 Corte30/09/2026. Los48 endpoints de OPERACIONES.md existen en código; disponibilidad desplegada sin confirmar. Para los siguientes **ETA=null / fecha por acordar con el responsable backend**. El plan de diez días del sprint no proporciona una fecha de inicio ni una asignación individual que permita prometer entrega. Se pueden desarrollar mocks hoy; eso no equivale a disponibilidad de API.

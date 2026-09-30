@@ -1,6 +1,6 @@
 # Operaciones confirmadas — Frontend A
 
-Base /api/v1. Verificado en código 2026-09-30, commit 0ef120d. No se confirma despliegue. Datos sintéticos; fechas futuras deben ajustarse al ejecutar. Errores comunes incluyen 401/403, 429 y 500 genérico; permisos específicos prevalecen. Todas las listas de este catálogo carecen de paginación del servidor.
+Base /api/v1. Verificado en código 2026-09-30, base 7af3ed8 + correcciones de cierre. No se confirma despliegue. Datos sintéticos; fechas futuras deben ajustarse al ejecutar. Errores comunes incluyen 401/403, 429 y 500 genérico; permisos específicos prevalecen. Todas las listas de este catálogo carecen de paginación del servidor.
 
 ## authMe — GET /auth/me
 
@@ -893,6 +893,7 @@ null
 - HTTP éxito: 200. Paginación: ninguna.
 - Request: ReviewDeliverable.
 - Response: ApiSuccess<Deliverable>.
+- decision obligatorio: APPROVE u OBSERVE. status no se admite. OBSERVE exige feedbackNotes o comments no vacíos.
 
 ### Request de ejemplo
 
@@ -935,7 +936,7 @@ null
 
 ### Errores
 
-- 400: Observación sin notas, notas >2000
+- 400: decision ausente/inválido, status no admitido u observación sin notas
 - 401: JWT ausente, vencido, revocado o cuenta inactiva
 - 403: Rol/propiedad/membresía no autorizados
 - 404: Entregable inexistente
@@ -1265,6 +1266,7 @@ null
 - HTTP éxito: 200. Paginación: ninguna.
 - Request: sin body.
 - Response: ApiSuccess<Contributions>.
+- deliverableId es exclusivamente ProjectDeliverable.id dentro del proyecto. Sin fallback a milestoneId ni milestoneOrder. ID ajeno/inexistente devuelve 404.
 
 ### Request de ejemplo
 
@@ -1318,6 +1320,7 @@ null
 - HTTP éxito: 201. Paginación: ninguna.
 - Request: SaveContributions.
 - Response: ApiSuccess<Contributions>.
+- deliverableId es exclusivamente ProjectDeliverable.id dentro del proyecto. Sin fallback a milestoneId ni milestoneOrder. ID ajeno/inexistente devuelve 404.
 
 ### Request de ejemplo
 
@@ -2011,6 +2014,7 @@ null
 - Request: ReviewDeliverable.
 - Response: ApiSuccess<Deliverable>.
 - Alias funcional de reviewDeliverable.
+- decision obligatorio: APPROVE u OBSERVE. status no se admite. OBSERVE exige feedbackNotes o comments no vacíos.
 
 ### Request de ejemplo
 
@@ -2053,7 +2057,7 @@ null
 
 ### Errores
 
-- 400: Observación sin notas, notas >2000
+- 400: decision ausente/inválido, status no admitido u observación sin notas
 - 401: JWT ausente, vencido, revocado o cuenta inactiva
 - 403: Rol/propiedad/membresía no autorizados
 - 404: Entregable inexistente
@@ -2071,6 +2075,7 @@ null
 - Request: ReviewDeliverable.
 - Response: ApiSuccess<Deliverable>.
 - Alias funcional de reviewDeliverable.
+- decision obligatorio: APPROVE u OBSERVE. status no se admite. OBSERVE exige feedbackNotes o comments no vacíos.
 
 ### Request de ejemplo
 
@@ -2113,7 +2118,7 @@ null
 
 ### Errores
 
-- 400: Observación sin notas, notas >2000
+- 400: decision ausente/inválido, status no admitido u observación sin notas
 - 401: JWT ausente, vencido, revocado o cuenta inactiva
 - 403: Rol/propiedad/membresía no autorizados
 - 404: Entregable inexistente
@@ -2177,6 +2182,7 @@ null
 - Request: sin body.
 - Response: ApiSuccess<Contributions>.
 - Alias funcional de getContributions.
+- Ruta legacy ambigua. Para nuevas integraciones usar /deliverables/{deliverableId}/contributions con ID exacto.
 
 ### Request de ejemplo
 
@@ -2231,6 +2237,7 @@ null
 - Request: SaveContributions.
 - Response: ApiSuccess<Contributions>.
 - Alias funcional de saveContributions.
+- Ruta legacy ambigua. Para nuevas integraciones usar /deliverables/{deliverableId}/contributions con ID exacto.
 
 ### Request de ejemplo
 

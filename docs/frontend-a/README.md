@@ -1,3 +1,5 @@
+> Actualización posterior a 7af3ed8: ver [CIERRE_INTEGRACION.md](CIERRE_INTEGRACION.md). Se exige decision, las rutas /deliverables/.../contributions resuelven ID exacto y CORS expone Content-Disposition. Las observaciones históricas de abajo sobre esos tres puntos quedan sustituidas. Despliegue sin confirmar.
+
 # Frontend A — Contratos Cliente y Developer
 
 **Corte verificado: 30/09/2026 · backend 0ef120d · base /api/v1.**

@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsOptional,
@@ -12,21 +12,12 @@ export enum DeliverableReviewDecision {
 }
 
 export class ReviewDeliverableDto {
-  @ApiPropertyOptional({
+  @ApiProperty({
     enum: DeliverableReviewDecision,
     example: DeliverableReviewDecision.APPROVE,
   })
-  @IsOptional()
   @IsEnum(DeliverableReviewDecision)
-  decision?: DeliverableReviewDecision;
-
-  @ApiPropertyOptional({
-    example: 'APPROVED',
-    description: 'Valores admitidos: APPROVED | OBSERVED (alias de decision)',
-  })
-  @IsOptional()
-  @IsString()
-  status?: string;
+  decision!: DeliverableReviewDecision;
 
   @ApiPropertyOptional({
     example: 'Corrige el enlace de evidencia y agrega la versión para móviles.',

@@ -64,7 +64,7 @@ export class ContributionsController {
   }
 
   @Post('deliverables/:deliverableId/contributions')
-  @ApiOperation({ summary: 'Alias para registrar contribuciones por ID de entregable' })
+  @ApiOperation({ summary: 'Registrar contribuciones por ID exacto de entregable' })
   recordDeliverableContributions(
     @Param('projectId', ParseIntPipe) projectId: number,
     @Param('deliverableId', ParseIntPipe) deliverableId: number,
@@ -76,6 +76,7 @@ export class ContributionsController {
       deliverableId,
       req.user,
       dto,
+      true,
     );
   }
 
@@ -94,7 +95,7 @@ export class ContributionsController {
   }
 
   @Get('deliverables/:deliverableId/contributions')
-  @ApiOperation({ summary: 'Alias para consultar contribuciones por entregable' })
+  @ApiOperation({ summary: 'Consultar contribuciones por ID exacto de entregable' })
   getDeliverableContributions(
     @Param('projectId', ParseIntPipe) projectId: number,
     @Param('deliverableId', ParseIntPipe) deliverableId: number,
@@ -104,6 +105,7 @@ export class ContributionsController {
       projectId,
       deliverableId,
       req.user,
+      true,
     );
   }
 

@@ -804,7 +804,7 @@
     "permissions": "CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403",
     "allowedStates": "IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes",
     "errors": {
-      "400": "Observación sin notas, notas >2000",
+      "400": "decision ausente/inválido, status no admitido u observación sin notas",
       "401": "JWT ausente, vencido, revocado o cuenta inactiva",
       "403": "Rol/propiedad/membresía no autorizados",
       "404": "Entregable inexistente",
@@ -815,7 +815,8 @@
     },
     "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
     "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
-    "pagination": "NONE"
+    "pagination": "NONE",
+    "notes": "decision obligatorio: APPROVE u OBSERVE. status no se admite. OBSERVE exige feedbackNotes o comments no vacíos."
   },
   {
     "id": "history",
@@ -1133,7 +1134,8 @@
     },
     "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
     "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
-    "pagination": "NONE"
+    "pagination": "NONE",
+    "notes": "deliverableId es exclusivamente ProjectDeliverable.id dentro del proyecto. Sin fallback a milestoneId ni milestoneOrder. ID ajeno/inexistente devuelve 404."
   },
   {
     "id": "saveContributions",
@@ -1188,7 +1190,8 @@
     },
     "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
     "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
-    "pagination": "NONE"
+    "pagination": "NONE",
+    "notes": "deliverableId es exclusivamente ProjectDeliverable.id dentro del proyecto. Sin fallback a milestoneId ni milestoneOrder. ID ajeno/inexistente devuelve 404."
   },
   {
     "id": "projectContributions",
@@ -1799,7 +1802,7 @@
     "permissions": "CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403",
     "allowedStates": "IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes",
     "errors": {
-      "400": "Observación sin notas, notas >2000",
+      "400": "decision ausente/inválido, status no admitido u observación sin notas",
       "401": "JWT ausente, vencido, revocado o cuenta inactiva",
       "403": "Rol/propiedad/membresía no autorizados",
       "404": "Entregable inexistente",
@@ -1811,7 +1814,8 @@
     "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
     "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
     "pagination": "NONE",
-    "aliasOf": "reviewDeliverable"
+    "aliasOf": "reviewDeliverable",
+    "notes": "decision obligatorio: APPROVE u OBSERVE. status no se admite. OBSERVE exige feedbackNotes o comments no vacíos."
   },
   {
     "id": "milestoneReview",
@@ -1852,7 +1856,7 @@
     "permissions": "CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403",
     "allowedStates": "IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes",
     "errors": {
-      "400": "Observación sin notas, notas >2000",
+      "400": "decision ausente/inválido, status no admitido u observación sin notas",
       "401": "JWT ausente, vencido, revocado o cuenta inactiva",
       "403": "Rol/propiedad/membresía no autorizados",
       "404": "Entregable inexistente",
@@ -1864,7 +1868,8 @@
     "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
     "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
     "pagination": "NONE",
-    "aliasOf": "reviewDeliverable"
+    "aliasOf": "reviewDeliverable",
+    "notes": "decision obligatorio: APPROVE u OBSERVE. status no se admite. OBSERVE exige feedbackNotes o comments no vacíos."
   },
   {
     "id": "milestoneHistory",
@@ -1950,7 +1955,8 @@
     "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
     "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
     "pagination": "NONE",
-    "aliasOf": "getContributions"
+    "aliasOf": "getContributions",
+    "notes": "Ruta legacy ambigua. Para nuevas integraciones usar /deliverables/{deliverableId}/contributions con ID exacto."
   },
   {
     "id": "saveMilestoneContributions",
@@ -2006,7 +2012,8 @@
     "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
     "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
     "pagination": "NONE",
-    "aliasOf": "saveContributions"
+    "aliasOf": "saveContributions",
+    "notes": "Ruta legacy ambigua. Para nuevas integraciones usar /deliverables/{deliverableId}/contributions con ID exacto."
   },
   {
     "id": "projectReport",

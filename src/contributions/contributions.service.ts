@@ -65,11 +65,11 @@ export class ContributionsService {
     };
   }
 
-  private async findDeliverableOrMilestone(projectId: number, idOrSequence: number) {
+  private async findDeliverableOrMilestone(projectId: number, idOrSequence: number, exactDeliverable = false) {
     const deliverable = await this.prisma.projectDeliverable.findFirst({
       where: {
         projectId,
-        OR: [
+        OR: exactDeliverable ? [{ id: idOrSequence }] : [
           { id: idOrSequence },
           { milestoneId: idOrSequence },
           { milestoneOrder: idOrSequence },
@@ -87,6 +87,10 @@ export class ContributionsService {
         title: deliverable.title,
         milestoneOrder: deliverable.milestoneOrder,
       };
+    }
+
+    if (exactDeliverable) {
+      throw new NotFoundException('Entregable no encontrado para este proyecto.');
     }
 
     const milestone = await this.prisma.projectMilestone.findFirst({
@@ -113,6 +117,7 @@ export class ContributionsService {
     milestoneId: number,
     actor: ContributionsActor,
     dto: SaveContributionsDto,
+    exactDeliverable = false,
   ) {
     const { memberRole } = await this.requireProjectAccess(projectId, actor);
 
@@ -123,7 +128,7 @@ export class ContributionsService {
       );
     }
 
-    const target = await this.findDeliverableOrMilestone(projectId, milestoneId);
+    const target = await this.findDeliverableOrMilestone(projectId, milestoneId, exactDeliverable);
 
     // Validate percentage sum
     const totalPercentage = dto.contributions.reduce((sum, item) => sum + item.percentage, 0);
@@ -237,9 +242,10 @@ export class ContributionsService {
     projectId: number,
     milestoneId: number,
     actor: ContributionsActor,
+    exactDeliverable = false,
   ) {
     await this.requireProjectAccess(projectId, actor);
-    const target = await this.findDeliverableOrMilestone(projectId, milestoneId);
+    const target = await this.findDeliverableOrMilestone(projectId, milestoneId, exactDeliverable);
 
     const where = target.deliverableId
       ? { projectId, deliverableId: target.deliverableId }
