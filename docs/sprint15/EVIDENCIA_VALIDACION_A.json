@@ -1,0 +1,83 @@
+{
+  "date": "2026-09-30",
+  "tests": {
+    "integrated-unit": {
+      "passed": 635,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    },
+    "integrated-e2e": {
+      "passed": 245,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    },
+    "close-final": {
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    },
+    "close-e2e": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    }
+  },
+  "build": "passed",
+  "lint": {
+    "errors": 0,
+    "warnings": 12
+  },
+  "prismaValidation": "passed",
+  "incrementalMigration": {
+    "baseline": "origin/develop 3c85eb0 schema",
+    "incrementalMigration": "20260929200000_s15_commercial_operations",
+    "driftExitCode": 0,
+    "output": "No difference detected."
+  },
+  "persistence": {
+    "reminders": 5,
+    "afterServerRestart": true,
+    "identical": true
+  },
+  "dependencies": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 2,
+      "moderate": 1,
+      "high": 9,
+      "critical": 0,
+      "total": 12
+    },
+    "packages": [
+      "@nestjs/mau",
+      "@nestjs/platform-express",
+      "@prisma/config",
+      "brace-expansion",
+      "deepmerge-ts",
+      "external-editor",
+      "fast-uri",
+      "inquirer",
+      "multer",
+      "prisma",
+      "tmp",
+      "undici"
+    ]
+  },
+  "freshMigrationChain": {
+    "status": "blocked",
+    "migration": "20260925170000_project_kickoff_audit",
+    "prismaError": "P3018",
+    "mysqlError": 1146,
+    "reason": "ProjectMember altered before its creation"
+  },
+  "externalValidation": {
+    "smtpInbox": "pending authorized credentials and recipient",
+    "legalContent": "pending approved texts",
+    "reminderPolicy": "pending approved cutoff and event",
+    "staging": "not validated"
+  }
+}

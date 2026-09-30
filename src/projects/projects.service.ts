@@ -520,10 +520,21 @@ export class ProjectsService {
           throw new BadRequestException(
             'Todos los hitos oficiales deben tener entregables aprobados.',
           );
-        if (project.quoteId)
-          await (
+        if (project.quoteId) {
+          const state = await (
             this.financial || new FinancialService(this.prisma)
           ).assertComplete(project.quoteId, tx);
+          if (
+            state.installments.some(
+              (s) =>
+                !project.milestones.some((m) => m.paymentScheduleId === s.id),
+            )
+          ) {
+            throw new ConflictException(
+              'Los hitos deben corresponder a todas las cuotas de la versión oficial vigente.',
+            );
+          }
+        }
         await tx.project.update({
           where: { id: projectId },
           data: { status: ProjectStatus.COMPLETED },

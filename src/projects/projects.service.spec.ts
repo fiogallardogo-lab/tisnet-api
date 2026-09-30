@@ -491,6 +491,16 @@ describe('ProjectsService', () => {
         /hitos oficiales/,
       );
     });
+    it('rejects milestones belonging to a replaced official version', async () => {
+      financial.assertComplete.mockResolvedValue({
+        complete: true,
+        installments: [{ id: 99 }],
+      });
+      await expect(service.closeProject(1, actor)).rejects.toThrow(
+        /versión oficial vigente/,
+      );
+      expect(prismaMock.project.update).not.toHaveBeenCalled();
+    });
     it('rejects unapproved evidence', async () => {
       project.deliverables[0].status = 'IN_REVIEW';
       await expect(service.closeProject(1, actor)).rejects.toThrow(
