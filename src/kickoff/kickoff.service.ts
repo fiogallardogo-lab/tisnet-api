@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, ProjectMemberRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { KickoffDto, ProjectTeamDto } from './kickoff.dto';
@@ -32,6 +32,56 @@ export class KickoffService {
     private readonly prisma: PrismaService,
     private readonly payments: PaymentsService,
   ) {}
+
+  async listAssignedProjects(actor: { id: number; role: string }) {
+    const projects = await this.prisma.project.findMany({
+      where: {
+        status: { not: 'ARCHIVED' },
+        members: {
+          some: {
+            userId: actor.id,
+            isActive: true,
+            memberRole: actor.role as ProjectMemberRole,
+          },
+        },
+      },
+      include: {
+        members: { where: { isActive: true }, select: { id: true } },
+        deliverables: { orderBy: [{ milestoneOrder: 'asc' }, { id: 'asc' }] },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return projects.map((project) => {
+      const approved = project.deliverables.filter(
+        (item) => item.status === 'APPROVED',
+      ).length;
+      const total = project.deliverables.length;
+      const dueDates = project.deliverables.map((item) =>
+        item.dueDate.getTime(),
+      );
+      return {
+        id: project.id,
+        name: project.name,
+        summary: project.shortDescription,
+        description: project.description,
+        status: project.status,
+        progress: total ? Math.round((approved / total) * 100) : 0,
+        startedAt: project.developmentDate?.toISOString() ?? null,
+        estimatedDeliveryAt: dueDates.length
+          ? new Date(Math.max(...dueDates)).toISOString()
+          : null,
+        teamSize: project.members.length,
+        totalDeliverables: total,
+        pendingDeliverables: total - approved,
+        milestones: project.deliverables.map((item) => ({
+          id: item.milestoneId ?? item.id,
+          title: item.title,
+          status: item.status,
+          date: item.dueDate.toISOString(),
+        })),
+      };
+    });
+  }
   private async validateTeam(
     tx: Prisma.TransactionClient,
     members: ProjectTeamDto['members'],
@@ -270,8 +320,12 @@ export class KickoffService {
     const project = await this.detail(projectId, actor);
     let canStart = false;
     if (project.quoteId) {
-      try { await this.payments.assertInitialPayment(project.quoteId); canStart = true; }
-      catch (error) { if (!(error instanceof ConflictException)) throw error; }
+      try {
+        await this.payments.assertInitialPayment(project.quoteId);
+        canStart = true;
+      } catch (error) {
+        if (!(error instanceof ConflictException)) throw error;
+      }
     }
     const candidateUsers = await this.prisma.user.findMany({
       where: {
@@ -304,14 +358,18 @@ export class KickoffService {
               : null),
           notes: project.kickoff.notes || '',
           canStart,
-          blockingReason: canStart ? undefined : 'Se requiere adelanto confirmado.',
+          blockingReason: canStart
+            ? undefined
+            : 'Se requiere adelanto confirmado.',
         }
       : {
           status: 'PENDING',
           scheduledAt: null,
           notes: '',
           canStart,
-          blockingReason: canStart ? undefined : 'Se requiere adelanto confirmado.',
+          blockingReason: canStart
+            ? undefined
+            : 'Se requiere adelanto confirmado.',
         };
 
     const formattedMembers = project.members.map((m) => ({

@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Inject,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -15,6 +17,11 @@ import { UpdateClientProfileDto } from './dto/update-client-profile.dto';
 import { UpdateDeveloperProfileDto } from './dto/update-developer-profile.dto';
 import { hasLegalUpdate, UpdateOwnUserDto } from './dto/update-own-user.dto';
 import { UpdateProductOwnerProfileDto } from './dto/update-product-owner-profile.dto';
+import { randomUUID } from 'node:crypto';
+import {
+  STORAGE_PROVIDER,
+  type StorageProvider,
+} from '../storage/storage-provider.interface';
 
 type UserWithProfiles = Prisma.UserGetPayload<{
   include: {
@@ -36,7 +43,71 @@ export class ProfilesService {
     private readonly usersService: UsersService,
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    @Optional()
+    @Inject(STORAGE_PROVIDER)
+    private readonly storage?: StorageProvider,
   ) {}
+
+  async uploadProfilePhoto(
+    userId: number,
+    role: string,
+    file?: {
+      buffer: Buffer;
+      mimetype: string;
+      size: number;
+      originalname: string;
+    },
+  ) {
+    if (!file) throw new BadRequestException('La fotografía es obligatoria');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      throw new BadRequestException('La fotografía debe ser JPG, PNG o WebP');
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('La fotografía no puede superar los 5 MB');
+    }
+    if (!this.storage)
+      throw new BadRequestException('El almacenamiento no está disponible');
+    const extension =
+      file.mimetype === 'image/png'
+        ? 'png'
+        : file.mimetype === 'image/webp'
+          ? 'webp'
+          : 'jpg';
+    const stored = await this.storage.save({
+      key: `profile-${userId}-${randomUUID()}.${extension}`,
+      content: file.buffer,
+      mimeType: file.mimetype,
+      metadata: { userId: String(userId), kind: 'profile-photo' },
+    });
+    if (role === PLATFORM_ROLES.DEVELOPER) {
+      await this.prisma.developerProfile.upsert({
+        where: { userId },
+        create: { userId, photoUrl: stored.url },
+        update: { photoUrl: stored.url },
+      });
+    } else if (role === PLATFORM_ROLES.PRODUCT_OWNER) {
+      await this.prisma.productOwnerProfile.upsert({
+        where: { userId },
+        create: { userId, photoUrl: stored.url },
+        update: { photoUrl: stored.url },
+      });
+    } else if (
+      role === PLATFORM_ROLES.ADMIN ||
+      role === PLATFORM_ROLES.SUPER_ADMIN
+    ) {
+      await this.prisma.adminProfile.upsert({
+        where: { userId },
+        create: { userId, photoUrl: stored.url },
+        update: { photoUrl: stored.url },
+      });
+    } else {
+      await this.storage.delete(stored.storageKey);
+      throw new BadRequestException(
+        'El rol actual no admite fotografía de perfil',
+      );
+    }
+    return { photoUrl: stored.url };
+  }
 
   async getOwnProfile(userId: number) {
     const user = await this.prisma.user.findUnique({
