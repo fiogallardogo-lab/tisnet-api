@@ -46,3 +46,5 @@ No enviar status. El frontend de este workspace se actualizó para emitir decisi
 Los endpoints nuevos siguen sin fecha hasta definir alcance, responsable y entorno de despliegue. No hay evidencia para declarar integración completa ni disponibilidad pública.
 
 Frontend: 13 pruebas del formulario y build pasaron antes de incorporar los últimos cambios remotos. Lint backend: sin errores, 12 advertencias existentes. No se ejecutó E2E con base de datos en esta entrega.
+
+Validación final tras incorporar origin/develop del frontend: 13 pruebas pasan y build correcto. Frontend usa deliverable.id en lectura/escritura de contribuciones y decision en revisión. Commits frontend: 883f4c1 y 3d40aa3. Backend funcional: 523198f. Persisten avisos de tamaño de bundle/importación dinámica.
