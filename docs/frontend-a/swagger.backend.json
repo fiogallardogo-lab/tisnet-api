@@ -1,0 +1,6477 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "System & Health"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "AppController_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Servicio y dependencias operativas"
+          }
+        },
+        "summary": "Verificar estado de salud y conectividad de la plataforma (S15-B11)",
+        "tags": [
+          "System & Health"
+        ]
+      }
+    },
+    "/api/v1/public/legal/policy": {
+      "get": {
+        "operationId": "CommercialPublicController_legal",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "data: terms{version,text}, privacy{version,text}, approvedAt, contentHash"
+          },
+          "503": {
+            "description": "Contenido aprobado no configurado"
+          }
+        },
+        "summary": "Consultar texto plano legal aprobado y versiones vigentes",
+        "tags": [
+          "Sprint 15 public"
+        ]
+      }
+    },
+    "/api/v1/public/team": {
+      "get": {
+        "operationId": "CommercialPublicController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "data: items[id,displayName,biography,specialty,photoUrl,role,advisorId,cta],page,hasMore"
+          }
+        },
+        "summary": "Directorio aprobado sin datos privados",
+        "tags": [
+          "Sprint 15 public"
+        ]
+      }
+    },
+    "/api/v1/admin/public-team/{userId}": {
+      "put": {
+        "operationId": "CommercialOperationsController_publish",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicTeamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "data: id,approved,updatedAt"
+          },
+          "400": {
+            "description": "DTO o recurso público inválido"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Rol o propietario no autorizado"
+          },
+          "404": {
+            "description": "Recurso inexistente"
+          },
+          "409": {
+            "description": "Conflicto de estado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aprobar/retirar presentación pública con consentimiento explícito",
+        "tags": [
+          "Sprint 15 commercial operations"
+        ]
+      }
+    },
+    "/api/v1/quotes/{id}/financial-status": {
+      "get": {
+        "operationId": "CommercialOperationsController_financialStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "data: quoteId,versionId,version,currency,state,complete,totalMinor,paidMinor,outstandingMinor,installments"
+          },
+          "400": {
+            "description": "DTO o recurso público inválido"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Rol o propietario no autorizado"
+          },
+          "404": {
+            "description": "Recurso inexistente"
+          },
+          "409": {
+            "description": "Conflicto de estado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cierre económico de versión vigente; no concede montos a PO/Developer",
+        "tags": [
+          "Sprint 15 commercial operations"
+        ]
+      }
+    },
+    "/api/v1/quotes/{id}/payment-reminders": {
+      "get": {
+        "operationId": "CommercialOperationsController_listReminders",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "data: recordatorios persistidos, vencimiento Lima y estado de entrega; cliente solo ve sus envíos"
+          },
+          "400": {
+            "description": "DTO o recurso público inválido"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Rol o propietario no autorizado"
+          },
+          "404": {
+            "description": "Recurso inexistente"
+          },
+          "409": {
+            "description": "Conflicto de estado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Sprint 15 commercial operations"
+        ]
+      }
+    },
+    "/api/v1/admin/payment-reminders/{id}/retry": {
+      "post": {
+        "operationId": "CommercialOperationsController_retry",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "data: queued=true; worker revalida deuda antes de enviar"
+          },
+          "400": {
+            "description": "DTO o recurso público inválido"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Rol o propietario no autorizado"
+          },
+          "404": {
+            "description": "Recurso inexistente"
+          },
+          "409": {
+            "description": "Conflicto de estado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Sprint 15 commercial operations"
+        ]
+      }
+    },
+    "/api/v1/admin/quotes/{id}": {
+      "patch": {
+        "operationId": "CommercialController_edit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditQuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "data: cabecera persistida de Quote con updatedAt para la siguiente edición"
+          },
+          "400": {
+            "description": "Validación incorrecta"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Rol o propietario incorrecto"
+          },
+          "404": {
+            "description": "Cotización o versión inexistente"
+          },
+          "409": {
+            "description": "Estado o revisión en conflicto"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Editar borrador sin alterar versiones oficiales",
+        "tags": [
+          "Sprint 14 Commercial"
+        ]
+      },
+      "get": {
+        "operationId": "AdminQuotesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminQuotes"
+        ]
+      }
+    },
+    "/api/v1/admin/quotes/{id}/observations": {
+      "get": {
+        "operationId": "CommercialController_adminObservations",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "data: { items: [{ id, quoteId, versionId, authorId, text, createdAt }] }"
+          },
+          "400": {
+            "description": "Validación incorrecta"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Rol o propietario incorrecto"
+          },
+          "404": {
+            "description": "Cotización o versión inexistente"
+          },
+          "409": {
+            "description": "Estado o revisión en conflicto"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Leer historial inmutable de observaciones",
+        "tags": [
+          "Sprint 14 Commercial"
+        ]
+      }
+    },
+    "/api/v1/admin/quotes/{id}/send": {
+      "post": {
+        "operationId": "CommercialController_send",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "data: { delivery: SENT|FAILED, messageId? }; SENT significa aceptación por proveedor, no lectura del destinatario"
+          },
+          "400": {
+            "description": "Validación incorrecta"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Rol o propietario incorrecto"
+          },
+          "404": {
+            "description": "Cotización o versión inexistente"
+          },
+          "409": {
+            "description": "Estado o revisión en conflicto"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enviar o reintentar cotización con PDF al contacto persistido",
+        "tags": [
+          "Sprint 14 Commercial"
+        ]
+      }
+    },
+    "/api/v1/client/quotes/{id}/observations": {
+      "post": {
+        "operationId": "CommercialController_observe",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "data: { id, quoteId, versionId, authorId, text, createdAt }; observación y auditoría atómicas"
+          },
+          "400": {
+            "description": "Validación incorrecta"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Rol o propietario incorrecto"
+          },
+          "404": {
+            "description": "Cotización o versión inexistente"
+          },
+          "409": {
+            "description": "Estado o revisión en conflicto"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar observación auditada sobre la versión activa",
+        "tags": [
+          "Sprint 14 Commercial"
+        ]
+      },
+      "get": {
+        "operationId": "CommercialController_observations",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "data: { items: [{ id, quoteId, versionId, authorId, text, createdAt }] }; solo cotización propia"
+          },
+          "400": {
+            "description": "Validación incorrecta"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Rol o propietario incorrecto"
+          },
+          "404": {
+            "description": "Cotización o versión inexistente"
+          },
+          "409": {
+            "description": "Estado o revisión en conflicto"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Sprint 14 Commercial"
+        ]
+      }
+    },
+    "/api/v1/public/contact": {
+      "post": {
+        "operationId": "ContactController_contact",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Consulta persistida: data.code, data.status=RECEIVED, data.createdAt"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "429": {
+            "description": "Demasiadas consultas"
+          }
+        },
+        "summary": "Persistir consulta y devolver código verificable; no afirma envío por correo",
+        "tags": [
+          "Public contact"
+        ]
+      }
+    },
+    "/api/v1/auth/activate": {
+      "post": {
+        "operationId": "ActivationController_activate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "data: { activated: true }; contraseña y consentimiento guardados, token invalidado"
+          },
+          "400": {
+            "description": "DTO/token inválido, vencido o versión legal incorrecta"
+          },
+          "409": {
+            "description": "Token usado o correo existente"
+          },
+          "503": {
+            "description": "Versiones legales no configuradas"
+          }
+        },
+        "summary": "Activar una cuenta una sola vez con consentimiento legal",
+        "tags": [
+          "Account activation"
+        ]
+      }
+    },
+    "/api/v1/auth/request-activation": {
+      "post": {
+        "operationId": "ActivationController_request",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestActivationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "data: { requested: true, message: string }; respuesta genérica para todas las cuentas"
+          },
+          "400": {
+            "description": "DTO/token inválido, vencido o versión legal incorrecta"
+          },
+          "409": {
+            "description": "Token usado o correo existente"
+          }
+        },
+        "summary": "Solicitar correo de activación sin enumerar cuentas",
+        "tags": [
+          "Account activation"
+        ]
+      }
+    },
+    "/api/v1/auth/client-invitations": {
+      "post": {
+        "operationId": "ActivationController_invite",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteClientDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "data: { id, email, isActive: false, delivery: SENT|FAILED, messageId? }; nunca devuelve token ni contraseña"
+          },
+          "400": {
+            "description": "DTO/token inválido, vencido o versión legal incorrecta"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Solo ADMIN y SUPER_ADMIN"
+          },
+          "409": {
+            "description": "Token usado o correo existente"
+          },
+          "503": {
+            "description": "Rol CLIENT no configurado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear cliente inactivo e invitar por correo; no retorna el token",
+        "tags": [
+          "Account activation"
+        ]
+      }
+    },
+    "/api/v1/users/me/profile": {
+      "get": {
+        "operationId": "ProfilesController_getOwnProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar el usuario y perfil del rol actual",
+        "tags": [
+          "Profiles"
+        ]
+      }
+    },
+    "/api/v1/users/me/photo": {
+      "post": {
+        "operationId": "ProfilesController_uploadPhoto",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Subir y guardar la fotografía del perfil autenticado",
+        "tags": [
+          "Profiles"
+        ]
+      }
+    },
+    "/api/v1/users/me": {
+      "patch": {
+        "operationId": "ProfilesController_updateOwnUser",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOwnUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar el nombre o aceptación legal del usuario autenticado",
+        "tags": [
+          "Profiles"
+        ]
+      }
+    },
+    "/api/v1/users/me/client-profile": {
+      "patch": {
+        "operationId": "ProfilesController_updateClientProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClientProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear o actualizar el perfil CLIENT propio",
+        "tags": [
+          "Profiles"
+        ]
+      }
+    },
+    "/api/v1/users/me/developer-profile": {
+      "patch": {
+        "operationId": "ProfilesController_updateDeveloperProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeveloperProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear o actualizar el perfil DEVELOPER propio",
+        "tags": [
+          "Profiles"
+        ]
+      }
+    },
+    "/api/v1/users/me/product-owner-profile": {
+      "patch": {
+        "operationId": "ProfilesController_updateProductOwnerProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductOwnerProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear o actualizar el perfil PRODUCT_OWNER propio",
+        "tags": [
+          "Profiles"
+        ]
+      }
+    },
+    "/api/v1/users/me/admin-profile": {
+      "patch": {
+        "operationId": "ProfilesController_updateAdminProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear o actualizar el perfil ADMIN o SUPER_ADMIN propio",
+        "tags": [
+          "Profiles"
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "description": "Solo ADMIN/SUPER_ADMIN. Lista las cuentas existentes con paginación, búsqueda por nombre o correo y filtro por estado.",
+        "operationId": "UsersController_listUsers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Listado paginado de usuarios. No expone passwordHash ni otros datos sensibles."
+          },
+          "401": {
+            "description": "JWT ausente o inválido."
+          },
+          "403": {
+            "description": "El actor no es ADMIN ni SUPER_ADMIN."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar cuentas de usuario",
+        "tags": [
+          "Users"
+        ]
+      },
+      "post": {
+        "description": "Solo ADMIN/SUPER_ADMIN. Crea CLIENT, DEVELOPER, PRODUCT_OWNER o ADMIN con su perfil. No permite crear SUPER_ADMIN. acceptedTerms debe ser true; termsVersion/privacyVersion deben coincidir con TERMS_VERSION/PRIVACY_VERSION del backend. Persiste acceptedTermsAt del servidor.",
+        "operationId": "UsersController_createUser",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario y perfil creados. data: id, name, email, role, isActive, acceptedTermsAt, termsVersion, privacyVersion; sin passwordHash."
+          },
+          "400": {
+            "description": "DTO, consentimiento, rol creado o versiones legales inválidos."
+          },
+          "401": {
+            "description": "JWT ausente o inválido."
+          },
+          "403": {
+            "description": "El actor no es ADMIN ni SUPER_ADMIN."
+          },
+          "409": {
+            "description": "El correo ya está registrado."
+          },
+          "503": {
+            "description": "Configuración legal ausente o inválida; no se crean datos."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un usuario mediante alta administrativa",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}": {
+      "patch": {
+        "operationId": "UsersController_updateUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar rol o estado de una cuenta gestionable",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Iniciar sesion y obtener tokens",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Registrar una cuenta de Cliente",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Renovar sesion (Refresh Token)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cerrar sesion",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "AuthController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener datos del usuario actual",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Solicitar enlace de recuperacion de contrasena",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Restablecer contrasena usando token temporal",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/categories": {
+      "post": {
+        "operationId": "CategoriesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Categories"
+        ]
+      },
+      "get": {
+        "operationId": "CategoriesController_findAll",
+        "parameters": [
+          {
+            "name": "isActive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
+    "/api/v1/categories/{id}": {
+      "get": {
+        "operationId": "CategoriesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Categories"
+        ]
+      },
+      "patch": {
+        "operationId": "CategoriesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
+    "/api/v1/technologies": {
+      "post": {
+        "operationId": "TechnologiesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTechnologyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Technologies"
+        ]
+      },
+      "get": {
+        "operationId": "TechnologiesController_findAll",
+        "parameters": [
+          {
+            "name": "isActive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Technologies"
+        ]
+      }
+    },
+    "/api/v1/technologies/catalog": {
+      "get": {
+        "description": "Devuelve únicamente tecnologías activas. Permite filtrar por nombre mediante search, por categoría mediante categoryId o combinar ambos filtros.",
+        "operationId": "TechnologiesController_catalog",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Texto de búsqueda por nombre de tecnología.",
+            "schema": {
+              "maxLength": 100,
+              "example": "react",
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "description": "Identificador de la categoría tecnológica.",
+            "schema": {
+              "minimum": 1,
+              "example": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Devuelve tecnologías activas ordenadas por nombre e id. Si no existen coincidencias, data es un arreglo vacío.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "React"
+                          },
+                          "icon": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "react.svg"
+                          },
+                          "categoryId": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 1
+                          },
+                          "categoryName": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "Frontend"
+                          },
+                          "isActive": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ],
+                            "example": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta inválidos, como categoryId no entero, menor que 1 o parámetros no soportados."
+          },
+          "401": {
+            "description": "JWT ausente o inválido."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Catálogo activo para cualquier usuario autenticado",
+        "tags": [
+          "Technologies"
+        ]
+      }
+    },
+    "/api/v1/technologies/{id}": {
+      "get": {
+        "operationId": "TechnologiesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Technologies"
+        ]
+      },
+      "patch": {
+        "operationId": "TechnologiesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTechnologyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Technologies"
+        ]
+      }
+    },
+    "/api/v1/projects": {
+      "post": {
+        "operationId": "ProjectsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Proyecto creado correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o reglas de negocio incumplidas"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "409": {
+            "description": "El slug ya está registrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un proyecto administrativo",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "get": {
+        "operationId": "ProjectsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "inventario",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "IN_DEVELOPMENT",
+                "IN_REVIEW",
+                "COMPLETED",
+                "ARCHIVED"
+              ]
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "isPublished",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar proyectos administrativos",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}": {
+      "get": {
+        "operationId": "ProjectsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o reglas de negocio incumplidas"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "404": {
+            "description": "Proyecto no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar un proyecto administrativo",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "patch": {
+        "operationId": "ProjectsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o reglas de negocio incumplidas"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "404": {
+            "description": "Proyecto no encontrado"
+          },
+          "409": {
+            "description": "El slug ya está registrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Editar un proyecto administrativo",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/publish": {
+      "patch": {
+        "operationId": "ProjectsController_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o reglas de negocio incumplidas"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "404": {
+            "description": "Proyecto no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Publicar un proyecto",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/unpublish": {
+      "patch": {
+        "operationId": "ProjectsController_unpublish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "404": {
+            "description": "Proyecto no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Despublicar un proyecto",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/archive": {
+      "patch": {
+        "operationId": "ProjectsController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "404": {
+            "description": "Proyecto no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archivar un proyecto sin eliminarlo",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/close": {
+      "post": {
+        "operationId": "ProjectsController_close",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proyecto cerrado exitosamente"
+          },
+          "400": {
+            "description": "Hitos no aprobados o cuotas de pago impagas"
+          },
+          "403": {
+            "description": "Solo el PO o Admin puede cerrar el proyecto"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cerrar formalmente un proyecto (S15-B07)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/report": {
+      "get": {
+        "operationId": "ProjectsController_getReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Informe en JSON o PDF descargable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Descargar informe oficial de trazabilidad del proyecto (S15-B06)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/v1/public/projects": {
+      "get": {
+        "operationId": "PublicProjectsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "inventario",
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "technologyId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "isFeatured",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          }
+        },
+        "summary": "Listar proyectos publicados del portafolio",
+        "tags": [
+          "Public Projects"
+        ]
+      }
+    },
+    "/api/v1/public/projects/{slug}": {
+      "get": {
+        "operationId": "PublicProjectsController_findOne",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "404": {
+            "description": "Proyecto no encontrado"
+          }
+        },
+        "summary": "Consultar un proyecto publicado por slug",
+        "tags": [
+          "Public Projects"
+        ]
+      }
+    },
+    "/api/v1/admin/quotes/{id}/versions": {
+      "post": {
+        "operationId": "PaymentsController_officialize",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfficialQuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Versión persistida con id, version, scope y schedules; envío PDF intentado después de guardar"
+          },
+          "400": {
+            "description": "Cliente, alcance, importe o cuotas inválidos"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Solo ADMIN y SUPER_ADMIN"
+          },
+          "404": {
+            "description": "Cotización inexistente"
+          },
+          "409": {
+            "description": "Cotización sin prospecto o con pagos confirmados"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear una nueva versión oficial inmutable con 1 a 5 cuotas",
+        "tags": [
+          "Commercial official versions"
+        ]
+      },
+      "get": {
+        "operationId": "PaymentsController_versions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array de versiones en orden descendente"
+          },
+          "400": {
+            "description": "Cliente, alcance, importe o cuotas inválidos"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Solo ADMIN y SUPER_ADMIN"
+          },
+          "404": {
+            "description": "Cotización inexistente"
+          },
+          "409": {
+            "description": "Cotización sin prospecto o con pagos confirmados"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar historial de versiones con cronograma",
+        "tags": [
+          "Commercial official versions"
+        ]
+      }
+    },
+    "/api/v1/admin/payments/events": {
+      "post": {
+        "operationId": "PaymentsController_record",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "400": {
+            "description": "Cliente, alcance, importe o cuotas inválidos"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Solo ADMIN y SUPER_ADMIN"
+          },
+          "404": {
+            "description": "Cotización inexistente"
+          },
+          "409": {
+            "description": "Cotización sin prospecto o con pagos confirmados"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Commercial official versions"
+        ]
+      }
+    },
+    "/api/v1/payments/culqi/webhook": {
+      "post": {
+        "operationId": "CulqiWebhookController_handleWebhook",
+        "parameters": [
+          {
+            "name": "authorization",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook acknowledged successfully"
+          }
+        },
+        "summary": "Receives and handles asynchronous events from Culqi payment gateway",
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
+    "/api/v1/reports/projects": {
+      "get": {
+        "operationId": "ReportsController_getProjectsReport",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/projects/{projectId}/report": {
+      "get": {
+        "operationId": "ReportsController_getProjectReport",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "json",
+                "pdf"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Informe generado en formato JSON o PDF"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generar y descargar informe de trazabilidad del proyecto (S15-B06)",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/services": {
+      "post": {
+        "operationId": "ServicesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Servicio creado correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o reglas de negocio incumplidas"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "409": {
+            "description": "El slug ya está registrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un servicio administrativo",
+        "tags": [
+          "Services"
+        ]
+      },
+      "get": {
+        "operationId": "ServicesController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Número de página a consultar",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Cantidad de registros por página",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "example": 10,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Búsqueda por texto en nombre, slug o descripción corta",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por estado activo (true) o inactivo (false)",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isFeatured",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por servicios destacados (true) o no destacados (false)",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o parámetros incorrectos"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar servicios administrativos",
+        "tags": [
+          "Services"
+        ]
+      }
+    },
+    "/api/v1/services/{id}": {
+      "get": {
+        "operationId": "ServicesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o reglas de negocio incumplidas"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "404": {
+            "description": "Servicio no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar un servicio administrativo",
+        "tags": [
+          "Services"
+        ]
+      },
+      "patch": {
+        "operationId": "ServicesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o reglas de negocio incumplidas"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "404": {
+            "description": "Servicio no encontrado"
+          },
+          "409": {
+            "description": "El slug ya está registrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Editar un servicio administrativo",
+        "tags": [
+          "Services"
+        ]
+      }
+    },
+    "/api/v1/services/{id}/activate": {
+      "patch": {
+        "operationId": "ServicesController_activate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Servicio activado correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o reglas de negocio incumplidas"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "404": {
+            "description": "Servicio no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activar un servicio",
+        "tags": [
+          "Services"
+        ]
+      }
+    },
+    "/api/v1/services/{id}/deactivate": {
+      "patch": {
+        "operationId": "ServicesController_deactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Servicio desactivado correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o reglas de negocio incumplidas"
+          },
+          "401": {
+            "description": "Token JWT ausente, inválido o expirado"
+          },
+          "403": {
+            "description": "No tienes permisos suficientes"
+          },
+          "404": {
+            "description": "Servicio no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Desactivar un servicio",
+        "tags": [
+          "Services"
+        ]
+      }
+    },
+    "/api/v1/public/services": {
+      "get": {
+        "operationId": "PublicServicesController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Número de página a consultar en el catálogo público",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Cantidad de tarjetas por página en el portal público",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12,
+              "example": 12,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Búsqueda por texto en nombre o descripción corta",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "isFeatured",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar únicamente servicios destacados en portal público",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "400": {
+            "description": "Solicitud inválida o parámetros incorrectos"
+          }
+        },
+        "summary": "Listar servicios activos del catálogo público",
+        "tags": [
+          "Public Services"
+        ]
+      }
+    },
+    "/api/v1/public/services/{slug}": {
+      "get": {
+        "operationId": "PublicServicesController_findOne",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación realizada correctamente"
+          },
+          "404": {
+            "description": "Servicio no encontrado"
+          }
+        },
+        "summary": "Consultar un servicio activo por slug",
+        "tags": [
+          "Public Services"
+        ]
+      }
+    },
+    "/api/v1/public/project-quotes": {
+      "post": {
+        "operationId": "IntakeController_quote",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Intake"
+        ]
+      }
+    },
+    "/api/v1/public/team-applications": {
+      "post": {
+        "operationId": "IntakeController_apply",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamApplicationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Intake"
+        ]
+      }
+    },
+    "/api/v1/public/quotes": {
+      "post": {
+        "operationId": "PublicQuotesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublicQuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cotización registrada correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatePublicQuoteResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload, formato, tipo o campo desconocido"
+          },
+          "422": {
+            "description": "Solución u opción inexistente, inactiva o incompatible"
+          },
+          "429": {
+            "description": "Demasiadas solicitudes"
+          },
+          "503": {
+            "description": "No fue posible registrar la cotización"
+          }
+        },
+        "summary": "Registrar una cotización pública",
+        "tags": [
+          "Public Quotes"
+        ]
+      }
+    },
+    "/api/v1/admin/quotes": {
+      "get": {
+        "operationId": "AdminQuotesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminQuotes"
+        ]
+      }
+    },
+    "/api/v1/public/quotes/{code}": {
+      "get": {
+        "operationId": "QuoteLookupController_find",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "QuoteLookup"
+        ]
+      }
+    },
+    "/api/v1/quotes/{code}/pdf": {
+      "get": {
+        "operationId": "QuotePdfController_pdf",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "QuotePdf"
+        ]
+      }
+    },
+    "/api/v1/prospects/link-quote": {
+      "post": {
+        "operationId": "ProspectsController_linkQuote",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkQuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cotización vinculada correctamente"
+          },
+          "403": {
+            "description": "El correo de la cotización no coincide"
+          },
+          "404": {
+            "description": "Cotización no encontrada"
+          },
+          "409": {
+            "description": "Código reutilizado o cotización vinculada a otro prospecto"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Vincular una cotización previa al cliente actual",
+        "tags": [
+          "Prospects"
+        ]
+      }
+    },
+    "/api/v1/prospects/me": {
+      "get": {
+        "operationId": "ProspectsController_findOwn",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar el prospecto del cliente actual",
+        "tags": [
+          "Prospects"
+        ]
+      }
+    },
+    "/api/v1/prospects": {
+      "get": {
+        "operationId": "ProspectsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "cliente@empresa.pe",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NEW",
+                "CONTACTED",
+                "QUALIFIED",
+                "CONVERTED",
+                "LOST"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar prospectos para gestión administrativa",
+        "tags": [
+          "Prospects"
+        ]
+      }
+    },
+    "/api/v1/prospects/{id}": {
+      "get": {
+        "operationId": "ProspectsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prospecto encontrado"
+          },
+          "404": {
+            "description": "Prospecto no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar el detalle administrativo de un prospecto",
+        "tags": [
+          "Prospects"
+        ]
+      }
+    },
+    "/api/v1/prospects/{id}/status": {
+      "patch": {
+        "operationId": "ProspectsController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProspectStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado actualizado correctamente"
+          },
+          "404": {
+            "description": "Prospecto no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar el estado comercial de un prospecto",
+        "tags": [
+          "Prospects"
+        ]
+      }
+    },
+    "/api/v1/meetings/{id}/status": {
+      "patch": {
+        "operationId": "CommercialMeetingsController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeetingStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CommercialMeetings"
+        ]
+      }
+    },
+    "/api/v1/meetings/{id}/reschedule": {
+      "patch": {
+        "operationId": "CommercialMeetingsController_reschedule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescheduleMeetingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CommercialMeetings"
+        ]
+      }
+    },
+    "/api/v1/meetings/my": {
+      "get": {
+        "operationId": "CommercialMeetingsController_own",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CommercialMeetings"
+        ]
+      }
+    },
+    "/api/v1/admin/meetings": {
+      "get": {
+        "operationId": "CommercialMeetingsController_all",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CommercialMeetings"
+        ]
+      }
+    },
+    "/api/v1/public/advisors/{id}/availability": {
+      "get": {
+        "operationId": "CommercialMeetingsPublicController_availability",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CommercialMeetingsPublic"
+        ]
+      }
+    },
+    "/api/v1/public/meetings": {
+      "post": {
+        "operationId": "CommercialMeetingsPublicController_book",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookMeetingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CommercialMeetingsPublic"
+        ]
+      }
+    },
+    "/api/v1/public/advisors": {
+      "get": {
+        "operationId": "PublicAdvisorsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Listar asesores públicos activos",
+        "tags": [
+          "Public Advisors"
+        ]
+      }
+    },
+    "/api/v1/advisors/{profileId}/public-visibility": {
+      "patch": {
+        "operationId": "AdvisorsAdminController_setVisibility",
+        "parameters": [
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAdvisorVisibilityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Visibilidad actualizada"
+          },
+          "404": {
+            "description": "Perfil de asesor no encontrado"
+          },
+          "409": {
+            "description": "El usuario del perfil está inactivo"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Publicar u ocultar un perfil de asesor",
+        "tags": [
+          "Advisors"
+        ]
+      }
+    },
+    "/api/v1/integrations/calendly/webhook": {
+      "post": {
+        "operationId": "CalendlyWebhookController_handle",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CalendlyWebhook"
+        ]
+      }
+    },
+    "/api/v1/kickoff": {
+      "post": {
+        "operationId": "KickoffController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KickoffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Kickoff"
+        ]
+      }
+    },
+    "/api/v1/workspace/projects": {
+      "get": {
+        "operationId": "KickoffController_assignedProjects",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Kickoff"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/operations": {
+      "get": {
+        "operationId": "KickoffController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Kickoff"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/kickoff": {
+      "post": {
+        "operationId": "KickoffController_scheduleKickoff",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleKickoffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Kickoff"
+        ]
+      },
+      "patch": {
+        "operationId": "KickoffController_updateKickoff",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleKickoffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Kickoff"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/members": {
+      "get": {
+        "operationId": "KickoffController_members",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Kickoff"
+        ]
+      },
+      "post": {
+        "operationId": "KickoffController_addMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Kickoff"
+        ]
+      },
+      "patch": {
+        "operationId": "KickoffController_setTeam",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectTeamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Kickoff"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/product-owner": {
+      "put": {
+        "operationId": "KickoffController_assignProductOwner",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignProductOwnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Kickoff"
+        ]
+      }
+    },
+    "/api/v1/admin/audit": {
+      "get": {
+        "operationId": "AuditController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/admin/audit/report": {
+      "get": {
+        "operationId": "AuditController_report",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/admin/audit/payments": {
+      "get": {
+        "operationId": "AuditController_payments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/admin/audit/export": {
+      "get": {
+        "operationId": "AuditController_export",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/deliverables": {
+      "get": {
+        "operationId": "DeliverablesController_list",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entregables ordenados por hito"
+          },
+          "401": {
+            "description": "Sesión ausente o inválida"
+          },
+          "403": {
+            "description": "Membresía insuficiente"
+          },
+          "404": {
+            "description": "Proyecto no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar entregables de un proyecto accesible",
+        "tags": [
+          "Project deliverables"
+        ]
+      },
+      "post": {
+        "operationId": "DeliverablesController_create",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Entregable creado en estado DRAFT"
+          },
+          "400": {
+            "description": "Payload inválido"
+          },
+          "403": {
+            "description": "Rol o membresía insuficiente"
+          },
+          "404": {
+            "description": "Proyecto no encontrado"
+          },
+          "409": {
+            "description": "Orden de hito duplicado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un hito entregable",
+        "tags": [
+          "Project deliverables"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/deliverables/{deliverableId}/submit": {
+      "patch": {
+        "operationId": "DeliverablesController_submit",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Entregable enviado a IN_REVIEW"
+          },
+          "400": {
+            "description": "Evidencia ausente o URL inválida"
+          },
+          "403": {
+            "description": "Rol o membresía insuficiente"
+          },
+          "404": {
+            "description": "Proyecto o entregable no encontrado"
+          },
+          "409": {
+            "description": "Transición de estado inválida"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enviar o reenviar evidencia para revisión",
+        "tags": [
+          "Project deliverables"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/deliverables/{deliverableId}/review": {
+      "patch": {
+        "operationId": "DeliverablesController_review",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Revisión persistida"
+          },
+          "400": {
+            "description": "Observación sin notas"
+          },
+          "403": {
+            "description": "Rol o membresía insuficiente"
+          },
+          "404": {
+            "description": "Proyecto o entregable no encontrado"
+          },
+          "409": {
+            "description": "Transición de estado inválida"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aprobar u observar un entregable en revisión",
+        "tags": [
+          "Project deliverables"
+        ]
+      },
+      "post": {
+        "operationId": "DeliverablesController_reviewPost",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aprobar u observar un entregable (alias POST)",
+        "tags": [
+          "Project deliverables"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/deliverables/{deliverableId}/evidence": {
+      "post": {
+        "operationId": "DeliverablesController_submitEvidence",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitEvidenceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Subir evidencia completa (PDF + Video)",
+        "tags": [
+          "Project deliverables"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/deliverables/{deliverableId}/history": {
+      "get": {
+        "operationId": "DeliverablesController_getHistory",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar historial y trazabilidad del entregable",
+        "tags": [
+          "Project deliverables"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/deliverables/{id}/files": {
+      "post": {
+        "operationId": "DeliverablesController_uploadFile",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Archivo subido exitosamente"
+          },
+          "400": {
+            "description": "Archivo o formato inválido"
+          },
+          "403": {
+            "description": "Membresía insuficiente"
+          },
+          "404": {
+            "description": "Entregable no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Subir archivo de entregable (PDF o video)",
+        "tags": [
+          "Project deliverables"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/milestones/{milestoneId}/evidence": {
+      "post": {
+        "operationId": "MilestonesController_submitEvidence[0]",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "milestoneId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitEvidenceDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitEvidenceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Evidencia registrada y enviada a IN_REVIEW"
+          },
+          "400": {
+            "description": "Falta PDF o enlace de video"
+          },
+          "403": {
+            "description": "Membresía o rol insuficiente"
+          },
+          "404": {
+            "description": "Hito o proyecto no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Subir evidencia completa (PDF + Video) para revisión del hito",
+        "tags": [
+          "Project milestones (Sprint 15)"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/milestones/{milestoneId}/evidence/pdf": {
+      "post": {
+        "operationId": "MilestonesController_submitEvidence[1]",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "milestoneId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitEvidenceDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitEvidenceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Evidencia registrada y enviada a IN_REVIEW"
+          },
+          "400": {
+            "description": "Falta PDF o enlace de video"
+          },
+          "403": {
+            "description": "Membresía o rol insuficiente"
+          },
+          "404": {
+            "description": "Hito o proyecto no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Subir evidencia completa (PDF + Video) para revisión del hito",
+        "tags": [
+          "Project milestones (Sprint 15)"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/milestones/{milestoneId}/review": {
+      "post": {
+        "operationId": "MilestonesController_review",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "milestoneId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Revisión registrada con éxito"
+          },
+          "400": {
+            "description": "Observación sin notas/comentarios"
+          },
+          "403": {
+            "description": "Rol insuficiente (solo Cliente, PO o Admin)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aprobar u observar un hito en revisión",
+        "tags": [
+          "Project milestones (Sprint 15)"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/milestones/{milestoneId}/history": {
+      "get": {
+        "operationId": "MilestonesController_getHistory",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "milestoneId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Línea de tiempo de eventos y evidencias"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar historial y trazabilidad de un hito",
+        "tags": [
+          "Project milestones (Sprint 15)"
+        ]
+      }
+    },
+    "/api/v1/client/overview": {
+      "get": {
+        "operationId": "ClientPortalController_overview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Client portal"
+        ]
+      }
+    },
+    "/api/v1/client/meetings": {
+      "post": {
+        "operationId": "ClientPortalController_requestMeeting",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestClientMeetingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Client portal"
+        ]
+      }
+    },
+    "/api/v1/client/meetings/{id}/cancel": {
+      "patch": {
+        "operationId": "ClientPortalController_cancelMeeting",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Client portal"
+        ]
+      }
+    },
+    "/api/v1/client/projects/{id}/kickoff": {
+      "get": {
+        "operationId": "ClientPortalController_getKickoff",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Client portal"
+        ]
+      },
+      "post": {
+        "operationId": "ClientPortalController_scheduleKickoff",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleKickoffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Client portal"
+        ]
+      }
+    },
+    "/api/v1/client/quotes/{id}/agreement": {
+      "get": {
+        "operationId": "ClientQuotesController_getAgreement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Client portal"
+        ]
+      }
+    },
+    "/api/v1/client/quotes/{id}/accept": {
+      "post": {
+        "operationId": "ClientQuotesController_acceptAgreement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptQuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "data: { accepted: true, acceptedAt: ISODate }; reintentos conservan la misma fecha"
+          },
+          "400": {
+            "description": "accepted debe ser true y versionId un entero positivo"
+          },
+          "401": {
+            "description": "Sesión requerida"
+          },
+          "403": {
+            "description": "Solo CLIENT"
+          },
+          "404": {
+            "description": "Cotización no accesible o versión inexistente"
+          },
+          "409": {
+            "description": "La versión ha sido sustituida"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aceptar por ID persistido de versión activa; repetición idempotente",
+        "tags": [
+          "Client portal"
+        ]
+      }
+    },
+    "/api/v1/client/payments/{installmentId}/charge": {
+      "post": {
+        "operationId": "ClientPaymentsController_createCharge",
+        "parameters": [
+          {
+            "name": "installmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCardChargeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Client portal"
+        ]
+      }
+    },
+    "/api/v1/client/payments/{installmentId}/checkout": {
+      "post": {
+        "operationId": "ClientPaymentsController_createCheckout",
+        "parameters": [
+          {
+            "name": "installmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Client portal"
+        ]
+      }
+    },
+    "/api/v1/team-applications/my-interviews": {
+      "get": {
+        "operationId": "TeamApplicationsController_findMyInterviews",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar entrevistas asignadas al administrador autenticado",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/my-interviews/{id}/photo": {
+      "get": {
+        "operationId": "TeamApplicationsController_getMyInterviewPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/my-interviews/{id}/cv": {
+      "get": {
+        "operationId": "TeamApplicationsController_getMyInterviewCv",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/my-interviews/{id}": {
+      "get": {
+        "operationId": "TeamApplicationsController_findMyInterview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/my-interviews/{id}/decision": {
+      "patch": {
+        "operationId": "TeamApplicationsController_decideMyInterview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar el resultado de una entrevista asignada",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications": {
+      "get": {
+        "operationId": "TeamApplicationsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_REVIEW",
+                "INTERVIEW_ASSIGNED",
+                "ACCEPTED",
+                "REJECTED"
+              ]
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DEVELOPER",
+                "PRODUCT_OWNER"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado paginado de postulaciones"
+          },
+          "401": {
+            "description": "JWT ausente o inválido"
+          },
+          "403": {
+            "description": "Acceso exclusivo de SUPER_ADMIN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar postulaciones para revisión administrativa",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/interviewers": {
+      "get": {
+        "operationId": "TeamApplicationsController_findInterviewers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Administradores entrevistadores disponibles"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar administradores activos para entrevistas",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/{id}/photo": {
+      "get": {
+        "operationId": "TeamApplicationsController_getPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fotografía del postulante"
+          },
+          "404": {
+            "description": "Postulación no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar la fotografía privada del postulante",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/{id}/cv": {
+      "get": {
+        "operationId": "TeamApplicationsController_getCv",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CV del postulante"
+          },
+          "404": {
+            "description": "Postulación no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Descargar el CV privado del postulante",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/{id}": {
+      "get": {
+        "operationId": "TeamApplicationsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle administrativo de la postulación"
+          },
+          "404": {
+            "description": "Postulación no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar el perfil completo de una postulación",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/{id}/assign-interview": {
+      "patch": {
+        "operationId": "TeamApplicationsController_assignInterview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignInterviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Entrevistador asignado y notificación procesada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Asignar un administrador para la entrevista",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/{id}/reject": {
+      "patch": {
+        "operationId": "TeamApplicationsController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectTeamApplicationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Postulación rechazada y notificación procesada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rechazar una postulación con motivo",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/{id}/signed-url": {
+      "get": {
+        "operationId": "TeamApplicationsController_getSignedUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "fileType",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generar URL firmada temporal para descarga segura de CV o fotografía",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/{id}/secure-download": {
+      "get": {
+        "operationId": "TeamApplicationsController_downloadSecureFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "token",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileType",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Descargar archivo mediante token firmado temporal con expiración",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/{id}/decision": {
+      "patch": {
+        "operationId": "TeamApplicationsController_decideApplication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar decisión sobre una postulación en entrevista por SUPER_ADMIN",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/team-applications/{id}/accept": {
+      "patch": {
+        "operationId": "TeamApplicationsController_accept",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aceptar una postulación en entrevista por SUPER_ADMIN",
+        "tags": [
+          "Team Applications"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/milestones/{milestoneId}/contributions": {
+      "post": {
+        "operationId": "ContributionsController_recordMilestoneContributions",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "milestoneId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveContributionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contribuciones registradas exitosamente"
+          },
+          "400": {
+            "description": "Suma de porcentajes inválida o integrante no pertenece"
+          },
+          "403": {
+            "description": "Solo el PO o Admin puede registrar contribuciones"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar contribuciones del equipo para un hito (PO)",
+        "tags": [
+          "Project contributions"
+        ]
+      },
+      "get": {
+        "operationId": "ContributionsController_getMilestoneContributions",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "milestoneId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar contribuciones de un hito",
+        "tags": [
+          "Project contributions"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/deliverables/{deliverableId}/contributions": {
+      "post": {
+        "operationId": "ContributionsController_recordDeliverableContributions",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveContributionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Alias para registrar contribuciones por ID de entregable",
+        "tags": [
+          "Project contributions"
+        ]
+      },
+      "get": {
+        "operationId": "ContributionsController_getDeliverableContributions",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Alias para consultar contribuciones por entregable",
+        "tags": [
+          "Project contributions"
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/contributions": {
+      "get": {
+        "operationId": "ContributionsController_getProjectContributions",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resumen de contribuciones y desglose del equipo"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar reporte acumulado de contribuciones del proyecto",
+        "tags": [
+          "Project contributions"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "TISNET API snapshot 2026-09-30",
+    "description": "",
+    "version": "0ef120d",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "Object": {
+        "type": "object",
+        "properties": {}
+      },
+      "PublicTeamDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "biography": {
+            "type": "string"
+          },
+          "specialty": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "approved": {
+            "type": "boolean"
+          },
+          "consentRecorded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "displayName",
+          "biography",
+          "specialty",
+          "approved",
+          "consentRecorded"
+        ]
+      },
+      "EditQuoteDto": {
+        "type": "object",
+        "properties": {
+          "expectedUpdatedAt": {
+            "type": "string",
+            "description": "Valor updatedAt recibido al consultar la cotización"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedUpdatedAt"
+        ]
+      },
+      "ObservationDto": {
+        "type": "object",
+        "properties": {
+          "versionId": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "versionId",
+          "text"
+        ]
+      },
+      "ContactDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "subject",
+          "message"
+        ]
+      },
+      "ActivationDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true,
+            "minLength": 8,
+            "maxLength": 72
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "termsVersion": {
+            "type": "string"
+          },
+          "privacyVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password",
+          "acceptedTerms",
+          "termsVersion",
+          "privacyVersion"
+        ]
+      },
+      "RequestActivationDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "InviteClientDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ]
+      },
+      "UpdateOwnUserDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Obligatorio junto con ambas versiones para renovar la aceptación legal"
+          },
+          "termsVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "privacyVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          }
+        }
+      },
+      "UpdateClientProfileDto": {
+        "type": "object",
+        "properties": {
+          "dni": {
+            "type": "string",
+            "pattern": "^\\d{8}$"
+          },
+          "age": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 130
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 20
+          },
+          "ruc": {
+            "type": "string",
+            "pattern": "^\\d{11}$"
+          }
+        }
+      },
+      "UpdateDeveloperProfileDto": {
+        "type": "object",
+        "properties": {
+          "technologyIds": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "UpdateProductOwnerProfileDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateAdminProfileDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Usuario TISNET",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "example": "usuario@tisnet.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72,
+            "writeOnly": true
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CLIENT",
+              "DEVELOPER",
+              "PRODUCT_OWNER",
+              "ADMIN"
+            ],
+            "example": "DEVELOPER"
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "example": true
+          },
+          "termsVersion": {
+            "type": "string",
+            "example": "v1.0",
+            "maxLength": 50
+          },
+          "privacyVersion": {
+            "type": "string",
+            "example": "v1.0",
+            "maxLength": 50
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password",
+          "role",
+          "acceptedTerms",
+          "termsVersion",
+          "privacyVersion"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "admin@tisnet.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "password123"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Cliente TISNET",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "example": "cliente@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72,
+            "writeOnly": true
+          },
+          "acceptedTerms": {
+            "type": "boolean",
+            "example": true
+          },
+          "termsVersion": {
+            "type": "string",
+            "example": "v1.0",
+            "maxLength": 50
+          },
+          "privacyVersion": {
+            "type": "string",
+            "example": "v1.0",
+            "maxLength": 50
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password",
+          "acceptedTerms",
+          "termsVersion",
+          "privacyVersion"
+        ]
+      },
+      "RefreshDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh token returned by the login endpoint"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "cliente@example.com",
+            "description": "Correo electrónico asociado a la cuenta"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "description": "Token temporal recibido en el correo de recuperación"
+          },
+          "newPassword": {
+            "type": "string",
+            "example": "MiNuevaClaveSegura2026!",
+            "minLength": 8,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "Nueva contraseña para la cuenta (campo canónico newPassword)"
+          },
+          "password": {
+            "type": "string",
+            "example": "MiNuevaClaveSegura2026!",
+            "minLength": 8,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "Contraseña para la cuenta (alias password enviado por frontend)"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "CreateCategoryDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateCategoryDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateTechnologyDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateTechnologyDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateProjectDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Sistema de inventario"
+          },
+          "slug": {
+            "type": "string",
+            "example": "sistema-de-inventario"
+          },
+          "shortDescription": {
+            "type": "string",
+            "example": "Control centralizado de productos y existencias."
+          },
+          "description": {
+            "type": "string",
+            "example": "Descripción pública completa del proyecto."
+          },
+          "problem": {
+            "type": "object",
+            "nullable": true
+          },
+          "solution": {
+            "type": "object",
+            "nullable": true
+          },
+          "objective": {
+            "type": "object",
+            "nullable": true
+          },
+          "features": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "categoryId": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "technologyIds": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "IN_DEVELOPMENT",
+              "IN_REVIEW",
+              "COMPLETED",
+              "ARCHIVED"
+            ],
+            "default": "DRAFT"
+          },
+          "developmentDate": {
+            "type": "object",
+            "example": "2026-09-04",
+            "nullable": true
+          },
+          "clientName": {
+            "type": "object",
+            "nullable": true
+          },
+          "demoUrl": {
+            "type": "object",
+            "example": "https://demo.example.com",
+            "nullable": true
+          },
+          "externalUrl": {
+            "type": "object",
+            "example": "https://example.com",
+            "nullable": true
+          },
+          "coverImageUrl": {
+            "type": "object",
+            "example": "https://cdn.example.com/cover.webp",
+            "nullable": true
+          },
+          "isFeatured": {
+            "type": "boolean",
+            "default": false
+          },
+          "displayOrder": {
+            "type": "number",
+            "default": 0,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "slug",
+          "shortDescription",
+          "description",
+          "categoryId"
+        ]
+      },
+      "UpdateProjectDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Sistema de inventario"
+          },
+          "slug": {
+            "type": "string",
+            "example": "sistema-de-inventario"
+          },
+          "shortDescription": {
+            "type": "string",
+            "example": "Control centralizado de productos y existencias."
+          },
+          "description": {
+            "type": "string",
+            "example": "Descripción pública completa del proyecto."
+          },
+          "problem": {
+            "type": "object",
+            "nullable": true
+          },
+          "solution": {
+            "type": "object",
+            "nullable": true
+          },
+          "objective": {
+            "type": "object",
+            "nullable": true
+          },
+          "features": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "categoryId": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "technologyIds": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "IN_DEVELOPMENT",
+              "IN_REVIEW",
+              "COMPLETED",
+              "ARCHIVED"
+            ],
+            "default": "DRAFT"
+          },
+          "developmentDate": {
+            "type": "object",
+            "example": "2026-09-04",
+            "nullable": true
+          },
+          "clientName": {
+            "type": "object",
+            "nullable": true
+          },
+          "demoUrl": {
+            "type": "object",
+            "example": "https://demo.example.com",
+            "nullable": true
+          },
+          "externalUrl": {
+            "type": "object",
+            "example": "https://example.com",
+            "nullable": true
+          },
+          "coverImageUrl": {
+            "type": "object",
+            "example": "https://cdn.example.com/cover.webp",
+            "nullable": true
+          },
+          "isFeatured": {
+            "type": "boolean",
+            "default": false
+          },
+          "displayOrder": {
+            "type": "number",
+            "default": 0,
+            "minimum": 0
+          }
+        }
+      },
+      "InstallmentDto": {
+        "type": "object",
+        "properties": {
+          "percentageBasisPoints": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000,
+            "description": "100 puntos base = 1%; suma exacta 10000"
+          },
+          "dueDate": {
+            "type": "string",
+            "example": "2026-10-01",
+            "description": "Fecha civil YYYY-MM-DD; orden no decreciente"
+          },
+          "milestone": {
+            "type": "string",
+            "maxLength": 150,
+            "description": "Descripción obligatoria de la cuota"
+          }
+        },
+        "required": [
+          "percentageBasisPoints",
+          "dueDate",
+          "milestone"
+        ]
+      },
+      "OfficialQuoteDto": {
+        "type": "object",
+        "properties": {
+          "clientUserId": {
+            "type": "number"
+          },
+          "amountMinor": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000000000000,
+            "description": "Importe entero en unidades menores"
+          },
+          "currency": {
+            "type": "string",
+            "example": "PEN"
+          },
+          "scope": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "observations": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "installments": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstallmentDto"
+            }
+          }
+        },
+        "required": [
+          "clientUserId",
+          "amountMinor",
+          "currency",
+          "scope",
+          "installments"
+        ]
+      },
+      "PaymentEventDto": {
+        "type": "object",
+        "properties": {
+          "amountMinor": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000000000000,
+            "description": "Importe entero en unidades menores"
+          },
+          "currency": {
+            "type": "string",
+            "example": "PEN"
+          }
+        },
+        "required": [
+          "amountMinor",
+          "currency"
+        ]
+      },
+      "CreateServiceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nombre comercial del servicio",
+            "example": "Desarrollo de software a medida",
+            "minLength": 3,
+            "maxLength": 150
+          },
+          "slug": {
+            "type": "string",
+            "description": "Identificador único legible para URLs en formato kebab-case",
+            "example": "desarrollo-de-software-a-medida",
+            "minLength": 3,
+            "maxLength": 180
+          },
+          "shortDescription": {
+            "type": "string",
+            "description": "Resumen informativo breve para tarjetas del catálogo",
+            "example": "Creamos soluciones digitales adaptadas a las necesidades de cada organización.",
+            "minLength": 10,
+            "maxLength": 300
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción detallada, alcance y especificaciones del servicio",
+            "example": "Servicio orientado al análisis, diseño, desarrollo e implementación de sistemas personalizados.",
+            "minLength": 20
+          },
+          "icon": {
+            "type": "object",
+            "description": "Identificador de icono (ej. Code, Cloud, Shield)",
+            "example": "Code",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "imageUrl": {
+            "type": "object",
+            "description": "URL de la imagen ilustrativa o cover del servicio",
+            "example": "https://example.com/services/software.jpg",
+            "maxLength": 500,
+            "nullable": true
+          },
+          "displayOrder": {
+            "type": "number",
+            "description": "Orden de prioridad para presentación en el portal público",
+            "example": 1,
+            "minimum": 0,
+            "default": 0
+          },
+          "isFeatured": {
+            "type": "boolean",
+            "description": "Indica si el servicio se destaca en la página de inicio",
+            "example": true,
+            "default": false
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Estado de activación del servicio. Si es false, no aparece en catálogo público",
+            "example": true,
+            "default": true
+          }
+        },
+        "required": [
+          "name",
+          "slug",
+          "shortDescription",
+          "description"
+        ]
+      },
+      "UpdateServiceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nombre comercial del servicio",
+            "example": "Desarrollo de software a medida",
+            "minLength": 3,
+            "maxLength": 150
+          },
+          "slug": {
+            "type": "string",
+            "description": "Identificador único legible para URLs en formato kebab-case",
+            "example": "desarrollo-de-software-a-medida",
+            "minLength": 3,
+            "maxLength": 180
+          },
+          "shortDescription": {
+            "type": "string",
+            "description": "Resumen informativo breve para tarjetas del catálogo",
+            "example": "Creamos soluciones digitales adaptadas a las necesidades de cada organización.",
+            "minLength": 10,
+            "maxLength": 300
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción detallada, alcance y especificaciones del servicio",
+            "example": "Servicio orientado al análisis, diseño, desarrollo e implementación de sistemas personalizados.",
+            "minLength": 20
+          },
+          "icon": {
+            "type": "object",
+            "description": "Identificador de icono (ej. Code, Cloud, Shield)",
+            "example": "Code",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "imageUrl": {
+            "type": "object",
+            "description": "URL de la imagen ilustrativa o cover del servicio",
+            "example": "https://example.com/services/software.jpg",
+            "maxLength": 500,
+            "nullable": true
+          },
+          "displayOrder": {
+            "type": "number",
+            "description": "Orden de prioridad para presentación en el portal público",
+            "example": 1,
+            "minimum": 0,
+            "default": 0
+          },
+          "isFeatured": {
+            "type": "boolean",
+            "description": "Indica si el servicio se destaca en la página de inicio",
+            "example": true,
+            "default": false
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Estado de activación del servicio. Si es false, no aparece en catálogo público",
+            "example": true,
+            "default": true
+          }
+        }
+      },
+      "CreateQuoteDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TeamApplicationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "QuoteOptionDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Código estable de una característica del catálogo",
+            "example": "CODIGO_DE_CARACTERISTICA",
+            "minLength": 2,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "QuoteContactDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "Ana Torres",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "example": "ana.torres@example.com",
+            "maxLength": 150
+          },
+          "phone": {
+            "type": "string",
+            "example": "+51 987 654 321",
+            "minLength": 7,
+            "maxLength": 30
+          },
+          "company": {
+            "type": "string",
+            "example": "Empresa Ejemplo SAC",
+            "maxLength": 150
+          }
+        },
+        "required": [
+          "fullName",
+          "email",
+          "phone"
+        ]
+      },
+      "CreatePublicQuoteDto": {
+        "type": "object",
+        "properties": {
+          "solutionType": {
+            "type": "string",
+            "description": "Código estable del tipo de solución",
+            "example": "ECOMMERCE",
+            "minLength": 2,
+            "maxLength": 64
+          },
+          "options": {
+            "minItems": 0,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteOptionDto"
+            }
+          },
+          "deliveryMode": {
+            "type": "string",
+            "description": "Modalidad de entrega del proyecto",
+            "enum": [
+              "NORMAL",
+              "URGENT",
+              "FLEXIBLE"
+            ],
+            "example": "NORMAL",
+            "default": "NORMAL"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/QuoteContactDto"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "solutionType",
+          "options",
+          "contact"
+        ]
+      },
+      "PublicQuoteResponseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "Q-7K4M9X2P"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "RECEIVED"
+            ],
+            "example": "RECEIVED"
+          },
+          "pricingStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING_RULES",
+              "CALCULATED"
+            ],
+            "example": "PENDING_RULES"
+          },
+          "amountMinor": {
+            "type": "number",
+            "example": 400000,
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "example": "PEN",
+            "nullable": true
+          },
+          "pricingVersion": {
+            "type": "string",
+            "example": "SP-01-v2",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-09-16T18:30:00.000Z"
+          }
+        },
+        "required": [
+          "code",
+          "status",
+          "pricingStatus",
+          "amountMinor",
+          "currency",
+          "pricingVersion",
+          "createdAt"
+        ]
+      },
+      "CreatePublicQuoteResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Cotización registrada correctamente"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PublicQuoteResponseDto"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data"
+        ]
+      },
+      "LinkQuoteDto": {
+        "type": "object",
+        "properties": {
+          "publicCode": {
+            "type": "string",
+            "example": "Q-ABCDEFGH"
+          }
+        },
+        "required": [
+          "publicCode"
+        ]
+      },
+      "UpdateProspectStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "CONTACTED",
+              "QUALIFIED",
+              "CONVERTED",
+              "LOST"
+            ],
+            "example": "CONTACTED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "UpdateMeetingStatusDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RescheduleMeetingDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "BookMeetingDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetAdvisorVisibilityDto": {
+        "type": "object",
+        "properties": {
+          "isPublicAdvisor": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "isPublicAdvisor"
+        ]
+      },
+      "KickoffDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ScheduleKickoffDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AddMemberDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ProjectTeamDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AssignProductOwnerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateDeliverableDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Prototipo navegable"
+          },
+          "description": {
+            "type": "string",
+            "example": "Primera versión navegable para validación del cliente."
+          },
+          "milestoneOrder": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "dueDate": {
+            "type": "string",
+            "example": "2026-10-15"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "milestoneOrder",
+          "dueDate"
+        ]
+      },
+      "SubmitDeliverableDto": {
+        "type": "object",
+        "properties": {
+          "fileUrl": {
+            "type": "string",
+            "example": "https://files.example.com/prototype-v1.pdf"
+          },
+          "externalLink": {
+            "type": "string",
+            "example": "https://www.figma.com/proto/example"
+          }
+        }
+      },
+      "ReviewDeliverableDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPROVE",
+              "OBSERVE"
+            ],
+            "example": "APPROVE"
+          },
+          "status": {
+            "type": "string",
+            "example": "APPROVED",
+            "description": "Valores admitidos: APPROVED | OBSERVED (alias de decision)"
+          },
+          "feedbackNotes": {
+            "type": "string",
+            "example": "Corrige el enlace de evidencia y agrega la versión para móviles.",
+            "description": "Obligatorio cuando decision es OBSERVE."
+          },
+          "comments": {
+            "type": "string",
+            "example": "La funcionalidad cumple con los criterios de aceptación.",
+            "description": "Alias de feedbackNotes."
+          }
+        }
+      },
+      "SubmitEvidenceDto": {
+        "type": "object",
+        "properties": {
+          "pdfUrl": {
+            "type": "string",
+            "example": "https://storage.tisnet.pe/deliverables/informe-hito-1.pdf",
+            "description": "URL del archivo PDF técnico cargado."
+          },
+          "fileUrl": {
+            "type": "string",
+            "example": "https://storage.tisnet.pe/deliverables/informe-hito-1.pdf",
+            "description": "Alias de pdfUrl para compatibilidad con submit."
+          },
+          "videoUrl": {
+            "type": "string",
+            "example": "https://www.loom.com/share/demo-hito-1",
+            "description": "URL del video o enlace de demostración."
+          },
+          "notes": {
+            "type": "string",
+            "example": "Entrega técnica del hito 1 con cobertura de pruebas.",
+            "description": "Notas o comentarios sobre la evidencia enviada."
+          }
+        },
+        "required": [
+          "videoUrl"
+        ]
+      },
+      "RequestClientMeetingDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AcceptQuoteDto": {
+        "type": "object",
+        "properties": {
+          "versionId": {
+            "type": "number",
+            "description": "ID persistido de QuoteVersion, no su número secuencial"
+          },
+          "accepted": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "versionId",
+          "accepted"
+        ]
+      },
+      "CreateCardChargeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "InterviewDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "REJECTED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 1000,
+            "description": "Obligatorio cuando decision es REJECTED"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "AssignInterviewDto": {
+        "type": "object",
+        "properties": {
+          "adminProfileId": {
+            "type": "number",
+            "example": 4,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "adminProfileId"
+        ]
+      },
+      "RejectTeamApplicationDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 1000,
+            "example": "Actualmente buscamos un perfil con mayor experiencia en proyectos productivos."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "MemberContributionItemDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "number",
+            "example": 10,
+            "description": "ID del usuario integrante del equipo"
+          },
+          "percentage": {
+            "type": "number",
+            "example": 70,
+            "description": "Porcentaje de contribución (1-100)"
+          },
+          "description": {
+            "type": "string",
+            "example": "Desarrollo de backend comercial y contratos",
+            "description": "Descripción de las tareas realizadas"
+          }
+        },
+        "required": [
+          "userId",
+          "percentage",
+          "description"
+        ]
+      },
+      "SaveContributionsDto": {
+        "type": "object",
+        "properties": {
+          "contributions": {
+            "description": "Lista de contribuciones por integrante",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberContributionItemDto"
+            }
+          }
+        },
+        "required": [
+          "contributions"
+        ]
+      }
+    }
+  }
+}

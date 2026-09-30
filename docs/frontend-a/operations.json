@@ -1,0 +1,2275 @@
+[
+  {
+    "id": "authMe",
+    "method": "GET",
+    "path": "/auth/me",
+    "requestType": null,
+    "responseType": "AuthMe",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 7,
+        "email": "cliente@example.test",
+        "role": "CLIENT"
+      }
+    },
+    "successStatus": 200,
+    "permissions": "Sesión activa: CLIENT/DEVELOPER y demás roles",
+    "allowedStates": "Usuario activo",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "login",
+    "method": "POST",
+    "path": "/auth/login",
+    "requestType": "LoginRequest",
+    "responseType": "LoginResponse",
+    "requestExample": {
+      "email": "cliente@example.test",
+      "password": "Example-only123!"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "accessToken": "MOCK_ACCESS_TOKEN",
+        "refreshToken": "MOCK_REFRESH_TOKEN",
+        "user": {
+          "id": 7,
+          "email": "cliente@example.test",
+          "role": "CLIENT"
+        }
+      }
+    },
+    "successStatus": 200,
+    "permissions": "Público",
+    "allowedStates": "Usuario activo y credenciales válidas",
+    "errors": {
+      "400": "DTO inválido",
+      "401": "Credenciales inválidas",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "refresh",
+    "method": "POST",
+    "path": "/auth/refresh",
+    "requestType": "RefreshRequest",
+    "responseType": "RefreshResponse",
+    "requestExample": {
+      "refreshToken": "MOCK_REFRESH_TOKEN"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "accessToken": "MOCK_NEW_ACCESS_TOKEN"
+      }
+    },
+    "successStatus": 200,
+    "permissions": "Refresh token válido",
+    "allowedStates": "Token no revocado",
+    "errors": {
+      "400": "DTO inválido",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "logout",
+    "method": "POST",
+    "path": "/auth/logout",
+    "requestType": null,
+    "responseType": null,
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Sesión cerrada correctamente",
+      "data": null
+    },
+    "successStatus": 200,
+    "permissions": "Sesión activa",
+    "allowedStates": "Revoca todas las sesiones mediante tokenVersion",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "clientOverview",
+    "method": "GET",
+    "path": "/client/overview",
+    "requestType": null,
+    "responseType": "ClientOverview",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "user": {
+          "name": "Cliente Demo",
+          "email": "cliente@example.test"
+        },
+        "projects": [
+          {
+            "id": 11,
+            "name": "Proyecto Demo",
+            "summary": "Resumen del proyecto",
+            "description": "Detalle del proyecto",
+            "status": "IN_DEVELOPMENT",
+            "progress": 0,
+            "startedAt": null,
+            "estimatedDeliveryAt": "2026-10-01",
+            "teamSize": 1,
+            "totalDeliverables": 1,
+            "pendingDeliverables": 1,
+            "milestones": [
+              {
+                "id": 101,
+                "title": "Entrega 1",
+                "status": "IN_REVIEW",
+                "date": "2026-10-01"
+              }
+            ],
+            "locked": false
+          }
+        ],
+        "quotes": [
+          {
+            "id": "quote-41",
+            "publicCode": "Q-ABCDEFGH",
+            "code": "Q-ABCDEFGH",
+            "solutionType": "WEB",
+            "status": "RECEIVED",
+            "amountMinor": "10000",
+            "currency": "PEN",
+            "notes": null,
+            "createdAt": "2026-10-01T15:00:00.000Z"
+          }
+        ],
+        "meetings": [
+          {
+            "id": 81,
+            "status": "PENDING",
+            "scheduledAt": "2026-10-01T15:00:00.000Z",
+            "timezone": "America/Lima",
+            "notes": null,
+            "createdAt": "2026-10-01T15:00:00.000Z",
+            "updatedAt": "2026-10-01T15:00:00.000Z",
+            "advisorName": null
+          }
+        ],
+        "advisor": null,
+        "activity": []
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT",
+    "allowedStates": "Cuenta activa; proyectos no ARCHIVED, membresía CLIENT activa",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "workspaceProjects",
+    "method": "GET",
+    "path": "/workspace/projects",
+    "requestType": null,
+    "responseType": "WorkspaceProjects",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 11,
+          "name": "Proyecto Demo",
+          "summary": "Resumen del proyecto",
+          "description": "Detalle del proyecto",
+          "status": "IN_DEVELOPMENT",
+          "progress": 0,
+          "startedAt": null,
+          "estimatedDeliveryAt": "2026-10-01T15:00:00.000Z",
+          "teamSize": 1,
+          "totalDeliverables": 1,
+          "pendingDeliverables": 1,
+          "milestones": [
+            {
+              "id": 21,
+              "title": "Entrega 1",
+              "status": "IN_REVIEW",
+              "date": "2026-10-01T15:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    },
+    "successStatus": 200,
+    "permissions": "DEVELOPER/PRODUCT_OWNER",
+    "allowedStates": "Membresía activa del mismo rol; no ARCHIVED",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "agreement",
+    "method": "GET",
+    "path": "/client/quotes/{id}/agreement",
+    "requestType": null,
+    "responseType": "Agreement",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "quoteId": 41,
+        "code": "Q-ABCDEFGH",
+        "activeVersion": 2,
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "officialAt": "2026-10-01T15:00:00.000Z",
+        "acceptedAt": null,
+        "acceptedVersionId": null,
+        "versions": [
+          {
+            "id": 52,
+            "version": 2,
+            "code": "Q-ABCDEFGH",
+            "kind": "OFFICIAL",
+            "status": "SENT",
+            "amountMinor": 10000,
+            "currency": "PEN",
+            "createdAt": "2026-10-01T15:00:00.000Z",
+            "notes": "Alcance acordado",
+            "canAccept": true,
+            "installments": [
+              {
+                "id": 61,
+                "label": "Entrega 1",
+                "percentage": 100,
+                "amountMinor": 10000,
+                "currency": "PEN",
+                "dueDate": "2026-10-01",
+                "status": "PENDING"
+              }
+            ]
+          }
+        ],
+        "installments": [
+          {
+            "id": 61,
+            "sequence": 1,
+            "milestone": "Entrega 1",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "amountMinor": 10000,
+            "paidMinor": 0,
+            "status": "PENDING"
+          }
+        ]
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT propietario vinculado mediante prospect.userId",
+    "allowedStates": "Debe existir al menos una versión oficial",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Sin cotización oficial o no pertenece al cliente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "acceptQuote",
+    "method": "POST",
+    "path": "/client/quotes/{id}/accept",
+    "requestType": "AcceptQuote",
+    "responseType": "Acceptance",
+    "requestExample": {
+      "versionId": 52,
+      "accepted": true
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "accepted": true,
+        "acceptedAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "CLIENT propietario",
+    "allowedStates": "Solo versión activa; idempotente si ya aceptada",
+    "errors": {
+      "400": "accepted distinto de true o versionId inválido",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Cotización/versión inaccesible",
+      "409": "Versión reemplazada",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "quoteObservations",
+    "method": "GET",
+    "path": "/client/quotes/{id}/observations",
+    "requestType": null,
+    "responseType": "QuoteObservations",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "items": [
+          {
+            "id": 1,
+            "quoteId": 41,
+            "versionId": 52,
+            "authorId": 7,
+            "text": "Solicito aclarar el alcance",
+            "createdAt": "2026-10-01T15:00:00.000Z"
+          }
+        ]
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT propietario",
+    "allowedStates": "Cotización propia",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Cotización inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "observeQuote",
+    "method": "POST",
+    "path": "/client/quotes/{id}/observations",
+    "requestType": "QuoteObservationRequest",
+    "responseType": "QuoteObservation",
+    "requestExample": {
+      "versionId": 52,
+      "text": "Solicito aclarar el alcance"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 1,
+        "quoteId": 41,
+        "versionId": 52,
+        "authorId": 7,
+        "text": "Solicito aclarar el alcance",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "CLIENT propietario",
+    "allowedStates": "Versión activa no aceptada",
+    "errors": {
+      "400": "Texto vacío o >2000; versionId inválido",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Versión inexistente",
+      "409": "Versión reemplazada/aceptada",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "quotePdf",
+    "method": "GET",
+    "path": "/quotes/{code}/pdf",
+    "requestType": null,
+    "responseType": null,
+    "requestExample": null,
+    "responseExample": "%PDF-... (Blob binario, sin envelope)",
+    "successStatus": 200,
+    "permissions": "JWT; ADMIN/SUPER_ADMIN o email de sesión igual al contacto (el guard no restringe a CLIENT)",
+    "allowedStates": "Última versión oficial; si no existe, cotización inicial",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Código inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "binary": "application/pdf"
+  },
+  {
+    "id": "financialStatus",
+    "method": "GET",
+    "path": "/quotes/{id}/financial-status",
+    "requestType": null,
+    "responseType": "FinancialStatus",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "quoteId": 41,
+        "versionId": 52,
+        "version": 2,
+        "currency": "PEN",
+        "state": "OPEN",
+        "complete": false,
+        "totalMinor": 10000,
+        "paidMinor": 0,
+        "outstandingMinor": 10000,
+        "installments": [
+          {
+            "id": 61,
+            "sequence": 1,
+            "amountMinor": 10000,
+            "paidMinor": 0,
+            "outstandingMinor": 10000,
+            "valid": true,
+            "complete": false
+          }
+        ]
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT propietario, ADMIN/SUPER_ADMIN. Developer 403",
+    "allowedStates": "Solo versión oficial vigente",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Cotización no encontrada",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "projectOperations",
+    "method": "GET",
+    "path": "/projects/{id}/operations",
+    "requestType": null,
+    "responseType": "ProjectOperations",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "projectId": 11,
+        "name": "Proyecto Demo",
+        "slug": "proyecto-demo",
+        "shortDescription": "Resumen del proyecto",
+        "status": "IN_DEVELOPMENT",
+        "developmentDate": null,
+        "productOwnerId": 9,
+        "kickoff": {
+          "status": "PENDING",
+          "scheduledAt": null,
+          "notes": "",
+          "canStart": false,
+          "blockingReason": "Se requiere adelanto confirmado."
+        },
+        "members": [
+          {
+            "id": 31,
+            "userId": 8,
+            "name": "Developer Demo",
+            "role": "DEVELOPER",
+            "memberRole": "DEVELOPER",
+            "technicalRole": "Backend",
+            "participation": 100,
+            "participationBasisPoints": 10000,
+            "isActive": true
+          }
+        ],
+        "milestones": [
+          {
+            "id": 21,
+            "title": "Entrega 1",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "sequence": 1,
+            "deliverables": [
+              {
+                "id": 101,
+                "projectId": 11,
+                "milestoneId": 21,
+                "title": "Entrega 1",
+                "description": "Informe y demostración",
+                "milestoneOrder": 1,
+                "dueDate": "2026-10-01T15:00:00.000Z",
+                "status": "IN_REVIEW",
+                "fileUrl": "https://files.example.test/report.pdf",
+                "externalLink": "https://video.example.test/demo",
+                "feedbackNotes": null,
+                "submittedAt": "2026-10-01T15:00:00.000Z",
+                "reviewedAt": null,
+                "reviewedById": null,
+                "createdAt": "2026-10-01T15:00:00.000Z",
+                "updatedAt": "2026-10-01T15:00:00.000Z"
+              }
+            ]
+          }
+        ],
+        "candidates": [],
+        "canManageTeam": false,
+        "canManageKickoff": false,
+        "canViewFinance": false
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT/DEVELOPER/PO miembros activos con memberRole coincidente; ADMIN/SUPER_ADMIN",
+    "allowedStates": "No restringe estado del proyecto",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "projectMembers",
+    "method": "GET",
+    "path": "/projects/{id}/members",
+    "requestType": null,
+    "responseType": "Members",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 31,
+          "projectId": 11,
+          "userId": 8,
+          "memberRole": "DEVELOPER",
+          "technicalRole": "Backend",
+          "participationBasisPoints": 10000,
+          "isActive": true,
+          "user": {
+            "name": "Developer Demo"
+          },
+          "createdAt": "2026-10-01T15:00:00.000Z"
+        }
+      ]
+    },
+    "successStatus": 200,
+    "permissions": "Igual que operations",
+    "allowedStates": "Incluye miembros activos e inactivos; filtrar isActive en UI",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "deliverables",
+    "method": "GET",
+    "path": "/projects/{projectId}/deliverables",
+    "requestType": null,
+    "responseType": "Deliverables",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 101,
+          "projectId": 11,
+          "milestoneId": 21,
+          "title": "Entrega 1",
+          "description": "Informe y demostración",
+          "milestoneOrder": 1,
+          "dueDate": "2026-10-01T15:00:00.000Z",
+          "status": "IN_REVIEW",
+          "fileUrl": "https://files.example.test/report.pdf",
+          "externalLink": "https://video.example.test/demo",
+          "feedbackNotes": null,
+          "submittedAt": "2026-10-01T15:00:00.000Z",
+          "reviewedAt": null,
+          "reviewedById": null,
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "reviewedBy": null
+        }
+      ]
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT/DEVELOPER/PO con membresía activa y rol coincidente; ADMIN/SUPER_ADMIN",
+    "allowedStates": "Todos los estados; orden milestoneOrder,id",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "createDeliverable",
+    "method": "POST",
+    "path": "/projects/{projectId}/deliverables",
+    "requestType": "CreateDeliverable",
+    "responseType": "Deliverable",
+    "requestExample": {
+      "title": "Entrega 1",
+      "description": "Informe y demostración",
+      "milestoneOrder": 1,
+      "dueDate": "2026-10-01"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "DRAFT",
+        "fileUrl": null,
+        "externalLink": null,
+        "feedbackNotes": null,
+        "submittedAt": null,
+        "reviewedAt": null,
+        "reviewedById": null,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": null
+      }
+    },
+    "successStatus": 201,
+    "permissions": "PO miembro activo o ADMIN/SUPER_ADMIN. Cliente y Developer 403",
+    "allowedStates": "En comercial: orden, título y fecha del hito oficial",
+    "errors": {
+      "400": "Hito no oficial o título/fecha discordantes",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "409": "Orden duplicado",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "submitEvidence",
+    "method": "POST",
+    "path": "/projects/{projectId}/deliverables/{deliverableId}/evidence",
+    "requestType": "SubmitEvidence",
+    "responseType": "EvidenceResponse",
+    "requestExample": {
+      "pdfUrl": "https://files.example.test/report.pdf",
+      "videoUrl": "https://video.example.test/demo"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "milestoneId": 21,
+        "projectId": 11,
+        "title": "Entrega 1",
+        "status": "IN_REVIEW",
+        "pdfUrl": "https://files.example.test/report.pdf",
+        "videoUrl": "https://video.example.test/demo",
+        "notes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "DEVELOPER/PO miembros activos; ADMIN/SUPER_ADMIN. Cliente 403",
+    "allowedStates": "DRAFT/OBSERVED → IN_REVIEW; exige PDF y video",
+    "errors": {
+      "400": "Falta PDF/video o URL/MIME inválido",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto/entregable inexistente",
+      "409": "Estado incompatible",
+      "413": "Archivo >50 MiB",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Política de recordatorio si trigger=SUBMITTED no configurada"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "multipartType": "EvidenceMultipart",
+    "fileLimitBytes": 52428800
+  },
+  {
+    "id": "reviewDeliverable",
+    "method": "PATCH",
+    "path": "/projects/{projectId}/deliverables/{deliverableId}/review",
+    "requestType": "ReviewDeliverable",
+    "responseType": "Deliverable",
+    "requestExample": {
+      "decision": "APPROVE"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "APPROVED",
+        "fileUrl": "https://files.example.test/report.pdf",
+        "externalLink": "https://video.example.test/demo",
+        "feedbackNotes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedById": 7,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": {
+          "id": 7,
+          "name": "Cliente Demo"
+        }
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403",
+    "allowedStates": "IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes",
+    "errors": {
+      "400": "Observación sin notas, notas >2000",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Entregable inexistente",
+      "409": "Estado diferente de IN_REVIEW",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Política/destinatarios de recordatorio no configurados"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "history",
+    "method": "GET",
+    "path": "/projects/{projectId}/deliverables/{deliverableId}/history",
+    "requestType": null,
+    "responseType": "History",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 1,
+          "action": "SUBMITTED",
+          "actorId": 8,
+          "actorName": "Developer Demo",
+          "actorRole": "DEVELOPER",
+          "fileUrl": "https://files.example.test/report.pdf",
+          "videoUrl": "https://video.example.test/demo",
+          "comments": null,
+          "timestamp": "2026-10-01T15:00:00.000Z"
+        }
+      ]
+    },
+    "successStatus": 200,
+    "permissions": "Mismos permisos de lectura de entregables",
+    "allowedStates": "Todos los estados; orden cronológico",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Entregable inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "uploadFile",
+    "method": "POST",
+    "path": "/projects/{projectId}/deliverables/{id}/files",
+    "requestType": "UploadRequest",
+    "responseType": "UploadedFile",
+    "requestExample": {
+      "file": "<archivo PDF/MP4/WebM>"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "url": "https://files.example.test/report.pdf",
+        "storageKey": "example.pdf",
+        "filename": "informe.pdf",
+        "sizeBytes": 1024,
+        "mimeType": "application/pdf"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "DEVELOPER/PO activos; ADMIN/SUPER_ADMIN",
+    "allowedStates": "Sin restricción explícita por estado. Subir no envía a revisión",
+    "errors": {
+      "400": "Archivo ausente/MIME no permitido",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Entregable inexistente",
+      "413": ">100 MiB",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "contentType": "multipart/form-data",
+    "fileLimitBytes": 104857600
+  },
+  {
+    "id": "requestMeeting",
+    "method": "POST",
+    "path": "/client/meetings",
+    "requestType": "RequestMeeting",
+    "responseType": "MeetingRequested",
+    "requestExample": {
+      "advisorId": 5,
+      "scheduledAt": "2026-10-01T15:00:00.000Z",
+      "notes": "Consulta inicial"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 81,
+        "status": "PENDING",
+        "scheduledAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "CLIENT",
+    "allowedStates": "Fecha futura y asesor público activo; PENDING no equivale a reserva confirmada",
+    "errors": {
+      "400": "Fecha no futura/DTO inválido",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Asesor no disponible",
+      "409": "Solapamiento de horario o contacto vinculado a otro usuario",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "cancelMeeting",
+    "method": "PATCH",
+    "path": "/client/meetings/{id}/cancel",
+    "requestType": null,
+    "responseType": "MeetingCancelled",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 81,
+        "status": "CANCELLED"
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT propietario",
+    "allowedStates": "PENDING/SCHEDULED → CANCELLED",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "No existe, no pertenece al cliente o ya no está activa",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "getKickoff",
+    "method": "GET",
+    "path": "/client/projects/{id}/kickoff",
+    "requestType": null,
+    "responseType": "ProjectOperations",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "projectId": 11,
+        "name": "Proyecto Demo",
+        "slug": "proyecto-demo",
+        "shortDescription": "Resumen del proyecto",
+        "status": "IN_DEVELOPMENT",
+        "developmentDate": null,
+        "productOwnerId": 9,
+        "kickoff": {
+          "status": "PENDING",
+          "scheduledAt": null,
+          "notes": "",
+          "canStart": false,
+          "blockingReason": "Se requiere adelanto confirmado."
+        },
+        "members": [
+          {
+            "id": 31,
+            "userId": 8,
+            "name": "Developer Demo",
+            "role": "DEVELOPER",
+            "memberRole": "DEVELOPER",
+            "technicalRole": "Backend",
+            "participation": 100,
+            "participationBasisPoints": 10000,
+            "isActive": true
+          }
+        ],
+        "milestones": [
+          {
+            "id": 21,
+            "title": "Entrega 1",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "sequence": 1,
+            "deliverables": [
+              {
+                "id": 101,
+                "projectId": 11,
+                "milestoneId": 21,
+                "title": "Entrega 1",
+                "description": "Informe y demostración",
+                "milestoneOrder": 1,
+                "dueDate": "2026-10-01T15:00:00.000Z",
+                "status": "IN_REVIEW",
+                "fileUrl": "https://files.example.test/report.pdf",
+                "externalLink": "https://video.example.test/demo",
+                "feedbackNotes": null,
+                "submittedAt": "2026-10-01T15:00:00.000Z",
+                "reviewedAt": null,
+                "reviewedById": null,
+                "createdAt": "2026-10-01T15:00:00.000Z",
+                "updatedAt": "2026-10-01T15:00:00.000Z"
+              }
+            ],
+            "amountMinor": "10000",
+            "percentageBasisPoints": 10000,
+            "paymentScheduleId": 61
+          }
+        ],
+        "candidates": [],
+        "canManageTeam": false,
+        "canManageKickoff": false,
+        "canViewFinance": true,
+        "quoteId": 41,
+        "clientUserId": 7
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT miembro activo",
+    "allowedStates": "Devuelve operations, no un objeto kickoff aislado",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "scheduleKickoff",
+    "method": "POST",
+    "path": "/client/projects/{id}/kickoff",
+    "requestType": "ScheduleKickoff",
+    "responseType": "DbKickoff",
+    "requestExample": {
+      "advisorId": 5,
+      "scheduledAt": "2026-10-01T15:00:00.000Z",
+      "notes": "Solicitud"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 91,
+        "projectId": 11,
+        "meetingId": 81,
+        "actorId": 7,
+        "heldAt": "2026-10-01T15:00:00.000Z",
+        "notes": "",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "CLIENT miembro activo",
+    "allowedStates": "Cotización y adelanto confirmado; asesor obligatorio para cliente. Puede reprogramar; solicitar no confirma la reunión",
+    "errors": {
+      "400": "Fecha inválida/falta asesor",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Asesor/proyecto inexistente",
+      "409": "Adelanto pendiente, sin acuerdo o solapamiento",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "getContributions",
+    "method": "GET",
+    "path": "/projects/{projectId}/deliverables/{deliverableId}/contributions",
+    "requestType": null,
+    "responseType": "Contributions",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 71,
+          "projectId": 11,
+          "deliverableId": 101,
+          "milestoneId": 21,
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API",
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "user": {
+            "id": 8,
+            "name": "Developer Demo",
+            "email": "dev@example.test",
+            "role": {
+              "name": "DEVELOPER"
+            }
+          }
+        }
+      ]
+    },
+    "successStatus": 200,
+    "permissions": "Miembro activo o cliente/PO titular; ADMIN/SUPER_ADMIN",
+    "allowedStates": "Sin restricción por estado del entregable",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Hito/proyecto inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "saveContributions",
+    "method": "POST",
+    "path": "/projects/{projectId}/deliverables/{deliverableId}/contributions",
+    "requestType": "SaveContributions",
+    "responseType": "Contributions",
+    "requestExample": {
+      "contributions": [
+        {
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API"
+        }
+      ]
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 71,
+          "projectId": 11,
+          "deliverableId": 101,
+          "milestoneId": 21,
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API",
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "user": {
+            "id": 8,
+            "name": "Developer Demo",
+            "email": "dev@example.test",
+            "role": {
+              "name": "DEVELOPER"
+            }
+          }
+        }
+      ]
+    },
+    "successStatus": 201,
+    "permissions": "PO/ADMIN/SUPER_ADMIN. Cliente y Developer: lectura",
+    "allowedStates": "Reemplaza el reparto previo; no exige APPROVED",
+    "errors": {
+      "400": "Suma distinta de100, duplicados, integrante inválido o porcentaje no entero1–100",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Hito inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "projectContributions",
+    "method": "GET",
+    "path": "/projects/{projectId}/contributions",
+    "requestType": null,
+    "responseType": "ProjectContributions",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "projectId": 11,
+        "totalMilestones": 1,
+        "deliverables": [
+          {
+            "id": 101,
+            "title": "Entrega 1",
+            "milestoneOrder": 1,
+            "status": "IN_REVIEW",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "contributions": [
+              {
+                "id": 71,
+                "userId": 8,
+                "userName": "Developer Demo",
+                "userRole": "DEVELOPER",
+                "percentage": 100,
+                "description": "Implementación de API"
+              }
+            ]
+          }
+        ],
+        "teamSummary": [
+          {
+            "user": {
+              "id": 8,
+              "name": "Developer Demo",
+              "email": "dev@example.test",
+              "role": "DEVELOPER"
+            },
+            "averagePercentage": 100,
+            "milestonesContributed": 1,
+            "tasks": [
+              "Implementación de API"
+            ]
+          }
+        ]
+      }
+    },
+    "successStatus": 200,
+    "permissions": "Miembro activo o cliente/PO titular; ADMIN/SUPER_ADMIN",
+    "allowedStates": "Media sobre total de entregables, no horas trabajadas",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "progress",
+    "method": "GET",
+    "path": "/reports/projects",
+    "requestType": null,
+    "responseType": "ProgressReport",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "canViewFinance": false,
+        "projects": [
+          {
+            "projectId": 11,
+            "name": "Proyecto Demo",
+            "progress": 0,
+            "approvedDeliverables": 0,
+            "pendingDeliverables": 1
+          }
+        ],
+        "generatedAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT/DEVELOPER/PO con membresía activa; ADMIN/SUPER_ADMIN",
+    "allowedStates": "Excluye DRAFT/ARCHIVED; progreso = aprobados/total, cero si no hay entregables",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "query": [
+      {
+        "name": "projectId",
+        "type": "integer",
+        "required": false,
+        "example": 11
+      }
+    ]
+  },
+  {
+    "id": "traceability",
+    "method": "GET",
+    "path": "/reports/projects/{projectId}/report",
+    "requestType": null,
+    "responseType": "TraceabilityReport",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "project": {
+          "id": 11,
+          "name": "Proyecto Demo",
+          "slug": "proyecto-demo",
+          "status": "IN_DEVELOPMENT",
+          "progress": 0,
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "client": {
+            "name": "Cliente Demo"
+          },
+          "productOwner": {
+            "name": "PO Demo"
+          }
+        },
+        "commercial": null,
+        "team": [
+          {
+            "id": 8,
+            "name": "Developer Demo",
+            "memberRole": "DEVELOPER",
+            "technicalRole": "Backend",
+            "participationBasisPoints": 10000
+          }
+        ],
+        "milestones": [
+          {
+            "id": 101,
+            "milestoneOrder": 1,
+            "title": "Entrega 1",
+            "description": "Informe y demostración",
+            "status": "IN_REVIEW",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "pdfUrl": "https://files.example.test/report.pdf",
+            "videoUrl": "https://video.example.test/demo",
+            "feedbackNotes": null,
+            "submittedAt": "2026-10-01T15:00:00.000Z",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "contributions": [],
+            "history": [
+              {
+                "action": "SUBMITTED",
+                "actorName": "Developer Demo",
+                "actorRole": "DEVELOPER",
+                "fileUrl": "https://files.example.test/report.pdf",
+                "videoUrl": "https://video.example.test/demo",
+                "comments": null,
+                "timestamp": "2026-10-01T15:00:00.000Z"
+              }
+            ]
+          }
+        ],
+        "teamContributions": [],
+        "generatedAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 200,
+    "permissions": "Miembro activo o cliente/PO titular; ADMIN/SUPER_ADMIN",
+    "allowedStates": "Cualquier estado; commercial=null para PO/Developer",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "query": [
+      {
+        "name": "format",
+        "type": "string",
+        "enum": [
+          "json",
+          "pdf"
+        ],
+        "example": "json",
+        "required": false
+      }
+    ],
+    "alsoBinary": "application/pdf",
+    "notes": "Sin format: CLIENT recibe PDF, otros JSON. Para JSON enviar siempre format=json."
+  },
+  {
+    "id": "profile",
+    "method": "GET",
+    "path": "/users/me/profile",
+    "requestType": null,
+    "responseType": "OwnProfile",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "user": {
+          "id": 7,
+          "email": "cliente@example.test",
+          "role": "CLIENT",
+          "name": "Cliente Demo",
+          "isActive": true
+        },
+        "profile": {
+          "id": 17,
+          "type": "CLIENT",
+          "dni": null,
+          "age": null,
+          "phone": null,
+          "district": null,
+          "businessName": null,
+          "ruc": null,
+          "commercialName": null,
+          "businessDistrict": null,
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z"
+        }
+      }
+    },
+    "successStatus": 200,
+    "permissions": "Sesión activa; perfil propio",
+    "allowedStates": "Puede ser profile=null",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "editOwnUser",
+    "method": "PATCH",
+    "path": "/users/me",
+    "requestType": "UpdateOwnUser",
+    "responseType": "UpdatedUser",
+    "requestExample": {
+      "name": "Cliente Demo"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 7,
+        "email": "cliente@example.test",
+        "role": "CLIENT",
+        "name": "Cliente Demo",
+        "isActive": true,
+        "acceptedTermsAt": "2026-10-01T15:00:00.000Z",
+        "termsVersion": "test-v1",
+        "privacyVersion": "test-v1"
+      }
+    },
+    "successStatus": 200,
+    "permissions": "Sesión activa, propio",
+    "allowedStates": "Nombre y/o consentimiento; no cambia email/rol",
+    "errors": {
+      "400": "Sin campos válidos o consentimiento/versiones inválidas",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Legal vigente no publicado/configurado"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "editClientProfile",
+    "method": "PATCH",
+    "path": "/users/me/client-profile",
+    "requestType": "UpdateClientProfile",
+    "responseType": "ClientProfile",
+    "requestExample": {
+      "phone": "+51 999999999",
+      "district": "Lima"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 17,
+        "type": "CLIENT",
+        "dni": null,
+        "age": null,
+        "phone": "+51 999999999",
+        "district": "Lima",
+        "businessName": null,
+        "ruc": null,
+        "commercialName": null,
+        "businessDistrict": null,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 200,
+    "permissions": "CLIENT propio",
+    "allowedStates": "Upsert; campos opcionales nullable",
+    "errors": {
+      "400": "DNI/RUC/formato/rangos inválidos",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "409": "DNI/RUC ya registrados",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "editDeveloperProfile",
+    "method": "PATCH",
+    "path": "/users/me/developer-profile",
+    "requestType": "UpdateDeveloperProfile",
+    "responseType": "DeveloperProfile",
+    "requestExample": {
+      "specialty": "Backend",
+      "experienceYears": 2,
+      "technologyIds": []
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 18,
+        "type": "DEVELOPER",
+        "career": null,
+        "university": null,
+        "academicStatus": null,
+        "experienceYears": 2,
+        "specialty": "Backend",
+        "cvUrl": null,
+        "photoUrl": null,
+        "linkedinUrl": null,
+        "githubUrl": null,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "technologies": []
+      }
+    },
+    "successStatus": 200,
+    "permissions": "DEVELOPER propio",
+    "allowedStates": "Upsert; technologyIds ausente conserva, [] borra asociaciones",
+    "errors": {
+      "400": "Tecnología inactiva/inexistente o DTO inválido",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "409": "Conflicto de datos únicos",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "profilePhoto",
+    "method": "POST",
+    "path": "/users/me/photo",
+    "requestType": "PhotoRequest",
+    "responseType": "PhotoResponse",
+    "requestExample": {
+      "photo": "<archivo JPG/PNG/WebP>"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "photoUrl": "https://files.example.test/avatar.png"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "DEVELOPER/PO/ADMIN/SUPER_ADMIN; CLIENT recibe400",
+    "allowedStates": "Cuenta activa; reemplaza URL de perfil",
+    "errors": {
+      "400": "Foto ausente/MIME inválido, almacenamiento no disponible o rol CLIENT",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "413": ">5 MiB",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "contentType": "multipart/form-data",
+    "fileLimitBytes": 5242880
+  },
+  {
+    "id": "charge",
+    "method": "POST",
+    "path": "/client/payments/{installmentId}/charge",
+    "requestType": "ChargeRequest",
+    "responseType": "ChargeResponse",
+    "requestExample": {
+      "tokenId": "tkn_test_example"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "chargeId": "chr_test_mock",
+        "status": "PENDING_CONFIRMATION"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "CLIENT propietario",
+    "allowedStates": "Cuota vigente aceptada con saldo; Culqi habilitado",
+    "errors": {
+      "400": "Token/moneda inválidos",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Cuota inexistente",
+      "409": "Pagada/no aceptada/reemplazada",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Culqi no configurado"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "checkout",
+    "method": "POST",
+    "path": "/client/payments/{installmentId}/checkout",
+    "requestType": null,
+    "responseType": "CheckoutResponse",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "orderId": "ord_test_mock",
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "expirationDate": "2026-10-01T15:00:00.000Z",
+        "checkoutUrl": "https://portal.example.test/client/quotes/41/agreement?checkoutOrder=ord_test_mock"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "CLIENT propietario",
+    "allowedStates": "Igual que cargo; orden no confirma pago",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Cuota inexistente",
+      "409": "Pagada/no aceptada/reemplazada",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Culqi no configurado"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  },
+  {
+    "id": "milestoneEvidence",
+    "method": "POST",
+    "path": "/projects/{projectId}/milestones/{milestoneId}/evidence",
+    "requestType": "SubmitEvidence",
+    "responseType": "EvidenceResponse",
+    "requestExample": {
+      "pdfUrl": "https://files.example.test/report.pdf",
+      "videoUrl": "https://video.example.test/demo"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "milestoneId": 21,
+        "projectId": 11,
+        "title": "Entrega 1",
+        "status": "IN_REVIEW",
+        "pdfUrl": "https://files.example.test/report.pdf",
+        "videoUrl": "https://video.example.test/demo",
+        "notes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "DEVELOPER/PO miembros activos; ADMIN/SUPER_ADMIN. Cliente 403",
+    "allowedStates": "DRAFT/OBSERVED → IN_REVIEW; exige PDF y video",
+    "errors": {
+      "400": "Falta PDF/video o URL/MIME inválido",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto/entregable inexistente",
+      "409": "Estado incompatible",
+      "413": "Archivo >50 MiB",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Política de recordatorio si trigger=SUBMITTED no configurada"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "multipartType": "EvidenceMultipart",
+    "fileLimitBytes": 52428800,
+    "aliasOf": "submitEvidence"
+  },
+  {
+    "id": "milestoneEvidencePdf",
+    "method": "POST",
+    "path": "/projects/{projectId}/milestones/{milestoneId}/evidence/pdf",
+    "requestType": "SubmitEvidence",
+    "responseType": "EvidenceResponse",
+    "requestExample": {
+      "pdfUrl": "https://files.example.test/report.pdf",
+      "videoUrl": "https://video.example.test/demo"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "milestoneId": 21,
+        "projectId": 11,
+        "title": "Entrega 1",
+        "status": "IN_REVIEW",
+        "pdfUrl": "https://files.example.test/report.pdf",
+        "videoUrl": "https://video.example.test/demo",
+        "notes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 201,
+    "permissions": "DEVELOPER/PO miembros activos; ADMIN/SUPER_ADMIN. Cliente 403",
+    "allowedStates": "DRAFT/OBSERVED → IN_REVIEW; exige PDF y video",
+    "errors": {
+      "400": "Falta PDF/video o URL/MIME inválido",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto/entregable inexistente",
+      "409": "Estado incompatible",
+      "413": "Archivo >50 MiB",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Política de recordatorio si trigger=SUBMITTED no configurada"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "multipartType": "EvidenceMultipart",
+    "fileLimitBytes": 52428800,
+    "aliasOf": "submitEvidence"
+  },
+  {
+    "id": "reviewPost",
+    "method": "POST",
+    "path": "/projects/{projectId}/deliverables/{deliverableId}/review",
+    "requestType": "ReviewDeliverable",
+    "responseType": "Deliverable",
+    "requestExample": {
+      "decision": "APPROVE"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "APPROVED",
+        "fileUrl": "https://files.example.test/report.pdf",
+        "externalLink": "https://video.example.test/demo",
+        "feedbackNotes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedById": 7,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": {
+          "id": 7,
+          "name": "Cliente Demo"
+        }
+      }
+    },
+    "successStatus": 201,
+    "permissions": "CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403",
+    "allowedStates": "IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes",
+    "errors": {
+      "400": "Observación sin notas, notas >2000",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Entregable inexistente",
+      "409": "Estado diferente de IN_REVIEW",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Política/destinatarios de recordatorio no configurados"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "aliasOf": "reviewDeliverable"
+  },
+  {
+    "id": "milestoneReview",
+    "method": "POST",
+    "path": "/projects/{projectId}/milestones/{milestoneId}/review",
+    "requestType": "ReviewDeliverable",
+    "responseType": "Deliverable",
+    "requestExample": {
+      "decision": "APPROVE"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "APPROVED",
+        "fileUrl": "https://files.example.test/report.pdf",
+        "externalLink": "https://video.example.test/demo",
+        "feedbackNotes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedById": 7,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": {
+          "id": 7,
+          "name": "Cliente Demo"
+        }
+      }
+    },
+    "successStatus": 201,
+    "permissions": "CLIENT/PO miembros activos; ADMIN/SUPER_ADMIN. Developer 403",
+    "allowedStates": "IN_REVIEW → APPROVED/OBSERVED; OBSERVE exige feedbackNotes",
+    "errors": {
+      "400": "Observación sin notas, notas >2000",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Entregable inexistente",
+      "409": "Estado diferente de IN_REVIEW",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Política/destinatarios de recordatorio no configurados"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "aliasOf": "reviewDeliverable"
+  },
+  {
+    "id": "milestoneHistory",
+    "method": "GET",
+    "path": "/projects/{projectId}/milestones/{milestoneId}/history",
+    "requestType": null,
+    "responseType": "History",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 1,
+          "action": "SUBMITTED",
+          "actorId": 8,
+          "actorName": "Developer Demo",
+          "actorRole": "DEVELOPER",
+          "fileUrl": "https://files.example.test/report.pdf",
+          "videoUrl": "https://video.example.test/demo",
+          "comments": null,
+          "timestamp": "2026-10-01T15:00:00.000Z"
+        }
+      ]
+    },
+    "successStatus": 200,
+    "permissions": "Mismos permisos de lectura de entregables",
+    "allowedStates": "Todos los estados; orden cronológico",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Entregable inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "aliasOf": "history"
+  },
+  {
+    "id": "milestoneContributions",
+    "method": "GET",
+    "path": "/projects/{projectId}/milestones/{milestoneId}/contributions",
+    "requestType": null,
+    "responseType": "Contributions",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 71,
+          "projectId": 11,
+          "deliverableId": 101,
+          "milestoneId": 21,
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API",
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "user": {
+            "id": 8,
+            "name": "Developer Demo",
+            "email": "dev@example.test",
+            "role": {
+              "name": "DEVELOPER"
+            }
+          }
+        }
+      ]
+    },
+    "successStatus": 200,
+    "permissions": "Miembro activo o cliente/PO titular; ADMIN/SUPER_ADMIN",
+    "allowedStates": "Sin restricción por estado del entregable",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Hito/proyecto inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "aliasOf": "getContributions"
+  },
+  {
+    "id": "saveMilestoneContributions",
+    "method": "POST",
+    "path": "/projects/{projectId}/milestones/{milestoneId}/contributions",
+    "requestType": "SaveContributions",
+    "responseType": "Contributions",
+    "requestExample": {
+      "contributions": [
+        {
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API"
+        }
+      ]
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 71,
+          "projectId": 11,
+          "deliverableId": 101,
+          "milestoneId": 21,
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API",
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "user": {
+            "id": 8,
+            "name": "Developer Demo",
+            "email": "dev@example.test",
+            "role": {
+              "name": "DEVELOPER"
+            }
+          }
+        }
+      ]
+    },
+    "successStatus": 201,
+    "permissions": "PO/ADMIN/SUPER_ADMIN. Cliente y Developer: lectura",
+    "allowedStates": "Reemplaza el reparto previo; no exige APPROVED",
+    "errors": {
+      "400": "Suma distinta de100, duplicados, integrante inválido o porcentaje no entero1–100",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Hito inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "aliasOf": "saveContributions"
+  },
+  {
+    "id": "projectReport",
+    "method": "GET",
+    "path": "/projects/{id}/report",
+    "requestType": null,
+    "responseType": "TraceabilityReport",
+    "requestExample": null,
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "project": {
+          "id": 11,
+          "name": "Proyecto Demo",
+          "slug": "proyecto-demo",
+          "status": "IN_DEVELOPMENT",
+          "progress": 0,
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "client": {
+            "name": "Cliente Demo"
+          },
+          "productOwner": {
+            "name": "PO Demo"
+          }
+        },
+        "commercial": null,
+        "team": [
+          {
+            "id": 8,
+            "name": "Developer Demo",
+            "memberRole": "DEVELOPER",
+            "technicalRole": "Backend",
+            "participationBasisPoints": 10000
+          }
+        ],
+        "milestones": [
+          {
+            "id": 101,
+            "milestoneOrder": 1,
+            "title": "Entrega 1",
+            "description": "Informe y demostración",
+            "status": "IN_REVIEW",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "pdfUrl": "https://files.example.test/report.pdf",
+            "videoUrl": "https://video.example.test/demo",
+            "feedbackNotes": null,
+            "submittedAt": "2026-10-01T15:00:00.000Z",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "contributions": [],
+            "history": [
+              {
+                "action": "SUBMITTED",
+                "actorName": "Developer Demo",
+                "actorRole": "DEVELOPER",
+                "fileUrl": "https://files.example.test/report.pdf",
+                "videoUrl": "https://video.example.test/demo",
+                "comments": null,
+                "timestamp": "2026-10-01T15:00:00.000Z"
+              }
+            ]
+          }
+        ],
+        "teamContributions": [],
+        "generatedAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "successStatus": 200,
+    "permissions": "Miembro activo o cliente/PO titular; ADMIN/SUPER_ADMIN",
+    "allowedStates": "Cualquier estado; commercial=null para PO/Developer",
+    "errors": {
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Proyecto inexistente",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "query": [
+      {
+        "name": "format",
+        "type": "string",
+        "enum": [
+          "json",
+          "pdf"
+        ],
+        "example": "json",
+        "required": false
+      }
+    ],
+    "alsoBinary": "application/pdf",
+    "notes": "Sin format: CLIENT recibe PDF, otros JSON. Para JSON enviar siempre format=json.",
+    "aliasOf": "traceability"
+  },
+  {
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "permissions": "Público",
+    "allowedStates": "Registro inicial; status=RECEIVED",
+    "successStatus": 201,
+    "errors": {
+      "400": "DTO/campos desconocidos inválidos",
+      "422": "Solución/opción inactiva, inexistente o incompatible",
+      "429": "Límite de solicitudes",
+      "503": "No se pudo registrar"
+    },
+    "id": "createPublicQuote",
+    "method": "POST",
+    "path": "/public/quotes",
+    "requestType": "PublicQuoteRequest",
+    "requestExample": {
+      "solutionType": "ECOMMERCE",
+      "options": [],
+      "deliveryMode": "NORMAL",
+      "contact": {
+        "fullName": "Cliente Demo",
+        "email": "cliente@example.test",
+        "phone": "+51 999999999"
+      }
+    },
+    "responseType": "PublicQuoteResponse",
+    "responseExample": {
+      "success": true,
+      "message": "Cotización registrada correctamente",
+      "data": {
+        "code": "Q-ABCDEFGH",
+        "status": "RECEIVED",
+        "pricingStatus": "CALCULATED",
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "pricingVersion": "SP-01-v2",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "notes": "Máximo20 opciones; códigos2–64. No acepta catalogVersion en esta ruta."
+  },
+  {
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "permissions": "Público",
+    "allowedStates": "Registro inicial; status=RECEIVED",
+    "successStatus": 201,
+    "errors": {
+      "400": "DTO/campos desconocidos inválidos",
+      "422": "Solución/opción inactiva, inexistente o incompatible",
+      "429": "Límite de solicitudes",
+      "503": "No se pudo registrar"
+    },
+    "id": "createPortalQuote",
+    "method": "POST",
+    "path": "/public/project-quotes",
+    "requestType": "PortalQuoteRequest",
+    "requestExample": {
+      "solutionType": "ECOMMERCE",
+      "options": [],
+      "deliveryMode": "NORMAL",
+      "contact": {
+        "fullName": "Cliente Demo",
+        "email": "cliente@example.test",
+        "phone": "+51 999999999"
+      },
+      "catalogVersion": "SP-01-v2"
+    },
+    "responseType": "PublicQuoteResponse",
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "code": "Q-ABCDEFGH",
+        "status": "RECEIVED",
+        "pricingStatus": "CALCULATED",
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "pricingVersion": "SP-01-v2",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    },
+    "notes": "Máximo8 opciones; catalogVersion opcional debe ser SP-01-v2; catálogo de solución cerrado. No es DTO idéntico a /public/quotes."
+  },
+  {
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE",
+    "permissions": "Público",
+    "allowedStates": "Cotización registrada; no expone contacto/versiones/documentos",
+    "successStatus": 200,
+    "errors": {
+      "404": "Código inexistente",
+      "429": "Límite de solicitudes"
+    },
+    "id": "publicQuoteLookup",
+    "method": "GET",
+    "path": "/public/quotes/{code}",
+    "requestType": null,
+    "requestExample": null,
+    "responseType": "PublicQuoteResponse",
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "code": "Q-ABCDEFGH",
+        "status": "RECEIVED",
+        "pricingStatus": "CALCULATED",
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "pricingVersion": "SP-01-v2",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  {
+    "id": "legacySubmit",
+    "method": "PATCH",
+    "path": "/projects/{projectId}/deliverables/{deliverableId}/submit",
+    "requestType": "LegacySubmit",
+    "responseType": "Deliverable",
+    "requestExample": {
+      "fileUrl": "https://files.example.test/report.pdf",
+      "externalLink": "https://video.example.test/demo"
+    },
+    "responseExample": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "IN_REVIEW",
+        "fileUrl": "https://files.example.test/report.pdf",
+        "externalLink": "https://video.example.test/demo",
+        "feedbackNotes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedAt": null,
+        "reviewedById": null,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": null
+      }
+    },
+    "successStatus": 200,
+    "permissions": "DEVELOPER/PO miembros activos o ADMIN/SUPER_ADMIN",
+    "allowedStates": "DRAFT/OBSERVED → IN_REVIEW. Ruta legacy acepta al menos un enlace; preferir evidence para exigir PDF+video.",
+    "errors": {
+      "400": "Falta enlace o URL inválida (máximo 500 caracteres)",
+      "401": "JWT ausente, vencido, revocado o cuenta inactiva",
+      "403": "Rol/propiedad/membresía no autorizados",
+      "404": "Entregable inexistente",
+      "409": "Estado distinto de DRAFT/OBSERVED",
+      "429": "Límite de solicitudes excedido",
+      "500": "Error interno genérico",
+      "503": "Política/destinatarios de notificación de envío no configurados"
+    },
+    "availability": "IMPLEMENTED_CODE_VERIFIED_2026-09-30",
+    "deployment": "NO_URL_OR_DEPLOYMENT_CONFIRMED",
+    "pagination": "NONE"
+  }
+]

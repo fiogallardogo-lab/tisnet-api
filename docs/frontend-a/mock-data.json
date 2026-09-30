@@ -1,0 +1,1227 @@
+{
+  "authMe": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 7,
+        "email": "cliente@example.test",
+        "role": "CLIENT"
+      }
+    }
+  },
+  "login": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "accessToken": "MOCK_ACCESS_TOKEN",
+        "refreshToken": "MOCK_REFRESH_TOKEN",
+        "user": {
+          "id": 7,
+          "email": "cliente@example.test",
+          "role": "CLIENT"
+        }
+      }
+    }
+  },
+  "refresh": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "accessToken": "MOCK_NEW_ACCESS_TOKEN"
+      }
+    }
+  },
+  "logout": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Sesión cerrada correctamente",
+      "data": null
+    }
+  },
+  "clientOverview": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "user": {
+          "name": "Cliente Demo",
+          "email": "cliente@example.test"
+        },
+        "projects": [
+          {
+            "id": 11,
+            "name": "Proyecto Demo",
+            "summary": "Resumen del proyecto",
+            "description": "Detalle del proyecto",
+            "status": "IN_DEVELOPMENT",
+            "progress": 0,
+            "startedAt": null,
+            "estimatedDeliveryAt": "2026-10-01",
+            "teamSize": 1,
+            "totalDeliverables": 1,
+            "pendingDeliverables": 1,
+            "milestones": [
+              {
+                "id": 101,
+                "title": "Entrega 1",
+                "status": "IN_REVIEW",
+                "date": "2026-10-01"
+              }
+            ],
+            "locked": false
+          }
+        ],
+        "quotes": [
+          {
+            "id": "quote-41",
+            "publicCode": "Q-ABCDEFGH",
+            "code": "Q-ABCDEFGH",
+            "solutionType": "WEB",
+            "status": "RECEIVED",
+            "amountMinor": "10000",
+            "currency": "PEN",
+            "notes": null,
+            "createdAt": "2026-10-01T15:00:00.000Z"
+          }
+        ],
+        "meetings": [
+          {
+            "id": 81,
+            "status": "PENDING",
+            "scheduledAt": "2026-10-01T15:00:00.000Z",
+            "timezone": "America/Lima",
+            "notes": null,
+            "createdAt": "2026-10-01T15:00:00.000Z",
+            "updatedAt": "2026-10-01T15:00:00.000Z",
+            "advisorName": null
+          }
+        ],
+        "advisor": null,
+        "activity": []
+      }
+    }
+  },
+  "workspaceProjects": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 11,
+          "name": "Proyecto Demo",
+          "summary": "Resumen del proyecto",
+          "description": "Detalle del proyecto",
+          "status": "IN_DEVELOPMENT",
+          "progress": 0,
+          "startedAt": null,
+          "estimatedDeliveryAt": "2026-10-01T15:00:00.000Z",
+          "teamSize": 1,
+          "totalDeliverables": 1,
+          "pendingDeliverables": 1,
+          "milestones": [
+            {
+              "id": 21,
+              "title": "Entrega 1",
+              "status": "IN_REVIEW",
+              "date": "2026-10-01T15:00:00.000Z"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "agreement": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "quoteId": 41,
+        "code": "Q-ABCDEFGH",
+        "activeVersion": 2,
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "officialAt": "2026-10-01T15:00:00.000Z",
+        "acceptedAt": null,
+        "acceptedVersionId": null,
+        "versions": [
+          {
+            "id": 52,
+            "version": 2,
+            "code": "Q-ABCDEFGH",
+            "kind": "OFFICIAL",
+            "status": "SENT",
+            "amountMinor": 10000,
+            "currency": "PEN",
+            "createdAt": "2026-10-01T15:00:00.000Z",
+            "notes": "Alcance acordado",
+            "canAccept": true,
+            "installments": [
+              {
+                "id": 61,
+                "label": "Entrega 1",
+                "percentage": 100,
+                "amountMinor": 10000,
+                "currency": "PEN",
+                "dueDate": "2026-10-01",
+                "status": "PENDING"
+              }
+            ]
+          }
+        ],
+        "installments": [
+          {
+            "id": 61,
+            "sequence": 1,
+            "milestone": "Entrega 1",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "amountMinor": 10000,
+            "paidMinor": 0,
+            "status": "PENDING"
+          }
+        ]
+      }
+    }
+  },
+  "acceptQuote": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "accepted": true,
+        "acceptedAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "quoteObservations": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "items": [
+          {
+            "id": 1,
+            "quoteId": 41,
+            "versionId": 52,
+            "authorId": 7,
+            "text": "Solicito aclarar el alcance",
+            "createdAt": "2026-10-01T15:00:00.000Z"
+          }
+        ]
+      }
+    }
+  },
+  "observeQuote": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 1,
+        "quoteId": 41,
+        "versionId": 52,
+        "authorId": 7,
+        "text": "Solicito aclarar el alcance",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "quotePdf": {
+    "status": 200,
+    "body": "%PDF-... (Blob binario, sin envelope)"
+  },
+  "financialStatus": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "quoteId": 41,
+        "versionId": 52,
+        "version": 2,
+        "currency": "PEN",
+        "state": "OPEN",
+        "complete": false,
+        "totalMinor": 10000,
+        "paidMinor": 0,
+        "outstandingMinor": 10000,
+        "installments": [
+          {
+            "id": 61,
+            "sequence": 1,
+            "amountMinor": 10000,
+            "paidMinor": 0,
+            "outstandingMinor": 10000,
+            "valid": true,
+            "complete": false
+          }
+        ]
+      }
+    }
+  },
+  "projectOperations": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "projectId": 11,
+        "name": "Proyecto Demo",
+        "slug": "proyecto-demo",
+        "shortDescription": "Resumen del proyecto",
+        "status": "IN_DEVELOPMENT",
+        "developmentDate": null,
+        "productOwnerId": 9,
+        "kickoff": {
+          "status": "PENDING",
+          "scheduledAt": null,
+          "notes": "",
+          "canStart": false,
+          "blockingReason": "Se requiere adelanto confirmado."
+        },
+        "members": [
+          {
+            "id": 31,
+            "userId": 8,
+            "name": "Developer Demo",
+            "role": "DEVELOPER",
+            "memberRole": "DEVELOPER",
+            "technicalRole": "Backend",
+            "participation": 100,
+            "participationBasisPoints": 10000,
+            "isActive": true
+          }
+        ],
+        "milestones": [
+          {
+            "id": 21,
+            "title": "Entrega 1",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "sequence": 1,
+            "deliverables": [
+              {
+                "id": 101,
+                "projectId": 11,
+                "milestoneId": 21,
+                "title": "Entrega 1",
+                "description": "Informe y demostración",
+                "milestoneOrder": 1,
+                "dueDate": "2026-10-01T15:00:00.000Z",
+                "status": "IN_REVIEW",
+                "fileUrl": "https://files.example.test/report.pdf",
+                "externalLink": "https://video.example.test/demo",
+                "feedbackNotes": null,
+                "submittedAt": "2026-10-01T15:00:00.000Z",
+                "reviewedAt": null,
+                "reviewedById": null,
+                "createdAt": "2026-10-01T15:00:00.000Z",
+                "updatedAt": "2026-10-01T15:00:00.000Z"
+              }
+            ]
+          }
+        ],
+        "candidates": [],
+        "canManageTeam": false,
+        "canManageKickoff": false,
+        "canViewFinance": false
+      }
+    }
+  },
+  "projectMembers": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 31,
+          "projectId": 11,
+          "userId": 8,
+          "memberRole": "DEVELOPER",
+          "technicalRole": "Backend",
+          "participationBasisPoints": 10000,
+          "isActive": true,
+          "user": {
+            "name": "Developer Demo"
+          },
+          "createdAt": "2026-10-01T15:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "deliverables": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 101,
+          "projectId": 11,
+          "milestoneId": 21,
+          "title": "Entrega 1",
+          "description": "Informe y demostración",
+          "milestoneOrder": 1,
+          "dueDate": "2026-10-01T15:00:00.000Z",
+          "status": "IN_REVIEW",
+          "fileUrl": "https://files.example.test/report.pdf",
+          "externalLink": "https://video.example.test/demo",
+          "feedbackNotes": null,
+          "submittedAt": "2026-10-01T15:00:00.000Z",
+          "reviewedAt": null,
+          "reviewedById": null,
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "reviewedBy": null
+        }
+      ]
+    }
+  },
+  "createDeliverable": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "DRAFT",
+        "fileUrl": null,
+        "externalLink": null,
+        "feedbackNotes": null,
+        "submittedAt": null,
+        "reviewedAt": null,
+        "reviewedById": null,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": null
+      }
+    }
+  },
+  "submitEvidence": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "milestoneId": 21,
+        "projectId": 11,
+        "title": "Entrega 1",
+        "status": "IN_REVIEW",
+        "pdfUrl": "https://files.example.test/report.pdf",
+        "videoUrl": "https://video.example.test/demo",
+        "notes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "reviewDeliverable": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "APPROVED",
+        "fileUrl": "https://files.example.test/report.pdf",
+        "externalLink": "https://video.example.test/demo",
+        "feedbackNotes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedById": 7,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": {
+          "id": 7,
+          "name": "Cliente Demo"
+        }
+      }
+    }
+  },
+  "history": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 1,
+          "action": "SUBMITTED",
+          "actorId": 8,
+          "actorName": "Developer Demo",
+          "actorRole": "DEVELOPER",
+          "fileUrl": "https://files.example.test/report.pdf",
+          "videoUrl": "https://video.example.test/demo",
+          "comments": null,
+          "timestamp": "2026-10-01T15:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "uploadFile": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "url": "https://files.example.test/report.pdf",
+        "storageKey": "example.pdf",
+        "filename": "informe.pdf",
+        "sizeBytes": 1024,
+        "mimeType": "application/pdf"
+      }
+    }
+  },
+  "requestMeeting": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 81,
+        "status": "PENDING",
+        "scheduledAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "cancelMeeting": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 81,
+        "status": "CANCELLED"
+      }
+    }
+  },
+  "getKickoff": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "projectId": 11,
+        "name": "Proyecto Demo",
+        "slug": "proyecto-demo",
+        "shortDescription": "Resumen del proyecto",
+        "status": "IN_DEVELOPMENT",
+        "developmentDate": null,
+        "productOwnerId": 9,
+        "kickoff": {
+          "status": "PENDING",
+          "scheduledAt": null,
+          "notes": "",
+          "canStart": false,
+          "blockingReason": "Se requiere adelanto confirmado."
+        },
+        "members": [
+          {
+            "id": 31,
+            "userId": 8,
+            "name": "Developer Demo",
+            "role": "DEVELOPER",
+            "memberRole": "DEVELOPER",
+            "technicalRole": "Backend",
+            "participation": 100,
+            "participationBasisPoints": 10000,
+            "isActive": true
+          }
+        ],
+        "milestones": [
+          {
+            "id": 21,
+            "title": "Entrega 1",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "sequence": 1,
+            "deliverables": [
+              {
+                "id": 101,
+                "projectId": 11,
+                "milestoneId": 21,
+                "title": "Entrega 1",
+                "description": "Informe y demostración",
+                "milestoneOrder": 1,
+                "dueDate": "2026-10-01T15:00:00.000Z",
+                "status": "IN_REVIEW",
+                "fileUrl": "https://files.example.test/report.pdf",
+                "externalLink": "https://video.example.test/demo",
+                "feedbackNotes": null,
+                "submittedAt": "2026-10-01T15:00:00.000Z",
+                "reviewedAt": null,
+                "reviewedById": null,
+                "createdAt": "2026-10-01T15:00:00.000Z",
+                "updatedAt": "2026-10-01T15:00:00.000Z"
+              }
+            ],
+            "amountMinor": "10000",
+            "percentageBasisPoints": 10000,
+            "paymentScheduleId": 61
+          }
+        ],
+        "candidates": [],
+        "canManageTeam": false,
+        "canManageKickoff": false,
+        "canViewFinance": true,
+        "quoteId": 41,
+        "clientUserId": 7
+      }
+    }
+  },
+  "scheduleKickoff": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 91,
+        "projectId": 11,
+        "meetingId": 81,
+        "actorId": 7,
+        "heldAt": "2026-10-01T15:00:00.000Z",
+        "notes": "",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "getContributions": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 71,
+          "projectId": 11,
+          "deliverableId": 101,
+          "milestoneId": 21,
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API",
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "user": {
+            "id": 8,
+            "name": "Developer Demo",
+            "email": "dev@example.test",
+            "role": {
+              "name": "DEVELOPER"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "saveContributions": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 71,
+          "projectId": 11,
+          "deliverableId": 101,
+          "milestoneId": 21,
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API",
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "user": {
+            "id": 8,
+            "name": "Developer Demo",
+            "email": "dev@example.test",
+            "role": {
+              "name": "DEVELOPER"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "projectContributions": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "projectId": 11,
+        "totalMilestones": 1,
+        "deliverables": [
+          {
+            "id": 101,
+            "title": "Entrega 1",
+            "milestoneOrder": 1,
+            "status": "IN_REVIEW",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "contributions": [
+              {
+                "id": 71,
+                "userId": 8,
+                "userName": "Developer Demo",
+                "userRole": "DEVELOPER",
+                "percentage": 100,
+                "description": "Implementación de API"
+              }
+            ]
+          }
+        ],
+        "teamSummary": [
+          {
+            "user": {
+              "id": 8,
+              "name": "Developer Demo",
+              "email": "dev@example.test",
+              "role": "DEVELOPER"
+            },
+            "averagePercentage": 100,
+            "milestonesContributed": 1,
+            "tasks": [
+              "Implementación de API"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "progress": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "canViewFinance": false,
+        "projects": [
+          {
+            "projectId": 11,
+            "name": "Proyecto Demo",
+            "progress": 0,
+            "approvedDeliverables": 0,
+            "pendingDeliverables": 1
+          }
+        ],
+        "generatedAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "traceability": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "project": {
+          "id": 11,
+          "name": "Proyecto Demo",
+          "slug": "proyecto-demo",
+          "status": "IN_DEVELOPMENT",
+          "progress": 0,
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "client": {
+            "name": "Cliente Demo"
+          },
+          "productOwner": {
+            "name": "PO Demo"
+          }
+        },
+        "commercial": null,
+        "team": [
+          {
+            "id": 8,
+            "name": "Developer Demo",
+            "memberRole": "DEVELOPER",
+            "technicalRole": "Backend",
+            "participationBasisPoints": 10000
+          }
+        ],
+        "milestones": [
+          {
+            "id": 101,
+            "milestoneOrder": 1,
+            "title": "Entrega 1",
+            "description": "Informe y demostración",
+            "status": "IN_REVIEW",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "pdfUrl": "https://files.example.test/report.pdf",
+            "videoUrl": "https://video.example.test/demo",
+            "feedbackNotes": null,
+            "submittedAt": "2026-10-01T15:00:00.000Z",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "contributions": [],
+            "history": [
+              {
+                "action": "SUBMITTED",
+                "actorName": "Developer Demo",
+                "actorRole": "DEVELOPER",
+                "fileUrl": "https://files.example.test/report.pdf",
+                "videoUrl": "https://video.example.test/demo",
+                "comments": null,
+                "timestamp": "2026-10-01T15:00:00.000Z"
+              }
+            ]
+          }
+        ],
+        "teamContributions": [],
+        "generatedAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "profile": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "user": {
+          "id": 7,
+          "email": "cliente@example.test",
+          "role": "CLIENT",
+          "name": "Cliente Demo",
+          "isActive": true
+        },
+        "profile": {
+          "id": 17,
+          "type": "CLIENT",
+          "dni": null,
+          "age": null,
+          "phone": null,
+          "district": null,
+          "businessName": null,
+          "ruc": null,
+          "commercialName": null,
+          "businessDistrict": null,
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z"
+        }
+      }
+    }
+  },
+  "editOwnUser": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 7,
+        "email": "cliente@example.test",
+        "role": "CLIENT",
+        "name": "Cliente Demo",
+        "isActive": true,
+        "acceptedTermsAt": "2026-10-01T15:00:00.000Z",
+        "termsVersion": "test-v1",
+        "privacyVersion": "test-v1"
+      }
+    }
+  },
+  "editClientProfile": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 17,
+        "type": "CLIENT",
+        "dni": null,
+        "age": null,
+        "phone": "+51 999999999",
+        "district": "Lima",
+        "businessName": null,
+        "ruc": null,
+        "commercialName": null,
+        "businessDistrict": null,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "editDeveloperProfile": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 18,
+        "type": "DEVELOPER",
+        "career": null,
+        "university": null,
+        "academicStatus": null,
+        "experienceYears": 2,
+        "specialty": "Backend",
+        "cvUrl": null,
+        "photoUrl": null,
+        "linkedinUrl": null,
+        "githubUrl": null,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "technologies": []
+      }
+    }
+  },
+  "profilePhoto": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "photoUrl": "https://files.example.test/avatar.png"
+      }
+    }
+  },
+  "charge": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "chargeId": "chr_test_mock",
+        "status": "PENDING_CONFIRMATION"
+      }
+    }
+  },
+  "checkout": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "orderId": "ord_test_mock",
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "expirationDate": "2026-10-01T15:00:00.000Z",
+        "checkoutUrl": "https://portal.example.test/client/quotes/41/agreement?checkoutOrder=ord_test_mock"
+      }
+    }
+  },
+  "milestoneEvidence": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "milestoneId": 21,
+        "projectId": 11,
+        "title": "Entrega 1",
+        "status": "IN_REVIEW",
+        "pdfUrl": "https://files.example.test/report.pdf",
+        "videoUrl": "https://video.example.test/demo",
+        "notes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "milestoneEvidencePdf": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "milestoneId": 21,
+        "projectId": 11,
+        "title": "Entrega 1",
+        "status": "IN_REVIEW",
+        "pdfUrl": "https://files.example.test/report.pdf",
+        "videoUrl": "https://video.example.test/demo",
+        "notes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "reviewPost": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "APPROVED",
+        "fileUrl": "https://files.example.test/report.pdf",
+        "externalLink": "https://video.example.test/demo",
+        "feedbackNotes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedById": 7,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": {
+          "id": 7,
+          "name": "Cliente Demo"
+        }
+      }
+    }
+  },
+  "milestoneReview": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "APPROVED",
+        "fileUrl": "https://files.example.test/report.pdf",
+        "externalLink": "https://video.example.test/demo",
+        "feedbackNotes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedById": 7,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": {
+          "id": 7,
+          "name": "Cliente Demo"
+        }
+      }
+    }
+  },
+  "milestoneHistory": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 1,
+          "action": "SUBMITTED",
+          "actorId": 8,
+          "actorName": "Developer Demo",
+          "actorRole": "DEVELOPER",
+          "fileUrl": "https://files.example.test/report.pdf",
+          "videoUrl": "https://video.example.test/demo",
+          "comments": null,
+          "timestamp": "2026-10-01T15:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "milestoneContributions": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 71,
+          "projectId": 11,
+          "deliverableId": 101,
+          "milestoneId": 21,
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API",
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "user": {
+            "id": 8,
+            "name": "Developer Demo",
+            "email": "dev@example.test",
+            "role": {
+              "name": "DEVELOPER"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "saveMilestoneContributions": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": [
+        {
+          "id": 71,
+          "projectId": 11,
+          "deliverableId": 101,
+          "milestoneId": 21,
+          "userId": 8,
+          "percentage": 100,
+          "description": "Implementación de API",
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "updatedAt": "2026-10-01T15:00:00.000Z",
+          "user": {
+            "id": 8,
+            "name": "Developer Demo",
+            "email": "dev@example.test",
+            "role": {
+              "name": "DEVELOPER"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "projectReport": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "project": {
+          "id": 11,
+          "name": "Proyecto Demo",
+          "slug": "proyecto-demo",
+          "status": "IN_DEVELOPMENT",
+          "progress": 0,
+          "createdAt": "2026-10-01T15:00:00.000Z",
+          "client": {
+            "name": "Cliente Demo"
+          },
+          "productOwner": {
+            "name": "PO Demo"
+          }
+        },
+        "commercial": null,
+        "team": [
+          {
+            "id": 8,
+            "name": "Developer Demo",
+            "memberRole": "DEVELOPER",
+            "technicalRole": "Backend",
+            "participationBasisPoints": 10000
+          }
+        ],
+        "milestones": [
+          {
+            "id": 101,
+            "milestoneOrder": 1,
+            "title": "Entrega 1",
+            "description": "Informe y demostración",
+            "status": "IN_REVIEW",
+            "dueDate": "2026-10-01T15:00:00.000Z",
+            "pdfUrl": "https://files.example.test/report.pdf",
+            "videoUrl": "https://video.example.test/demo",
+            "feedbackNotes": null,
+            "submittedAt": "2026-10-01T15:00:00.000Z",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "contributions": [],
+            "history": [
+              {
+                "action": "SUBMITTED",
+                "actorName": "Developer Demo",
+                "actorRole": "DEVELOPER",
+                "fileUrl": "https://files.example.test/report.pdf",
+                "videoUrl": "https://video.example.test/demo",
+                "comments": null,
+                "timestamp": "2026-10-01T15:00:00.000Z"
+              }
+            ]
+          }
+        ],
+        "teamContributions": [],
+        "generatedAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "createPublicQuote": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Cotización registrada correctamente",
+      "data": {
+        "code": "Q-ABCDEFGH",
+        "status": "RECEIVED",
+        "pricingStatus": "CALCULATED",
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "pricingVersion": "SP-01-v2",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "createPortalQuote": {
+    "status": 201,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "code": "Q-ABCDEFGH",
+        "status": "RECEIVED",
+        "pricingStatus": "CALCULATED",
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "pricingVersion": "SP-01-v2",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "publicQuoteLookup": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "code": "Q-ABCDEFGH",
+        "status": "RECEIVED",
+        "pricingStatus": "CALCULATED",
+        "amountMinor": 10000,
+        "currency": "PEN",
+        "pricingVersion": "SP-01-v2",
+        "createdAt": "2026-10-01T15:00:00.000Z"
+      }
+    }
+  },
+  "legacySubmit": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Operación realizada correctamente",
+      "data": {
+        "id": 101,
+        "projectId": 11,
+        "milestoneId": 21,
+        "title": "Entrega 1",
+        "description": "Informe y demostración",
+        "milestoneOrder": 1,
+        "dueDate": "2026-10-01T15:00:00.000Z",
+        "status": "IN_REVIEW",
+        "fileUrl": "https://files.example.test/report.pdf",
+        "externalLink": "https://video.example.test/demo",
+        "feedbackNotes": null,
+        "submittedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedAt": null,
+        "reviewedById": null,
+        "createdAt": "2026-10-01T15:00:00.000Z",
+        "updatedAt": "2026-10-01T15:00:00.000Z",
+        "reviewedBy": null
+      }
+    }
+  }
+}
