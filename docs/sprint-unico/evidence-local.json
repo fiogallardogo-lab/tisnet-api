@@ -1,6 +1,6 @@
 {
   "environment": "LOCAL_ONLY_NOT_STAGING",
-  "createdAt": "2026-10-01T14:45:39.837Z",
+  "createdAt": "2026-10-01T21:35:39.730Z",
   "ids": {
     "projectId": 5,
     "quoteId": 1,
@@ -227,7 +227,7 @@
             }
           ],
           "revenue": [],
-          "generatedAt": "2026-10-01T14:45:39.397Z",
+          "generatedAt": "2026-10-01T21:35:39.194Z",
           "user": {
             "id": 13,
             "name": "DEMO CLIENT",
@@ -290,7 +290,7 @@
             }
           ],
           "revenue": [],
-          "generatedAt": "2026-10-01T14:45:39.417Z",
+          "generatedAt": "2026-10-01T21:35:39.219Z",
           "user": {
             "id": 14,
             "name": "DEMO DEVELOPER",
@@ -362,7 +362,7 @@
             }
           ],
           "revenue": [],
-          "generatedAt": "2026-10-01T14:45:39.431Z",
+          "generatedAt": "2026-10-01T21:35:39.247Z",
           "user": {
             "id": 15,
             "name": "DEMO PRODUCT_OWNER",
@@ -438,6 +438,13 @@
               "dueDate": "2026-10-01"
             },
             {
+              "id": 12,
+              "projectId": 22,
+              "title": "Pago inicial",
+              "status": "DRAFT",
+              "dueDate": "2026-10-01"
+            },
+            {
               "id": 1,
               "projectId": 5,
               "title": "Entrega final",
@@ -455,25 +462,57 @@
           "revenue": [
             {
               "currency": "PEN",
-              "confirmedAmountMinor": "536000"
+              "confirmedAmountMinor": "1056000"
             }
           ],
-          "generatedAt": "2026-10-01T14:45:39.445Z",
+          "generatedAt": "2026-10-01T21:35:39.263Z",
           "user": {
             "id": 16,
             "name": "DEMO ADMIN",
             "role": "ADMIN"
           },
           "stats": {
-            "projects": 8,
+            "projects": 12,
             "openTasks": 2,
             "pendingDeliverables": 0,
             "overdueTasks": 0,
-            "meetings": 5,
-            "quotes": 5,
-            "prospects": 12
+            "meetings": 7,
+            "quotes": 7,
+            "prospects": 16
           },
           "projects": [
+            {
+              "id": 22,
+              "name": "test scope",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 21,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 19,
+              "name": "S15 Commercial",
+              "status": "COMPLETED",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 1,
+              "progress": 100
+            },
+            {
+              "id": 18,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
             {
               "id": 15,
               "name": "test scope",
@@ -584,6 +623,18 @@
             },
             {
               "id": 10,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-02T15:00:00.000Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 12,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-02T15:00:00.000Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 14,
               "status": "SCHEDULED",
               "scheduledAt": "2026-12-02T15:00:00.000Z",
               "timezone": "America/Lima"
@@ -626,6 +677,13 @@
               "dueDate": "2026-10-01"
             },
             {
+              "id": 12,
+              "projectId": 22,
+              "title": "Pago inicial",
+              "status": "DRAFT",
+              "dueDate": "2026-10-01"
+            },
+            {
               "id": 1,
               "projectId": 5,
               "title": "Entrega final",
@@ -643,25 +701,57 @@
           "revenue": [
             {
               "currency": "PEN",
-              "confirmedAmountMinor": "536000"
+              "confirmedAmountMinor": "1056000"
             }
           ],
-          "generatedAt": "2026-10-01T14:45:39.461Z",
+          "generatedAt": "2026-10-01T21:35:39.279Z",
           "user": {
             "id": 17,
             "name": "DEMO SUPER_ADMIN",
             "role": "SUPER_ADMIN"
           },
           "stats": {
-            "projects": 8,
+            "projects": 12,
             "openTasks": 2,
             "pendingDeliverables": 0,
             "overdueTasks": 0,
-            "meetings": 5,
-            "quotes": 5,
-            "prospects": 12
+            "meetings": 7,
+            "quotes": 7,
+            "prospects": 16
           },
           "projects": [
+            {
+              "id": 22,
+              "name": "test scope",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 21,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 19,
+              "name": "S15 Commercial",
+              "status": "COMPLETED",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 1,
+              "progress": 100
+            },
+            {
+              "id": 18,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
             {
               "id": 15,
               "name": "test scope",
@@ -775,6 +865,18 @@
               "status": "SCHEDULED",
               "scheduledAt": "2026-12-02T15:00:00.000Z",
               "timezone": "America/Lima"
+            },
+            {
+              "id": 12,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-02T15:00:00.000Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 14,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-02T15:00:00.000Z",
+              "timezone": "America/Lima"
             }
           ],
           "workload": [
@@ -790,37 +892,37 @@
           "usersByRole": [
             {
               "label": "ADMIN",
-              "count": 7
+              "count": 10
             },
             {
               "label": "CLIENT",
-              "count": 11
+              "count": 17
             },
             {
               "label": "DEVELOPER",
-              "count": 9
+              "count": 14
             },
             {
               "label": "PRODUCT_OWNER",
-              "count": 5
+              "count": 8
             },
             {
               "label": "SUPER_ADMIN",
-              "count": 7
+              "count": 11
             }
           ],
           "projectsByStatus": [
             {
               "label": "IN_DEVELOPMENT",
-              "count": 7
+              "count": 10
             },
             {
               "label": "COMPLETED",
-              "count": 1
+              "count": 2
             },
             {
               "label": "ARCHIVED",
-              "count": 2
+              "count": 4
             }
           ],
           "integrations": [
@@ -853,7 +955,7 @@
         "success": true,
         "message": "Operación realizada correctamente",
         "data": {
-          "id": 5,
+          "id": 8,
           "projectId": 5,
           "title": "Smoke task",
           "description": "",
@@ -861,8 +963,8 @@
           "assigneeId": 14,
           "createdById": 15,
           "dueDate": null,
-          "createdAt": "2026-10-01T14:45:39.481Z",
-          "updatedAt": "2026-10-01T14:45:39.481Z"
+          "createdAt": "2026-10-01T21:35:39.295Z",
+          "updatedAt": "2026-10-01T21:35:39.295Z"
         }
       }
     },
@@ -878,7 +980,7 @@
         "data": {
           "items": [
             {
-              "id": 5,
+              "id": 8,
               "projectId": 5,
               "title": "Smoke task",
               "description": "",
@@ -886,8 +988,8 @@
               "assigneeId": 14,
               "createdById": 15,
               "dueDate": null,
-              "createdAt": "2026-10-01T14:45:39.481Z",
-              "updatedAt": "2026-10-01T14:45:39.481Z"
+              "createdAt": "2026-10-01T21:35:39.295Z",
+              "updatedAt": "2026-10-01T21:35:39.295Z"
             },
             {
               "id": 3,
@@ -911,7 +1013,7 @@
     },
     {
       "method": "PATCH",
-      "url": "http://127.0.0.1:13318/api/v1/projects/5/tasks/5",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/tasks/8",
       "role": "DEVELOPER",
       "request": {
         "status": "IN_PROGRESS"
@@ -921,7 +1023,7 @@
         "success": true,
         "message": "Operación realizada correctamente",
         "data": {
-          "id": 5,
+          "id": 8,
           "projectId": 5,
           "title": "Smoke task",
           "description": "",
@@ -929,14 +1031,14 @@
           "assigneeId": 14,
           "createdById": 15,
           "dueDate": null,
-          "createdAt": "2026-10-01T14:45:39.481Z",
-          "updatedAt": "2026-10-01T14:45:39.524Z"
+          "createdAt": "2026-10-01T21:35:39.295Z",
+          "updatedAt": "2026-10-01T21:35:39.327Z"
         }
       }
     },
     {
       "method": "DELETE",
-      "url": "http://127.0.0.1:13318/api/v1/projects/5/tasks/5",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/tasks/8",
       "role": "PRODUCT_OWNER",
       "request": null,
       "http": 200,
@@ -959,13 +1061,13 @@
         "success": true,
         "message": "Operación realizada correctamente",
         "data": {
-          "id": 5,
+          "id": 8,
           "projectId": 5,
           "createdById": 14,
           "name": "Smoke reference",
           "url": "https://example.test/reference",
-          "createdAt": "2026-10-01T14:45:39.557Z",
-          "updatedAt": "2026-10-01T14:45:39.557Z"
+          "createdAt": "2026-10-01T21:35:39.390Z",
+          "updatedAt": "2026-10-01T21:35:39.390Z"
         }
       }
     },
@@ -981,13 +1083,13 @@
         "data": {
           "items": [
             {
-              "id": 5,
+              "id": 8,
               "projectId": 5,
               "createdById": 14,
               "name": "Smoke reference",
               "url": "https://example.test/reference",
-              "createdAt": "2026-10-01T14:45:39.557Z",
-              "updatedAt": "2026-10-01T14:45:39.557Z"
+              "createdAt": "2026-10-01T21:35:39.390Z",
+              "updatedAt": "2026-10-01T21:35:39.390Z"
             },
             {
               "id": 3,
@@ -1008,7 +1110,7 @@
     },
     {
       "method": "PATCH",
-      "url": "http://127.0.0.1:13318/api/v1/projects/5/resources/5",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/resources/8",
       "role": "DEVELOPER",
       "request": {
         "name": "Updated"
@@ -1018,19 +1120,19 @@
         "success": true,
         "message": "Operación realizada correctamente",
         "data": {
-          "id": 5,
+          "id": 8,
           "projectId": 5,
           "createdById": 14,
           "name": "Updated",
           "url": "https://example.test/reference",
-          "createdAt": "2026-10-01T14:45:39.557Z",
-          "updatedAt": "2026-10-01T14:45:39.589Z"
+          "createdAt": "2026-10-01T21:35:39.390Z",
+          "updatedAt": "2026-10-01T21:35:39.439Z"
         }
       }
     },
     {
       "method": "DELETE",
-      "url": "http://127.0.0.1:13318/api/v1/projects/5/resources/5",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/resources/8",
       "role": "DEVELOPER",
       "request": null,
       "http": 200,
@@ -1054,14 +1156,14 @@
         "success": true,
         "message": "Operación realizada correctamente",
         "data": {
-          "id": 6,
+          "id": 11,
           "projectId": 5,
           "userId": 14,
           "taskId": null,
           "date": "2026-09-28T00:00:00.000Z",
           "minutes": 10,
           "summary": "Smoke verification",
-          "createdAt": "2026-10-01T14:45:39.620Z"
+          "createdAt": "2026-10-01T21:35:39.515Z"
         }
       }
     },
@@ -1077,6 +1179,16 @@
         "data": {
           "items": [
             {
+              "id": 11,
+              "projectId": 5,
+              "userId": 14,
+              "taskId": null,
+              "date": "2026-09-28T00:00:00.000Z",
+              "minutes": 10,
+              "summary": "Smoke verification",
+              "createdAt": "2026-10-01T21:35:39.515Z"
+            },
+            {
               "id": 6,
               "projectId": 5,
               "userId": 14,
@@ -1089,7 +1201,7 @@
           ],
           "page": 1,
           "limit": 20,
-          "totalItems": 1,
+          "totalItems": 2,
           "totalPages": 1
         }
       }
@@ -1106,9 +1218,9 @@
         "success": true,
         "message": "Operación realizada correctamente",
         "data": {
-          "id": "69145381-fda6-4cc0-8012-310a99f2f18d",
-          "url": "/api/v1/users/me/cv/69145381-fda6-4cc0-8012-310a99f2f18d",
-          "cvUrl": "/api/v1/users/me/cv/69145381-fda6-4cc0-8012-310a99f2f18d",
+          "id": "d37e9a01-9953-456c-8961-f6593a48b6bf",
+          "url": "/api/v1/users/me/cv/d37e9a01-9953-456c-8961-f6593a48b6bf",
+          "cvUrl": "/api/v1/users/me/cv/d37e9a01-9953-456c-8961-f6593a48b6bf",
           "filename": "mock-document.pdf",
           "mimeType": "application/pdf",
           "sizeBytes": 903
@@ -1117,7 +1229,7 @@
     },
     {
       "method": "GET",
-      "url": "http://127.0.0.1:13318/api/v1/users/me/cv/69145381-fda6-4cc0-8012-310a99f2f18d",
+      "url": "http://127.0.0.1:13318/api/v1/users/me/cv/d37e9a01-9953-456c-8961-f6593a48b6bf",
       "role": "DEVELOPER",
       "request": null,
       "http": 200,
@@ -1139,8 +1251,8 @@
         "success": true,
         "message": "Operación realizada correctamente",
         "data": {
-          "id": "e8a8ef10-e6f3-4ffa-9f85-887cdb0fbd3d",
-          "url": "/api/v1/projects/5/files/e8a8ef10-e6f3-4ffa-9f85-887cdb0fbd3d/download",
+          "id": "18a929a1-f757-42c6-98d4-18bc03fe581f",
+          "url": "/api/v1/projects/5/files/18a929a1-f757-42c6-98d4-18bc03fe581f/download",
           "filename": "mock-document.pdf",
           "mimeType": "application/pdf",
           "sizeBytes": 903
@@ -1149,7 +1261,7 @@
     },
     {
       "method": "GET",
-      "url": "http://127.0.0.1:13318/api/v1/projects/5/files/e8a8ef10-e6f3-4ffa-9f85-887cdb0fbd3d/download",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/files/18a929a1-f757-42c6-98d4-18bc03fe581f/download",
       "role": "CLIENT",
       "request": null,
       "http": 200,
@@ -1200,6 +1312,11 @@
             "description": null
           },
           {
+            "id": 15,
+            "name": "S15 44e4af28-1f27-4e7a-9059-a4097ce5ae06",
+            "description": null
+          },
+          {
             "id": 10,
             "name": "S15 d90934c7-3884-4875-8ba6-fceef50d8bad",
             "description": null
@@ -1215,8 +1332,18 @@
             "description": null
           },
           {
+            "id": 14,
+            "name": "Unified 4a0420a0-3870-4232-94dc-1c5ab80cb81f",
+            "description": null
+          },
+          {
             "id": 12,
             "name": "Unified 79fe398f-9a92-4e71-81e7-0ed49ee11b69",
+            "description": null
+          },
+          {
+            "id": 16,
+            "name": "Unified a9dfa69d-17fa-42e2-a4fc-b32221d09423",
             "description": null
           }
         ]
@@ -1257,15 +1384,17 @@
         "message": "Operación realizada correctamente",
         "data": {
           "status": "UP",
-          "timestamp": "2026-10-01T14:45:39.791Z",
-          "uptimeSeconds": 127,
+          "apiVersion": "v1",
+          "commit": "WORKTREE_FINAL_SPRINT_UNICO_2026_10_01",
+          "timestamp": "2026-10-01T21:35:39.663Z",
+          "uptimeSeconds": 32,
           "database": {
             "status": "CONNECTED",
             "latencyMs": 1
           },
           "memory": {
-            "rssMb": 118.16,
-            "heapUsedMb": 47.4
+            "rssMb": 122.68,
+            "heapUsedMb": 46.95
           },
           "environment": "test"
         }
@@ -1297,7 +1426,7 @@
         "access-control-expose-headers": "Content-Disposition",
         "connection": "keep-alive",
         "content-length": "0",
-        "date": "Thu, 01 Oct 2026 14:45:39 GMT",
+        "date": "Thu, 01 Oct 2026 21:35:39 GMT",
         "keep-alive": "timeout=5",
         "vary": "Origin",
         "x-powered-by": "Express"

@@ -107,3 +107,5 @@ Ejecutar docker compose --env-file .env.staging -f compose.staging.yml up -d --b
 Con host real y tokens seguros de cinco roles: configurar STAGING_API_ORIGIN, FRONTEND_ORIGIN, EXPECTED_COMMIT, STAGING_TOKEN_CLIENT/DEVELOPER/PRODUCT_OWNER/ADMIN/SUPER_ADMIN y ejecutar scripts/verify-staging-readiness.cjs. El script prueba salud/versión, Swagger, roles y preflight, sin guardar tokens. No reemplaza pruebas de mutación ni de proveedores externos.
 
 Responsable funcional: Backend de este sprint. Código disponible en esta entrega. Fecha de disponibilidad remota: por confirmar al disponer de host/proveedor/dominio y accesos. Conservar respaldo mock hasta verificar el entorno remoto.
+
+Actualización de cierre: /health se sirve desde un único controlador, devuelve apiVersion y commit, y usa HTTP 503 con data.status=DEGRADED cuando falla MySQL. Conserva su payload de diagnóstico; esta respuesta 503 es distinta del envelope de excepciones. Se incorporó el commit remoto b20987f de cotizaciones antes del cierre.

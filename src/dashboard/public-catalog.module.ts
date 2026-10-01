@@ -31,22 +31,8 @@ class PublicCatalogController {
     });
   }
 }
-@ApiTags('Readiness')
-@Controller('health')
-class ReadinessController {
-  constructor(private readonly prisma: PrismaService) {}
-  @Get() async ready() {
-    await this.prisma.$queryRaw`SELECT 1`;
-    return {
-      status: 'ok',
-      apiVersion: 'v1',
-      commit: process.env.APP_COMMIT || 'unknown',
-      timestamp: new Date().toISOString(),
-    };
-  }
-}
 @Module({
   imports: [PrismaModule],
-  controllers: [PublicCatalogController, ReadinessController],
+  controllers: [PublicCatalogController],
 })
 export class PublicCatalogModule {}

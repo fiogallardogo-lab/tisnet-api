@@ -160,7 +160,11 @@ const fs = require('fs'),
   await call('GET', '/api/v1/workspace/meetings', 'DEVELOPER');
   for (const route of ['categories', 'technologies', 'technology-categories'])
     await call('GET', '/api/v1/public/' + route);
-  await call('GET', '/api/v1/health');
+  const health = await call('GET', '/api/v1/health');
+  assert.equal(health.status, 'UP');
+  assert.equal(health.apiVersion, 'v1');
+  assert.equal(health.commit, process.env.EXPECTED_COMMIT || health.commit);
+  assert.ok(health.commit && health.commit !== 'unknown');
   await call('GET', '/api/v1/dashboard/admin', 'DEVELOPER', undefined, 403);
   const pre = await fetch(base + '/api/v1/dashboard/developer', {
     method: 'OPTIONS',

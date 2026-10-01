@@ -1,6 +1,18 @@
 // Generated from the registered Nest OpenAPI. JSON dates are strings.
 export interface ApiSuccess<T>{success:true;message:string;data:T}
 export interface ApiError{success:false;message:string|string[];error:string}
+export type HealthDatabaseDto = {"status": "CONNECTED" | "DISCONNECTED";
+"latencyMs": number;};
+export type HealthMemoryDto = {"rssMb": number;
+"heapUsedMb": number;};
+export type HealthDto = {"status": "UP" | "DEGRADED";
+"apiVersion": "v1";
+"commit": string;
+"timestamp": string;
+"uptimeSeconds": number;
+"database": HealthDatabaseDto;
+"memory": HealthMemoryDto;
+"environment": string;};
 export type DashboardUserDto = {"id": number;
 "name": string;
 "role": string;};

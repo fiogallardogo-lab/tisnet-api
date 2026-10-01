@@ -1,0 +1,28 @@
+{
+  "environment": "LOCAL_ONLY_NOT_STAGING",
+  "createdAt": "2026-10-01T21:35:37.722Z",
+  "fileUrl": "http://127.0.0.1:13318/api/v1/projects/5/files/e8a8ef10-e6f3-4ffa-9f85-887cdb0fbd3d/download",
+  "http": 200,
+  "sha256": "6ec69777ca740882686654aa33a1332174ebdf157f6f64d44e49e71c2751fb56",
+  "persistedAcrossApiRestart": true,
+  "health": {
+    "success": true,
+    "message": "Operación realizada correctamente",
+    "data": {
+      "status": "UP",
+      "apiVersion": "v1",
+      "commit": "WORKTREE_FINAL_SPRINT_UNICO_2026_10_01",
+      "timestamp": "2026-10-01T21:35:37.719Z",
+      "uptimeSeconds": 30,
+      "database": {
+        "status": "CONNECTED",
+        "latencyMs": 2
+      },
+      "memory": {
+        "rssMb": 115.1,
+        "heapUsedMb": 43.86
+      },
+      "environment": "test"
+    }
+  }
+}

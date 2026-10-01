@@ -38,6 +38,11 @@ const fs = require('fs');
   }
   try {
     const health = await check('/api/v1/health');
+    if (
+      health.body.data?.status !== 'UP' ||
+      health.body.data?.database?.status !== 'CONNECTED'
+    )
+      throw Error('Database is not ready');
     if (health.body.data?.commit !== expected)
       throw Error('Deployed commit mismatch');
     await check('/api/docs');

@@ -4,14 +4,14 @@
 
 ## Resultado
 
-Implementación backend completada y validada localmente para los cinco paneles. Se añaden 24 operaciones HTTP para dashboards, tareas, recursos, horas/avances, agenda del equipo, CV, documentos privados, catálogos y readiness. Se conserva la API comercial previa. **No se declara staging remoto listo:** no hay proveedor, host, dominio ni credenciales de infraestructura verificables en esta sesión.
+Implementación backend completada y validada localmente para los cinco paneles. Se añaden 23 operaciones HTTP y se amplía health para dashboards, tareas, recursos, horas/avances, agenda del equipo, CV, documentos privados, catálogos y readiness. Se conserva la API comercial previa. **No se declara staging remoto listo:** no hay proveedor, host, dominio ni credenciales de infraestructura verificables en esta sesión.
 
 ## Matriz del plan
 
 | Trabajo Backend del plan | Resultado | Evidencia |
 | --- | --- | --- |
 | DTOs para cinco dashboards | IMPLEMENTADO Y PROBADO LOCALMENTE | src/dashboard/dashboard.dto.ts; openapi.json; contracts.ts |
-| Swagger y TypeScript para ambos frontends | ENTREGADO | Exportación real: 142 rutas registradas y 90 esquemas; tipos autónomos compilan |
+| Swagger y TypeScript para ambos frontends | ENTREGADO | Exportación real: 142 rutas registradas y 93 esquemas; tipos autónomos compilan |
 | Roles y GET /auth/me | EXISTENTE, VERIFICADO | JWT real, tokenVersion y matriz de 25 accesos de rol/dashboard |
 | /dashboard/client, developer, po, admin | IMPLEMENTADO Y PROBADO | Pruebas HTTP y demo con login real |
 | /dashboard/superadmin | IMPLEMENTADO Y PROBADO | Distribución de roles/proyectos; estado de configuración sin afirmar conectividad externa |
@@ -83,3 +83,7 @@ Calendly, reprogramación y relación entre invitees: https://developer.calendly
 Las restantes conclusiones proceden del código, migraciones y pruebas de este repositorio.
 
 Comprobación adicional: sintaxis YAML de CI y Compose válida mediante js-yaml; esto no sustituye un build Docker.
+
+Actualización de cierre: /health se sirve desde un único controlador, devuelve apiVersion y commit, y usa HTTP 503 con data.status=DEGRADED cuando falla MySQL. Conserva su payload de diagnóstico; esta respuesta 503 es distinta del envelope de excepciones. Se incorporó el commit remoto b20987f de cotizaciones antes del cierre.
+
+Validación final tras integrar b20987f y unificar health: compilación correcta, contratos TypeScript estrictos válidos, 3 pruebas unitarias del controlador y 56 E2E de los tres módulos afectados aprobados. La demo repitió 38 solicitudes HTTP correctamente. evidence-restart.json acredita descarga protegida HTTP 200 con SHA-256 idéntico después de reiniciar la API. La evidencia identifica el código local mediante WORKTREE_FINAL_SPRINT_UNICO_2026_10_01; no acredita un despliegue remoto ni un SHA publicado.

@@ -17,15 +17,71 @@
     },
     "/api/v1/health": {
       "get": {
-        "operationId": "ReadinessController_ready",
+        "operationId": "AppController_getHealth",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/HealthDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/HealthDto"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
+        "summary": "Verificar estado de salud y conectividad de la plataforma (S15-B11)",
         "tags": [
-          "Readiness"
+          "System & Health"
         ]
       }
     },
@@ -12602,7 +12658,7 @@
             "required": true,
             "in": "path",
             "schema": {
-              "type": "number"
+              "type": "string"
             }
           }
         ],
@@ -12630,7 +12686,7 @@
             "required": true,
             "in": "path",
             "schema": {
-              "type": "number"
+              "type": "string"
             }
           }
         ],
@@ -13536,6 +13592,88 @@
       }
     },
     "schemas": {
+      "HealthDatabaseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "CONNECTED",
+              "DISCONNECTED"
+            ]
+          },
+          "latencyMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "latencyMs"
+        ]
+      },
+      "HealthMemoryDto": {
+        "type": "object",
+        "properties": {
+          "rssMb": {
+            "type": "number"
+          },
+          "heapUsedMb": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "rssMb",
+          "heapUsedMb"
+        ]
+      },
+      "HealthDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "UP",
+              "DEGRADED"
+            ]
+          },
+          "apiVersion": {
+            "type": "string",
+            "enum": [
+              "v1"
+            ]
+          },
+          "commit": {
+            "type": "string",
+            "description": "SHA incorporado en APP_COMMIT, unknown si no se configuró"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uptimeSeconds": {
+            "type": "number"
+          },
+          "database": {
+            "$ref": "#/components/schemas/HealthDatabaseDto"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/HealthMemoryDto"
+          },
+          "environment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "apiVersion",
+          "commit",
+          "timestamp",
+          "uptimeSeconds",
+          "database",
+          "memory",
+          "environment"
+        ]
+      },
       "DashboardUserDto": {
         "type": "object",
         "properties": {

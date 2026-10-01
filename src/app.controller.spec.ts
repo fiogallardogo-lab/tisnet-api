@@ -37,13 +37,17 @@ describe('AppController', () => {
     it('should return UP and database status when database is reachable', async () => {
       const health = await appController.getHealth();
       expect(health.status).toBe('UP');
+      expect(health.apiVersion).toBe('v1');
+      expect(health.commit).toBe(process.env.APP_COMMIT || 'unknown');
       expect(health.database.status).toBe('CONNECTED');
       expect(health.uptimeSeconds).toBeGreaterThanOrEqual(0);
     });
 
     it('should return DEGRADED when database fails', async () => {
       prisma.$queryRaw.mockRejectedValueOnce(new Error('Connection lost'));
-      const health = await appController.getHealth();
+      const response = { status: vi.fn() };
+      const health = await appController.getHealth(response as any);
+      expect(response.status).toHaveBeenCalledWith(503);
       expect(health.status).toBe('DEGRADED');
       expect(health.database.status).toBe('DISCONNECTED');
     });
