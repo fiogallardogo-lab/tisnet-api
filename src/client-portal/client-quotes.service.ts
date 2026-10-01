@@ -1,4 +1,4 @@
-import { auditRecord } from '../audit/audit.service';
+﻿import { auditRecord } from '../audit/audit.service';
 import {
   ConflictException,
   Injectable,
@@ -14,16 +14,21 @@ export class ClientQuotesService {
     private readonly audit: AuditService,
   ) {}
 
-  async getAgreement(quoteId: number, clientId: number) {
+  async getAgreement(quoteId: number, clientId: number, clientEmail?: string) {
     const quote = await this.prisma.quote.findFirst({
       where: {
         id: quoteId,
-        prospect: { userId: clientId },
+        OR: [
+          { prospect: { userId: clientId } },
+          ...(clientEmail ? [{ contactEmail: clientEmail.trim().toLowerCase() }] : []),
+        ],
       },
       include: {
+        options: {
+          orderBy: { displayOrder: 'asc' },
+        },
         versions: {
           orderBy: { version: 'desc' },
-
           include: {
             schedules: {
               orderBy: { sequence: 'asc' },
@@ -34,66 +39,114 @@ export class ClientQuotesService {
       },
     });
 
-    if (!quote || quote.versions.length === 0) {
+    if (!quote) {
       throw new NotFoundException(
-        'Cotización oficial no encontrada o no pertenece a tu cuenta.',
+        'Cotización no encontrada o no pertenece a tu cuenta.',
       );
     }
 
-    const official = quote.versions[0];
+    const versions =
+      quote.versions.length > 0
+        ? quote.versions.map((v) => ({
+            id: v.id,
+            version: v.version,
+            code: quote.publicCode,
+            kind: 'OFFICIAL' as const,
+            status: v.acceptedAt
+              ? 'ACCEPTED'
+              : v.version === quote.activeVersion
+                ? 'SENT'
+                : 'SUPERSEDED',
+            amountMinor: Number(v.amountMinor),
+            currency: v.currency,
+            createdAt:
+              typeof v.createdAt === 'object' && v.createdAt?.toISOString
+                ? v.createdAt.toISOString()
+                : String(v.createdAt),
+            notes:
+              typeof v.scope === 'object' && v.scope && 'description' in v.scope
+                ? (v.scope as { description: string }).description
+                : typeof v.scope === 'string'
+                  ? v.scope
+                  : '',
+            canAccept: v.version === quote.activeVersion && !v.acceptedAt,
+            installments: v.schedules.map((s) => ({
+              id: s.id,
+              label: s.milestone,
+              percentage: s.percentageBasisPoints / 100,
+              amountMinor: Number(s.amountMinor),
+              currency: v.currency,
+              dueDate: s.dueDate.toISOString().slice(0, 10),
+              status: s.payments.length ? 'PAID' : 'PENDING',
+            })),
+          }))
+        : [
+            {
+              id: 0,
+              version: 0,
+              code: quote.publicCode,
+              kind: 'PRELIMINARY' as const,
+              status: quote.status,
+              amountMinor: Number(quote.amountMinor ?? 0),
+              currency: quote.currency ?? 'PEN',
+              createdAt:
+                typeof quote.createdAt === 'object' &&
+                quote.createdAt?.toISOString
+                  ? quote.createdAt.toISOString()
+                  : String(quote.createdAt),
+              notes:
+                quote.notes ||
+                `Cotización preliminar estimada para ${quote.solutionType.replaceAll('_', ' ')}.`,
+              canAccept: false,
+              installments: [],
+            },
+          ];
+
+    const official = quote.versions[0] ?? null;
 
     return {
       quoteId: quote.id,
       code: quote.publicCode,
-      activeVersion: quote.activeVersion,
-      amountMinor: Number(official.amountMinor),
-      currency: official.currency,
-      officialAt: official.officialAt,
-      acceptedAt: official.acceptedAt,
-      acceptedVersionId: official.acceptedAt ? official.id : null,
-      versions: quote.versions.map((v) => ({
-        id: v.id,
-        version: v.version,
-        code: quote.publicCode,
-        kind: 'OFFICIAL',
-        status: v.acceptedAt
-          ? 'ACCEPTED'
-          : v.version === quote.activeVersion
-            ? 'SENT'
-            : 'SUPERSEDED',
-        amountMinor: Number(v.amountMinor),
-        currency: v.currency,
-        createdAt: v.createdAt,
-        notes:
-          typeof v.scope === 'object' && v.scope && 'description' in v.scope
-            ? v.scope.description
-            : '',
-        canAccept: v.version === quote.activeVersion && !v.acceptedAt,
-        installments: v.schedules.map((s) => ({
-          id: s.id,
-          label: s.milestone,
-          percentage: s.percentageBasisPoints / 100,
-          amountMinor: Number(s.amountMinor),
-          currency: v.currency,
-          dueDate: s.dueDate.toISOString().slice(0, 10),
-          status: s.payments.length ? 'PAID' : 'PENDING',
-        })),
+      solutionType: quote.solutionType,
+      deliveryMode: quote.deliveryMode,
+      contactName: quote.contactName,
+      contactEmail: quote.contactEmail,
+      contactPhone: quote.contactPhone,
+      contactCompany: quote.contactCompany,
+      notes: quote.notes,
+      status: quote.status,
+      pricingStatus: quote.pricingStatus,
+      options: quote.options.map((o) => ({
+        id: o.id,
+        code: o.optionCode,
+        name: o.optionName,
       })),
-      installments: official.schedules.map((s) => {
-        const totalPaid = s.payments.reduce(
-          (sum, p) => sum + Number(p.amountMinor),
-          0,
-        );
-        return {
-          id: s.id,
-          sequence: s.sequence,
-          milestone: s.milestone,
-          dueDate: s.dueDate,
-          amountMinor: Number(s.amountMinor),
-          paidMinor: totalPaid,
-          status: totalPaid >= Number(s.amountMinor) ? 'PAID' : 'PENDING',
-        };
-      }),
+      activeVersion: quote.activeVersion,
+      amountMinor: official
+        ? Number(official.amountMinor)
+        : Number(quote.amountMinor ?? 0),
+      currency: official ? official.currency : (quote.currency ?? 'PEN'),
+      officialAt: official ? official.officialAt : null,
+      acceptedAt: official ? official.acceptedAt : null,
+      acceptedVersionId: official?.acceptedAt ? official.id : null,
+      versions,
+      installments: official
+        ? official.schedules.map((s) => {
+            const totalPaid = s.payments.reduce(
+              (sum, p) => sum + Number(p.amountMinor),
+              0,
+            );
+            return {
+              id: s.id,
+              sequence: s.sequence,
+              milestone: s.milestone,
+              dueDate: s.dueDate,
+              amountMinor: Number(s.amountMinor),
+              paidMinor: totalPaid,
+              status: totalPaid >= Number(s.amountMinor) ? 'PAID' : 'PENDING',
+            };
+          })
+        : [],
     };
   }
 

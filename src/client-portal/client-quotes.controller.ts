@@ -1,10 +1,10 @@
-import { AcceptQuoteDto } from '../commercial/commercial.dto';
+﻿import { AcceptQuoteDto } from '../commercial/commercial.dto';
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   Param,
-  ParseIntPipe,
   Post,
   Request,
   UseGuards,
@@ -30,10 +30,14 @@ export class ClientQuotesController {
 
   @Get('quotes/:id/agreement')
   getAgreement(
-    @Request() request: { user: { id: number } },
-    @Param('id', ParseIntPipe) quoteId: number,
+    @Request() request: { user: { id: number; email: string } },
+    @Param('id') rawId: string,
   ) {
-    return this.service.getAgreement(quoteId, request.user.id);
+    const quoteId = Number(String(rawId).replace(/^quote-/, ''));
+    if (!Number.isFinite(quoteId) || quoteId <= 0) {
+      throw new BadRequestException('Validation failed (numeric string is expected)');
+    }
+    return this.service.getAgreement(quoteId, request.user.id, request.user.email);
   }
 
   @ApiOperation({
@@ -59,9 +63,13 @@ export class ClientQuotesController {
   @Post('quotes/:id/accept')
   acceptAgreement(
     @Request() request: { user: { id: number } },
-    @Param('id', ParseIntPipe) quoteId: number,
+    @Param('id') rawId: string,
     @Body() body: AcceptQuoteDto,
   ) {
+    const quoteId = Number(String(rawId).replace(/^quote-/, ''));
+    if (!Number.isFinite(quoteId) || quoteId <= 0) {
+      throw new BadRequestException('Validation failed (numeric string is expected)');
+    }
     return this.service.acceptAgreement(
       quoteId,
       request.user.id,
