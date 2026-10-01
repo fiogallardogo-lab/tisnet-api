@@ -1,3 +1,6 @@
+import { PublicCatalogModule } from './dashboard/public-catalog.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { WorkModule } from './work/work.module';
 import { CommercialOperationsModule } from './commercial-operations/operations.module';
 import { CommercialModule } from './commercial/commercial.module';
 import { KickoffModule } from './kickoff/kickoff.module';
@@ -37,6 +40,9 @@ import { ContributionsModule } from './contributions/contributions.module.js';
 
 @Module({
   imports: [
+    PublicCatalogModule,
+    DashboardModule,
+    WorkModule,
     CommercialOperationsModule,
     CommercialModule,
     ConfigModule.forRoot({

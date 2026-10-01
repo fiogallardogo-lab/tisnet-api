@@ -1,3 +1,4 @@
+import { CalendlyPersistenceService } from './calendly-persistence.service';
 import {
   BadRequestException,
   Body,
@@ -9,6 +10,7 @@ import {
   RawBodyRequest,
   Req,
   UnauthorizedException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { CalendlySignatureService } from './calendly-signature.service';
@@ -31,6 +33,7 @@ export class CalendlyWebhookController {
   private readonly logger = new Logger(CalendlyWebhookController.name);
 
   constructor(
+    private readonly persistence: CalendlyPersistenceService,
     private readonly signature: CalendlySignatureService,
     private readonly webhook: CalendlyWebhookService,
   ) {}
@@ -45,10 +48,7 @@ export class CalendlyWebhookController {
     const signingKey = process.env.CALENDLY_WEBHOOK_SECRET;
 
     if (!signingKey) {
-      // No secret configured — log and accept in dev mode only.
-      this.logger.warn(
-        '[Calendly] CALENDLY_WEBHOOK_SECRET not set; skipping signature verification',
-      );
+      throw new ServiceUnavailableException('Calendly webhook no configurado');
     } else {
       const rawBody = req.rawBody;
       if (!rawBody) {
@@ -69,10 +69,9 @@ export class CalendlyWebhookController {
 
     this.logger.log('[Calendly] Received scheduling event');
 
-    // Process asynchronously — webhook must return 200 immediately.
-    void this.webhook.process(body).catch(() => {
-      this.logger.error('[Calendly] Event processing failed');
-    });
+    // Acknowledge only after persistence so provider retries processing failures.
+    const result = await this.persistence.process(body);
+    if (result.fresh) await this.webhook.process(result.payload);
 
     return { received: true };
   }

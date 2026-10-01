@@ -153,6 +153,7 @@ export class ProjectsService {
         );
     }
     await this.ensureProjectExists(id);
+    if (dto.status === ProjectStatus.COMPLETED) throw new ConflictException('Usa POST /projects/:id/close para validar el cierre contractual');
     if (
       dto.status &&
       ['IN_DEVELOPMENT', 'IN_REVIEW', 'COMPLETED'].includes(dto.status)

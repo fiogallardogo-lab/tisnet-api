@@ -1,0 +1,1319 @@
+{
+  "environment": "LOCAL_ONLY_NOT_STAGING",
+  "createdAt": "2026-10-01T14:45:39.837Z",
+  "ids": {
+    "projectId": 5,
+    "quoteId": 1,
+    "quoteCode": "Q-A9924A9A",
+    "versionId": 1,
+    "meetingId": 4,
+    "milestoneId": 1,
+    "deliverableId": 1,
+    "taskId": 3
+  },
+  "evidence": [
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/auth/login",
+      "role": "PUBLIC",
+      "request": {
+        "email": "demo-client-mupn29wz@example.test",
+        "password": "[REDACTED]"
+      },
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "accessToken": "[REDACTED]",
+          "refreshToken": "[REDACTED]",
+          "user": {
+            "id": 13,
+            "email": "demo-client-mupn29wz@example.test",
+            "role": "CLIENT"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/auth/me",
+      "role": "CLIENT",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 13,
+          "email": "demo-client-mupn29wz@example.test",
+          "role": "CLIENT"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/auth/login",
+      "role": "PUBLIC",
+      "request": {
+        "email": "demo-developer-mupn29wz@example.test",
+        "password": "[REDACTED]"
+      },
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "accessToken": "[REDACTED]",
+          "refreshToken": "[REDACTED]",
+          "user": {
+            "id": 14,
+            "email": "demo-developer-mupn29wz@example.test",
+            "role": "DEVELOPER"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/auth/me",
+      "role": "DEVELOPER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 14,
+          "email": "demo-developer-mupn29wz@example.test",
+          "role": "DEVELOPER"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/auth/login",
+      "role": "PUBLIC",
+      "request": {
+        "email": "demo-product_owner-mupn29wz@example.test",
+        "password": "[REDACTED]"
+      },
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "accessToken": "[REDACTED]",
+          "refreshToken": "[REDACTED]",
+          "user": {
+            "id": 15,
+            "email": "demo-product_owner-mupn29wz@example.test",
+            "role": "PRODUCT_OWNER"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/auth/me",
+      "role": "PRODUCT_OWNER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 15,
+          "email": "demo-product_owner-mupn29wz@example.test",
+          "role": "PRODUCT_OWNER"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/auth/login",
+      "role": "PUBLIC",
+      "request": {
+        "email": "demo-admin-mupn29wz@example.test",
+        "password": "[REDACTED]"
+      },
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "accessToken": "[REDACTED]",
+          "refreshToken": "[REDACTED]",
+          "user": {
+            "id": 16,
+            "email": "demo-admin-mupn29wz@example.test",
+            "role": "ADMIN"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/auth/me",
+      "role": "ADMIN",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 16,
+          "email": "demo-admin-mupn29wz@example.test",
+          "role": "ADMIN"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/auth/login",
+      "role": "PUBLIC",
+      "request": {
+        "email": "demo-super_admin-mupn29wz@example.test",
+        "password": "[REDACTED]"
+      },
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "accessToken": "[REDACTED]",
+          "refreshToken": "[REDACTED]",
+          "user": {
+            "id": 17,
+            "email": "demo-super_admin-mupn29wz@example.test",
+            "role": "SUPER_ADMIN"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/auth/me",
+      "role": "SUPER_ADMIN",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 17,
+          "email": "demo-super_admin-mupn29wz@example.test",
+          "role": "SUPER_ADMIN"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/dashboard/client",
+      "role": "CLIENT",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "deliverables": [
+            {
+              "id": 1,
+              "projectId": 5,
+              "title": "Entrega final",
+              "status": "DRAFT",
+              "dueDate": "2026-12-15"
+            }
+          ],
+          "revenue": [],
+          "generatedAt": "2026-10-01T14:45:39.397Z",
+          "user": {
+            "id": 13,
+            "name": "DEMO CLIENT",
+            "role": "CLIENT"
+          },
+          "stats": {
+            "projects": 1,
+            "openTasks": 0,
+            "pendingDeliverables": 0,
+            "overdueTasks": 0,
+            "meetings": 1,
+            "quotes": 1,
+            "prospects": 0
+          },
+          "projects": [
+            {
+              "id": 5,
+              "name": "DEMO Sprint único mupn29wz",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            }
+          ],
+          "tasks": [],
+          "meetings": [
+            {
+              "id": 4,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-01T15:00:00.000Z",
+              "timezone": "America/Lima"
+            }
+          ],
+          "workload": [],
+          "usersByRole": [],
+          "projectsByStatus": [],
+          "integrations": [],
+          "database": "READ_OK",
+          "previewLimit": 50
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/dashboard/developer",
+      "role": "DEVELOPER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "deliverables": [
+            {
+              "id": 1,
+              "projectId": 5,
+              "title": "Entrega final",
+              "status": "DRAFT",
+              "dueDate": "2026-12-15"
+            }
+          ],
+          "revenue": [],
+          "generatedAt": "2026-10-01T14:45:39.417Z",
+          "user": {
+            "id": 14,
+            "name": "DEMO DEVELOPER",
+            "role": "DEVELOPER"
+          },
+          "stats": {
+            "projects": 1,
+            "openTasks": 1,
+            "pendingDeliverables": 0,
+            "overdueTasks": 0,
+            "meetings": 1,
+            "quotes": 0,
+            "prospects": 0
+          },
+          "projects": [
+            {
+              "id": 5,
+              "name": "DEMO Sprint único mupn29wz",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            }
+          ],
+          "tasks": [
+            {
+              "id": 3,
+              "projectId": 5,
+              "title": "Implementar entrega demo",
+              "status": "TODO",
+              "assigneeId": 14,
+              "dueDate": "2026-12-10"
+            }
+          ],
+          "meetings": [
+            {
+              "id": 4,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-01T15:00:00.000Z",
+              "timezone": "America/Lima"
+            }
+          ],
+          "workload": [],
+          "usersByRole": [],
+          "projectsByStatus": [],
+          "integrations": [],
+          "database": "READ_OK",
+          "previewLimit": 50
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/dashboard/po",
+      "role": "PRODUCT_OWNER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "deliverables": [
+            {
+              "id": 1,
+              "projectId": 5,
+              "title": "Entrega final",
+              "status": "DRAFT",
+              "dueDate": "2026-12-15"
+            }
+          ],
+          "revenue": [],
+          "generatedAt": "2026-10-01T14:45:39.431Z",
+          "user": {
+            "id": 15,
+            "name": "DEMO PRODUCT_OWNER",
+            "role": "PRODUCT_OWNER"
+          },
+          "stats": {
+            "projects": 1,
+            "openTasks": 1,
+            "pendingDeliverables": 0,
+            "overdueTasks": 0,
+            "meetings": 1,
+            "quotes": 0,
+            "prospects": 0
+          },
+          "projects": [
+            {
+              "id": 5,
+              "name": "DEMO Sprint único mupn29wz",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            }
+          ],
+          "tasks": [
+            {
+              "id": 3,
+              "projectId": 5,
+              "title": "Implementar entrega demo",
+              "status": "TODO",
+              "assigneeId": 14,
+              "dueDate": "2026-12-10"
+            }
+          ],
+          "meetings": [
+            {
+              "id": 4,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-01T15:00:00.000Z",
+              "timezone": "America/Lima"
+            }
+          ],
+          "workload": [
+            {
+              "userId": 14,
+              "openTasks": 1
+            }
+          ],
+          "usersByRole": [],
+          "projectsByStatus": [],
+          "integrations": [],
+          "database": "READ_OK",
+          "previewLimit": 50
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/dashboard/admin",
+      "role": "ADMIN",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "deliverables": [
+            {
+              "id": 9,
+              "projectId": 15,
+              "title": "Pago inicial",
+              "status": "DRAFT",
+              "dueDate": "2026-10-01"
+            },
+            {
+              "id": 1,
+              "projectId": 5,
+              "title": "Entrega final",
+              "status": "DRAFT",
+              "dueDate": "2026-12-15"
+            },
+            {
+              "id": 5,
+              "projectId": 9,
+              "title": "Adelanto",
+              "status": "DRAFT",
+              "dueDate": "2027-01-01"
+            }
+          ],
+          "revenue": [
+            {
+              "currency": "PEN",
+              "confirmedAmountMinor": "536000"
+            }
+          ],
+          "generatedAt": "2026-10-01T14:45:39.445Z",
+          "user": {
+            "id": 16,
+            "name": "DEMO ADMIN",
+            "role": "ADMIN"
+          },
+          "stats": {
+            "projects": 8,
+            "openTasks": 2,
+            "pendingDeliverables": 0,
+            "overdueTasks": 0,
+            "meetings": 5,
+            "quotes": 5,
+            "prospects": 12
+          },
+          "projects": [
+            {
+              "id": 15,
+              "name": "test scope",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 14,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 10,
+              "name": "S15 Commercial",
+              "status": "COMPLETED",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 1,
+              "progress": 100
+            },
+            {
+              "id": 9,
+              "name": "S14 concurrency fixture",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 5,
+              "name": "DEMO Sprint único mupn29wz",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 4,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 2,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 1,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            }
+          ],
+          "tasks": [
+            {
+              "id": 1,
+              "projectId": 1,
+              "title": "Implementar API",
+              "status": "IN_PROGRESS",
+              "assigneeId": 2,
+              "dueDate": "2026-12-01"
+            },
+            {
+              "id": 3,
+              "projectId": 5,
+              "title": "Implementar entrega demo",
+              "status": "TODO",
+              "assigneeId": 14,
+              "dueDate": "2026-12-10"
+            }
+          ],
+          "meetings": [
+            {
+              "id": 5,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-10-11T14:38:46.929Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 1,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-01T15:00:00.000Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 4,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-01T15:00:00.000Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 3,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-02T15:00:00.000Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 10,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-02T15:00:00.000Z",
+              "timezone": "America/Lima"
+            }
+          ],
+          "workload": [
+            {
+              "userId": 2,
+              "openTasks": 1
+            },
+            {
+              "userId": 14,
+              "openTasks": 1
+            }
+          ],
+          "usersByRole": [],
+          "projectsByStatus": [],
+          "integrations": [],
+          "database": "READ_OK",
+          "previewLimit": 50
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/dashboard/superadmin",
+      "role": "SUPER_ADMIN",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "deliverables": [
+            {
+              "id": 9,
+              "projectId": 15,
+              "title": "Pago inicial",
+              "status": "DRAFT",
+              "dueDate": "2026-10-01"
+            },
+            {
+              "id": 1,
+              "projectId": 5,
+              "title": "Entrega final",
+              "status": "DRAFT",
+              "dueDate": "2026-12-15"
+            },
+            {
+              "id": 5,
+              "projectId": 9,
+              "title": "Adelanto",
+              "status": "DRAFT",
+              "dueDate": "2027-01-01"
+            }
+          ],
+          "revenue": [
+            {
+              "currency": "PEN",
+              "confirmedAmountMinor": "536000"
+            }
+          ],
+          "generatedAt": "2026-10-01T14:45:39.461Z",
+          "user": {
+            "id": 17,
+            "name": "DEMO SUPER_ADMIN",
+            "role": "SUPER_ADMIN"
+          },
+          "stats": {
+            "projects": 8,
+            "openTasks": 2,
+            "pendingDeliverables": 0,
+            "overdueTasks": 0,
+            "meetings": 5,
+            "quotes": 5,
+            "prospects": 12
+          },
+          "projects": [
+            {
+              "id": 15,
+              "name": "test scope",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 14,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 10,
+              "name": "S15 Commercial",
+              "status": "COMPLETED",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 1,
+              "progress": 100
+            },
+            {
+              "id": 9,
+              "name": "S14 concurrency fixture",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 5,
+              "name": "DEMO Sprint único mupn29wz",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 1,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 4,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 2,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            },
+            {
+              "id": 1,
+              "name": "Unified test",
+              "status": "IN_DEVELOPMENT",
+              "totalDeliverables": 0,
+              "approvedDeliverables": 0,
+              "progress": 0
+            }
+          ],
+          "tasks": [
+            {
+              "id": 1,
+              "projectId": 1,
+              "title": "Implementar API",
+              "status": "IN_PROGRESS",
+              "assigneeId": 2,
+              "dueDate": "2026-12-01"
+            },
+            {
+              "id": 3,
+              "projectId": 5,
+              "title": "Implementar entrega demo",
+              "status": "TODO",
+              "assigneeId": 14,
+              "dueDate": "2026-12-10"
+            }
+          ],
+          "meetings": [
+            {
+              "id": 5,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-10-11T14:38:46.929Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 1,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-01T15:00:00.000Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 4,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-01T15:00:00.000Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 3,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-02T15:00:00.000Z",
+              "timezone": "America/Lima"
+            },
+            {
+              "id": 10,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-02T15:00:00.000Z",
+              "timezone": "America/Lima"
+            }
+          ],
+          "workload": [
+            {
+              "userId": 2,
+              "openTasks": 1
+            },
+            {
+              "userId": 14,
+              "openTasks": 1
+            }
+          ],
+          "usersByRole": [
+            {
+              "label": "ADMIN",
+              "count": 7
+            },
+            {
+              "label": "CLIENT",
+              "count": 11
+            },
+            {
+              "label": "DEVELOPER",
+              "count": 9
+            },
+            {
+              "label": "PRODUCT_OWNER",
+              "count": 5
+            },
+            {
+              "label": "SUPER_ADMIN",
+              "count": 7
+            }
+          ],
+          "projectsByStatus": [
+            {
+              "label": "IN_DEVELOPMENT",
+              "count": 7
+            },
+            {
+              "label": "COMPLETED",
+              "count": 1
+            },
+            {
+              "label": "ARCHIVED",
+              "count": 2
+            }
+          ],
+          "integrations": [
+            {
+              "name": "Calendly",
+              "status": "NOT_CONFIGURED",
+              "connectivity": "NOT_PROBED"
+            },
+            {
+              "name": "Email",
+              "status": "NOT_CONFIGURED",
+              "connectivity": "NOT_PROBED"
+            }
+          ],
+          "database": "READ_OK",
+          "previewLimit": 50
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/tasks",
+      "role": "PRODUCT_OWNER",
+      "request": {
+        "title": "Smoke task",
+        "assigneeId": 14
+      },
+      "http": 201,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 5,
+          "projectId": 5,
+          "title": "Smoke task",
+          "description": "",
+          "status": "TODO",
+          "assigneeId": 14,
+          "createdById": 15,
+          "dueDate": null,
+          "createdAt": "2026-10-01T14:45:39.481Z",
+          "updatedAt": "2026-10-01T14:45:39.481Z"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/tasks?limit=5&status=TODO",
+      "role": "DEVELOPER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "items": [
+            {
+              "id": 5,
+              "projectId": 5,
+              "title": "Smoke task",
+              "description": "",
+              "status": "TODO",
+              "assigneeId": 14,
+              "createdById": 15,
+              "dueDate": null,
+              "createdAt": "2026-10-01T14:45:39.481Z",
+              "updatedAt": "2026-10-01T14:45:39.481Z"
+            },
+            {
+              "id": 3,
+              "projectId": 5,
+              "title": "Implementar entrega demo",
+              "description": "Trabajo de prueba",
+              "status": "TODO",
+              "assigneeId": 14,
+              "createdById": 15,
+              "dueDate": "2026-12-10T00:00:00.000Z",
+              "createdAt": "2026-10-01T14:37:53.167Z",
+              "updatedAt": "2026-10-01T14:37:53.167Z"
+            }
+          ],
+          "page": 1,
+          "limit": 5,
+          "totalItems": 2,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/tasks/5",
+      "role": "DEVELOPER",
+      "request": {
+        "status": "IN_PROGRESS"
+      },
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 5,
+          "projectId": 5,
+          "title": "Smoke task",
+          "description": "",
+          "status": "IN_PROGRESS",
+          "assigneeId": 14,
+          "createdById": 15,
+          "dueDate": null,
+          "createdAt": "2026-10-01T14:45:39.481Z",
+          "updatedAt": "2026-10-01T14:45:39.524Z"
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/tasks/5",
+      "role": "PRODUCT_OWNER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": null
+      }
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/resources",
+      "role": "DEVELOPER",
+      "request": {
+        "name": "Smoke reference",
+        "url": "https://example.test/reference"
+      },
+      "http": 201,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 5,
+          "projectId": 5,
+          "createdById": 14,
+          "name": "Smoke reference",
+          "url": "https://example.test/reference",
+          "createdAt": "2026-10-01T14:45:39.557Z",
+          "updatedAt": "2026-10-01T14:45:39.557Z"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/resources",
+      "role": "CLIENT",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "items": [
+            {
+              "id": 5,
+              "projectId": 5,
+              "createdById": 14,
+              "name": "Smoke reference",
+              "url": "https://example.test/reference",
+              "createdAt": "2026-10-01T14:45:39.557Z",
+              "updatedAt": "2026-10-01T14:45:39.557Z"
+            },
+            {
+              "id": 3,
+              "projectId": 5,
+              "createdById": 15,
+              "name": "Repositorio de referencia",
+              "url": "https://example.test/demo",
+              "createdAt": "2026-10-01T14:37:53.169Z",
+              "updatedAt": "2026-10-01T14:37:53.169Z"
+            }
+          ],
+          "page": 1,
+          "limit": 20,
+          "totalItems": 2,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/resources/5",
+      "role": "DEVELOPER",
+      "request": {
+        "name": "Updated"
+      },
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 5,
+          "projectId": 5,
+          "createdById": 14,
+          "name": "Updated",
+          "url": "https://example.test/reference",
+          "createdAt": "2026-10-01T14:45:39.557Z",
+          "updatedAt": "2026-10-01T14:45:39.589Z"
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/resources/5",
+      "role": "DEVELOPER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": null
+      }
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/work-logs",
+      "role": "DEVELOPER",
+      "request": {
+        "date": "2026-09-28",
+        "minutes": 10,
+        "summary": "Smoke verification"
+      },
+      "http": 201,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": 6,
+          "projectId": 5,
+          "userId": 14,
+          "taskId": null,
+          "date": "2026-09-28T00:00:00.000Z",
+          "minutes": 10,
+          "summary": "Smoke verification",
+          "createdAt": "2026-10-01T14:45:39.620Z"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/work-logs",
+      "role": "PRODUCT_OWNER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "items": [
+            {
+              "id": 6,
+              "projectId": 5,
+              "userId": 14,
+              "taskId": null,
+              "date": "2026-09-28T00:00:00.000Z",
+              "minutes": 10,
+              "summary": "Smoke verification",
+              "createdAt": "2026-10-01T14:45:39.620Z"
+            }
+          ],
+          "page": 1,
+          "limit": 20,
+          "totalItems": 1,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/users/me/cv",
+      "role": "DEVELOPER",
+      "request": {
+        "file": "mock-document.pdf"
+      },
+      "http": 201,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": "69145381-fda6-4cc0-8012-310a99f2f18d",
+          "url": "/api/v1/users/me/cv/69145381-fda6-4cc0-8012-310a99f2f18d",
+          "cvUrl": "/api/v1/users/me/cv/69145381-fda6-4cc0-8012-310a99f2f18d",
+          "filename": "mock-document.pdf",
+          "mimeType": "application/pdf",
+          "sizeBytes": 903
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/users/me/cv/69145381-fda6-4cc0-8012-310a99f2f18d",
+      "role": "DEVELOPER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "bytes": 903,
+        "sha256": "6ec69777ca740882686654aa33a1332174ebdf157f6f64d44e49e71c2751fb56",
+        "contentDisposition": "attachment; filename=\"mock-document.pdf\""
+      }
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/files",
+      "role": "DEVELOPER",
+      "request": {
+        "file": "mock-document.pdf"
+      },
+      "http": 201,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "id": "e8a8ef10-e6f3-4ffa-9f85-887cdb0fbd3d",
+          "url": "/api/v1/projects/5/files/e8a8ef10-e6f3-4ffa-9f85-887cdb0fbd3d/download",
+          "filename": "mock-document.pdf",
+          "mimeType": "application/pdf",
+          "sizeBytes": 903
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/projects/5/files/e8a8ef10-e6f3-4ffa-9f85-887cdb0fbd3d/download",
+      "role": "CLIENT",
+      "request": null,
+      "http": 200,
+      "response": {
+        "bytes": 903,
+        "sha256": "6ec69777ca740882686654aa33a1332174ebdf157f6f64d44e49e71c2751fb56",
+        "contentDisposition": "attachment; filename=\"mock-document.pdf\""
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/workspace/meetings",
+      "role": "DEVELOPER",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "items": [
+            {
+              "id": 4,
+              "status": "SCHEDULED",
+              "scheduledAt": "2026-12-01T15:00:00.000Z",
+              "timezone": "America/Lima"
+            }
+          ],
+          "page": 1,
+          "limit": 20,
+          "totalItems": 1,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/public/categories",
+      "role": "PUBLIC",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": [
+          {
+            "id": 3,
+            "name": "DEMO mupn29wz",
+            "description": null
+          },
+          {
+            "id": 10,
+            "name": "S15 d90934c7-3884-4875-8ba6-fceef50d8bad",
+            "description": null
+          },
+          {
+            "id": 2,
+            "name": "Unified 1c898994-d496-40ad-b74d-94471ffa8ce0",
+            "description": null
+          },
+          {
+            "id": 1,
+            "name": "Unified 2edaa586-e318-4821-a95a-7946182cd841",
+            "description": null
+          },
+          {
+            "id": 12,
+            "name": "Unified 79fe398f-9a92-4e71-81e7-0ed49ee11b69",
+            "description": null
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/public/technologies",
+      "role": "PUBLIC",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": []
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/public/technology-categories",
+      "role": "PUBLIC",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": []
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/health",
+      "role": "PUBLIC",
+      "request": null,
+      "http": 200,
+      "response": {
+        "success": true,
+        "message": "Operación realizada correctamente",
+        "data": {
+          "status": "UP",
+          "timestamp": "2026-10-01T14:45:39.791Z",
+          "uptimeSeconds": 127,
+          "database": {
+            "status": "CONNECTED",
+            "latencyMs": 1
+          },
+          "memory": {
+            "rssMb": 118.16,
+            "heapUsedMb": 47.4
+          },
+          "environment": "test"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/v1/dashboard/admin",
+      "role": "DEVELOPER",
+      "request": null,
+      "http": 403,
+      "response": {
+        "success": false,
+        "message": "No tienes permisos suficientes",
+        "error": "ForbiddenException"
+      }
+    },
+    {
+      "method": "OPTIONS",
+      "url": "http://127.0.0.1:13318/api/v1/dashboard/developer",
+      "request": {
+        "origin": "http://localhost:5173"
+      },
+      "http": 204,
+      "responseHeaders": {
+        "access-control-allow-headers": "Content-Type,Authorization",
+        "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "access-control-allow-origin": "http://localhost:5173",
+        "access-control-expose-headers": "Content-Disposition",
+        "connection": "keep-alive",
+        "content-length": "0",
+        "date": "Thu, 01 Oct 2026 14:45:39 GMT",
+        "keep-alive": "timeout=5",
+        "vary": "Origin",
+        "x-powered-by": "Express"
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/docs",
+      "http": 200,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:13318/api/docs-json",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-tisnet_staging}
+      MYSQL_USER: ${MYSQL_USER:-tisnet}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?required}
+    volumes:
+      - staging_mysql:/var/lib/mysql
+    healthcheck:
+      test: [CMD-SHELL, 'mysqladmin ping -h localhost --silent']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+  api:
+    build:
+      context: .
+      args:
+        APP_COMMIT: ${APP_COMMIT:?required}
+    env_file: .env.staging
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER:-tisnet}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-tisnet_staging}
+      STORAGE_DRIVER: disk
+      STORAGE_DISK_PATH: /app/storage-data
+      PORT: 3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - staging_files:/app/storage-data
+    ports:
+      - '127.0.0.1:3000:3000'
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+volumes:
+  staging_mysql:
+  staging_files:

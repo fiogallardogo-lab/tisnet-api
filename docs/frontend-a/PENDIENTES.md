@@ -1,3 +1,5 @@
+> Sprint único 01/10/2026: dashboards, tareas, recursos, horas, agenda de proyectos, CV y documentos privados ya están implementados y probados localmente. Consultar [contratos y disponibilidad actualizados](../sprint-unico/README.md). Este documento conserva el corte anterior; staging remoto sigue sin confirmar.
+
 > Actualización posterior a 7af3ed8: ver [CIERRE_INTEGRACION.md](CIERRE_INTEGRACION.md). Se exige decision, las rutas /deliverables/.../contributions resuelven ID exacto y CORS expone Content-Disposition. Las observaciones históricas de abajo sobre esos tres puntos quedan sustituidas. Despliegue sin confirmar.
 
 # Disponibilidad y contratos propuestos — no implementados

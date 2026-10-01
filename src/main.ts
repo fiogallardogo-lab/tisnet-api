@@ -7,7 +7,7 @@ import { TransformInterceptor } from './common/interceptors/transform/transform.
 import { HttpExceptionFilter } from './common/filters/http-exception/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   const configuredOrigins = (process.env.FRONTEND_URL ?? '')
     .split(',')
@@ -57,7 +57,7 @@ async function bootstrap() {
 
   SwaggerModule.setup('/api/docs', app, document);
 
-  await app.listen(process.env.PORT || 3000);
+  await app.listen(process.env.PORT || 3000, process.env.HOST || '0.0.0.0');
 }
 
 bootstrap();

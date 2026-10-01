@@ -1,3 +1,5 @@
+import { PrismaModule } from '../../prisma/prisma.module';
+import { CalendlyPersistenceService } from './calendly-persistence.service';
 import { Module } from '@nestjs/common';
 import { NotificationsModule } from '../../notifications/notifications.module';
 import { CalendlySignatureService } from './calendly-signature.service';
@@ -10,8 +12,12 @@ import { CalendlyWebhookService } from './calendly-webhook.service';
  * B instructs A to add CalendlyWebhookModule to AppModule.imports.
  */
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, PrismaModule],
   controllers: [CalendlyWebhookController],
-  providers: [CalendlySignatureService, CalendlyWebhookService],
+  providers: [
+    CalendlyPersistenceService,
+    CalendlySignatureService,
+    CalendlyWebhookService,
+  ],
 })
 export class CalendlyWebhookModule {}

@@ -12,3 +12,6 @@ coverage/
 /tmp/
 /output/
 backups/
+
+.env.staging
+storage-data/

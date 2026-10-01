@@ -27,6 +27,9 @@ RUN npx prisma generate
 
 COPY --from=builder /app/dist ./dist
 
+COPY scripts/bootstrap-empty-db.cjs ./scripts/bootstrap-empty-db.cjs
+ARG APP_COMMIT=unknown
+ENV APP_COMMIT=$APP_COMMIT
 COPY docker-entrypoint.sh ./
 RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 
