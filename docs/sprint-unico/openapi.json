@@ -11403,6 +11403,51 @@
         ]
       }
     },
+    "/api/v1/prospects/{id}/advisor": {
+      "patch": {
+        "operationId": "ProspectsController_assignAdvisor",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignProspectAdvisorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Asesor del prospecto actualizado"
+          },
+          "404": {
+            "description": "Prospecto o perfil de asesor no encontrado"
+          },
+          "409": {
+            "description": "El perfil no pertenece a un administrador activo"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Asignar, cambiar o retirar el asesor de un prospecto",
+        "tags": [
+          "Prospects"
+        ]
+      }
+    },
     "/api/v1/meetings/{id}/status": {
       "patch": {
         "operationId": "CommercialMeetingsController_updateStatus",
@@ -11599,6 +11644,26 @@
           }
         ],
         "summary": "Publicar u ocultar un perfil de asesor",
+        "tags": [
+          "Advisors"
+        ]
+      }
+    },
+    "/api/v1/advisors/assignable": {
+      "get": {
+        "operationId": "AdvisorsAdminController_findAssignable",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de perfiles asignables"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar administradores activos asignables como asesores",
         "tags": [
           "Advisors"
         ]
@@ -15844,6 +15909,20 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "AssignProspectAdvisorDto": {
+        "type": "object",
+        "properties": {
+          "advisorProfileId": {
+            "type": "number",
+            "nullable": true,
+            "example": 4,
+            "description": "ID de AdminProfile; null elimina la asignación actual."
+          }
+        },
+        "required": [
+          "advisorProfileId"
         ]
       },
       "UpdateMeetingStatusDto": {

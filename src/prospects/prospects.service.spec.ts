@@ -25,6 +25,8 @@ function makeProspect(overrides: Record<string, unknown> = {}) {
     company: 'Empresa SAC',
     status: ProspectStatus.NEW,
     source: ProspectSource.QUOTE,
+    advisorProfileId: null,
+    advisorProfile: null,
     createdAt: now,
     updatedAt: now,
     quotes: [
@@ -46,12 +48,14 @@ function createService() {
   const tx = {
     $queryRaw: vi.fn(),
     auditEvent: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    adminProfile: { findUnique: vi.fn() },
     quote: {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
     prospect: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       findUniqueOrThrow: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -298,6 +302,134 @@ describe('ProspectsService', () => {
       await expect(
         service.updateStatus(999, ProspectStatus.QUALIFIED),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('assignAdvisor', () => {
+    it('reasigna a un administrador activo y registra auditoría transaccional', async () => {
+      const { service, tx } = createService();
+      const current = makeProspect({ advisorProfileId: 2 });
+      const assigned = {
+        id: 4,
+        executiveTitle: 'Asesor técnico',
+        specialty: 'Soluciones web',
+        photoUrl: null,
+        user: { name: 'Ana Admin' },
+      };
+      tx.prospect.findUnique.mockResolvedValue(current);
+      tx.adminProfile.findUnique.mockResolvedValue({
+        id: 4,
+        user: { isActive: true, role: { name: 'ADMIN' } },
+      });
+      tx.prospect.update.mockResolvedValue(
+        makeProspect({ advisorProfileId: 4, advisorProfile: assigned }),
+      );
+
+      const result = await service.assignAdvisor(7, 4, 99);
+
+      expect(result).toMatchObject({
+        advisorProfileId: 4,
+        advisor: { id: 4, name: 'Ana Admin' },
+      });
+      expect(tx.prospect.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 7 },
+          data: { advisorProfileId: 4 },
+        }),
+      );
+      expect(tx.auditEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            actorId: 99,
+            action: 'PROSPECT_ADVISOR_CHANGED',
+            entityType: 'PROSPECT',
+            entityId: '7',
+          }),
+        }),
+      );
+    });
+
+    it('permite retirar el asesor actual enviando null', async () => {
+      const { service, tx } = createService();
+      tx.prospect.findUnique.mockResolvedValue(
+        makeProspect({ advisorProfileId: 4 }),
+      );
+      tx.prospect.update.mockResolvedValue(makeProspect());
+
+      const result = await service.assignAdvisor(7, null, 99);
+
+      expect(result.advisorProfileId).toBeNull();
+      expect(result.advisor).toBeNull();
+      expect(tx.prospect.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { advisorProfileId: null } }),
+      );
+      expect(tx.auditEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            metadata: expect.objectContaining({ unassigned: true }),
+          }),
+        }),
+      );
+    });
+
+    it('rechaza perfiles que no son de un administrador activo', async () => {
+      const { service, tx } = createService();
+      tx.prospect.findUnique.mockResolvedValue(makeProspect());
+      tx.adminProfile.findUnique.mockResolvedValue({
+        id: 4,
+        user: { isActive: false, role: { name: 'ADMIN' } },
+      });
+
+      await expect(service.assignAdvisor(7, 4, 99)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(tx.prospect.update).not.toHaveBeenCalled();
+    });
+
+    it('responde 404 si el prospecto no existe', async () => {
+      const { service, tx } = createService();
+      tx.prospect.findUnique.mockResolvedValue(null);
+
+      await expect(service.assignAdvisor(999, 4, 99)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(tx.adminProfile.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('trata una reasignación idéntica como no-op idempotente', async () => {
+      const { service, tx } = createService();
+      tx.prospect.findUnique.mockResolvedValue(makeProspect());
+
+      await service.assignAdvisor(7, null, 99);
+
+      expect(tx.prospect.update).not.toHaveBeenCalled();
+      expect(tx.auditEvent.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findAssignableAdvisors', () => {
+    it('devuelve solo perfiles de administradores activos', async () => {
+      const { service, prisma } = createService();
+      prisma.adminProfile.findMany.mockResolvedValue([
+        {
+          id: 4,
+          executiveTitle: 'Asesor técnico',
+          specialty: 'Soluciones web',
+          photoUrl: null,
+          user: { name: 'Ana Admin' },
+        },
+      ]);
+
+      const result = await service.findAssignableAdvisors();
+
+      expect(prisma.adminProfile.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { user: { isActive: true, role: { name: 'ADMIN' } } },
+        }),
+      );
+      expect(result).toEqual([
+        expect.objectContaining({ id: 4, name: 'Ana Admin' }),
+      ]);
     });
   });
 

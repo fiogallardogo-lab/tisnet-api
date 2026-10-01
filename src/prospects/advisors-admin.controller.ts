@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseIntPipe,
   Patch,
@@ -31,7 +32,10 @@ export class AdvisorsAdminController {
   @ApiOperation({ summary: 'Publicar u ocultar un perfil de asesor' })
   @ApiResponse({ status: 200, description: 'Visibilidad actualizada' })
   @ApiResponse({ status: 404, description: 'Perfil de asesor no encontrado' })
-  @ApiResponse({ status: 409, description: 'El usuario del perfil está inactivo' })
+  @ApiResponse({
+    status: 409,
+    description: 'El usuario del perfil está inactivo',
+  })
   setVisibility(
     @Param('profileId', ParseIntPipe) profileId: number,
     @Body() dto: SetAdvisorVisibilityDto,
@@ -40,5 +44,14 @@ export class AdvisorsAdminController {
       profileId,
       dto.isPublicAdvisor,
     );
+  }
+
+  @Get('assignable')
+  @ApiOperation({
+    summary: 'Listar administradores activos asignables como asesores',
+  })
+  @ApiResponse({ status: 200, description: 'Lista de perfiles asignables' })
+  findAssignable() {
+    return this.prospectsService.findAssignableAdvisors();
   }
 }

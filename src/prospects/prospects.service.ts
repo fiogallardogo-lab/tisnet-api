@@ -10,6 +10,15 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { ListProspectsQueryDto } from './dto/list-prospects-query.dto.js';
 
 const prospectRelations = {
+  advisorProfile: {
+    select: {
+      id: true,
+      executiveTitle: true,
+      specialty: true,
+      photoUrl: true,
+      user: { select: { name: true } },
+    },
+  },
   quotes: {
     select: {
       publicCode: true,
@@ -216,6 +225,87 @@ export class ProspectsService {
     return this.toProspectResponse(prospect);
   }
 
+  async findAssignableAdvisors() {
+    const profiles = await this.prisma.adminProfile.findMany({
+      where: { user: { isActive: true, role: { name: 'ADMIN' } } },
+      select: {
+        id: true,
+        executiveTitle: true,
+        specialty: true,
+        photoUrl: true,
+        user: { select: { name: true } },
+      },
+      orderBy: { user: { name: 'asc' } },
+    });
+
+    return profiles.map(({ user, ...profile }) => ({
+      ...profile,
+      name: user.name,
+    }));
+  }
+
+  async assignAdvisor(
+    prospectId: number,
+    advisorProfileId: number | null,
+    actorId: number,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.prospect.findUnique({
+        where: { id: prospectId },
+        include: prospectRelations,
+      });
+      if (!current) {
+        throw new NotFoundException('Prospecto no encontrado');
+      }
+
+      if (advisorProfileId !== null) {
+        const advisor = await tx.adminProfile.findUnique({
+          where: { id: advisorProfileId },
+          select: {
+            id: true,
+            user: {
+              select: { isActive: true, role: { select: { name: true } } },
+            },
+          },
+        });
+        if (!advisor) {
+          throw new NotFoundException('Perfil de asesor no encontrado');
+        }
+        if (!advisor.user.isActive || advisor.user.role.name !== 'ADMIN') {
+          throw new ConflictException(
+            'Solo se pueden asignar administradores activos como asesores',
+          );
+        }
+      }
+
+      if (current.advisorProfileId === advisorProfileId) {
+        return this.toProspectResponse(current);
+      }
+
+      const updated = await tx.prospect.update({
+        where: { id: prospectId },
+        data: { advisorProfileId },
+        include: prospectRelations,
+      });
+
+      await auditRecord(tx, {
+        actorId,
+        action: 'PROSPECT_ADVISOR_CHANGED',
+        entityType: 'PROSPECT',
+        entityId: String(prospectId),
+        metadata: {
+          ...(current.advisorProfileId !== null
+            ? { previousAdvisorProfileId: current.advisorProfileId }
+            : {}),
+          ...(advisorProfileId !== null ? { advisorProfileId } : {}),
+          unassigned: advisorProfileId === null,
+        },
+      });
+
+      return this.toProspectResponse(updated);
+    });
+  }
+
   async findPublicAdvisors() {
     const advisors = await this.prisma.adminProfile.findMany({
       where: {
@@ -325,6 +415,16 @@ export class ProspectsService {
       company: prospect.company,
       status: prospect.status,
       source: prospect.source,
+      advisorProfileId: prospect.advisorProfileId,
+      advisor: prospect.advisorProfile
+        ? {
+            id: prospect.advisorProfile.id,
+            name: prospect.advisorProfile.user.name,
+            executiveTitle: prospect.advisorProfile.executiveTitle,
+            specialty: prospect.advisorProfile.specialty,
+            photoUrl: prospect.advisorProfile.photoUrl,
+          }
+        : null,
       quotes: prospect.quotes.map((quote) => ({
         ...quote,
         amountMinor: quote.amountMinor?.toNumber() ?? null,

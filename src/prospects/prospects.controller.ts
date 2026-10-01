@@ -23,6 +23,7 @@ import { PLATFORM_ROLES } from '../common/constants/platform-roles';
 import { LinkQuoteDto } from './dto/link-quote.dto';
 import { ListProspectsQueryDto } from './dto/list-prospects-query.dto';
 import { UpdateProspectStatusDto } from './dto/update-prospect-status.dto';
+import { AssignProspectAdvisorDto } from './dto/assign-prospect-advisor.dto';
 import { ProspectsService } from './prospects.service';
 
 interface AuthenticatedRequest {
@@ -98,5 +99,31 @@ export class ProspectsController {
     @Body() dto: UpdateProspectStatusDto,
   ) {
     return this.prospectsService.updateStatus(id, dto.status);
+  }
+
+  @Patch(':id/advisor')
+  @Roles(PLATFORM_ROLES.ADMIN, PLATFORM_ROLES.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Asignar, cambiar o retirar el asesor de un prospecto',
+  })
+  @ApiResponse({ status: 200, description: 'Asesor del prospecto actualizado' })
+  @ApiResponse({
+    status: 404,
+    description: 'Prospecto o perfil de asesor no encontrado',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'El perfil no pertenece a un administrador activo',
+  })
+  assignAdvisor(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AssignProspectAdvisorDto,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.prospectsService.assignAdvisor(
+      id,
+      dto.advisorProfileId,
+      request.user.id,
+    );
   }
 }

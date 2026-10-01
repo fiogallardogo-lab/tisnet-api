@@ -9,6 +9,8 @@ describe('ProspectsController', () => {
     findAll: vi.fn(),
     findOne: vi.fn(),
     updateStatus: vi.fn(),
+    assignAdvisor: vi.fn(),
+    findAssignableAdvisors: vi.fn(),
   };
 
   const controller = new ProspectsController(prospectsService as never);
@@ -17,8 +19,14 @@ describe('ProspectsController', () => {
     prospectsService.linkQuote.mockResolvedValue({ id: 1 });
     const req = { user: { id: 10, email: 'cliente@test.com', role: 'CLIENT' } };
 
-    const result = await controller.linkQuote(req, { publicCode: 'Q-ABCDEFGH' });
-    expect(prospectsService.linkQuote).toHaveBeenCalledWith(10, 'cliente@test.com', 'Q-ABCDEFGH');
+    const result = await controller.linkQuote(req, {
+      publicCode: 'Q-ABCDEFGH',
+    });
+    expect(prospectsService.linkQuote).toHaveBeenCalledWith(
+      10,
+      'cliente@test.com',
+      'Q-ABCDEFGH',
+    );
     expect(result).toEqual({ id: 1 });
   });
 
@@ -49,10 +57,35 @@ describe('ProspectsController', () => {
   });
 
   it('delega updateStatus con el id y estado', async () => {
-    prospectsService.updateStatus.mockResolvedValue({ id: 5, status: ProspectStatus.QUALIFIED });
+    prospectsService.updateStatus.mockResolvedValue({
+      id: 5,
+      status: ProspectStatus.QUALIFIED,
+    });
 
-    const result = await controller.updateStatus(5, { status: ProspectStatus.QUALIFIED });
-    expect(prospectsService.updateStatus).toHaveBeenCalledWith(5, ProspectStatus.QUALIFIED);
+    const result = await controller.updateStatus(5, {
+      status: ProspectStatus.QUALIFIED,
+    });
+    expect(prospectsService.updateStatus).toHaveBeenCalledWith(
+      5,
+      ProspectStatus.QUALIFIED,
+    );
     expect(result).toEqual({ id: 5, status: ProspectStatus.QUALIFIED });
+  });
+
+  it('delega assignAdvisor usando el actor autenticado', async () => {
+    prospectsService.assignAdvisor.mockResolvedValue({
+      id: 5,
+      advisorProfileId: 4,
+    });
+    const req = { user: { id: 10, email: 'admin@test.com', role: 'ADMIN' } };
+
+    const result = await controller.assignAdvisor(
+      5,
+      { advisorProfileId: 4 },
+      req,
+    );
+
+    expect(prospectsService.assignAdvisor).toHaveBeenCalledWith(5, 4, 10);
+    expect(result).toEqual({ id: 5, advisorProfileId: 4 });
   });
 });

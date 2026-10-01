@@ -182,6 +182,7 @@ model AdminProfile {
   updatedAt                DateTime          @updatedAt
   user                     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   advisedMeetings          Meeting[]         @relation("MeetingAdvisor")
+  assignedProspects        Prospect[]        @relation("ProspectAdvisor")
   assignedTeamApplications TeamApplication[] @relation("TeamApplicationInterviewer")
 }
 
@@ -222,23 +223,26 @@ model Quote {
 }
 
 model Prospect {
-  projects  Project[]
-  id        Int            @id @default(autoincrement())
-  userId    Int?           @unique
-  name      String         @db.VarChar(100)
-  email     String         @unique @db.VarChar(150)
-  phone     String?        @db.VarChar(30)
-  company   String?        @db.VarChar(150)
-  status    ProspectStatus @default(NEW)
-  source    ProspectSource @default(QUOTE)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  quotes    Quote[]
-  meetings  Meeting[]
+  advisorProfileId Int?
+  projects         Project[]
+  id               Int            @id @default(autoincrement())
+  userId           Int?           @unique
+  name             String         @db.VarChar(100)
+  email            String         @unique @db.VarChar(150)
+  phone            String?        @db.VarChar(30)
+  company          String?        @db.VarChar(150)
+  status           ProspectStatus @default(NEW)
+  source           ProspectSource @default(QUOTE)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  advisorProfile   AdminProfile?  @relation("ProspectAdvisor", fields: [advisorProfileId], references: [id], onDelete: SetNull)
+  quotes           Quote[]
+  meetings         Meeting[]
 
   @@index([status, createdAt])
   @@index([source, createdAt])
+  @@index([advisorProfileId, createdAt])
 }
 
 model Meeting {
