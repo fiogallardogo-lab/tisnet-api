@@ -44,7 +44,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       const module = await createAppTestModule()
         .overrideGuard(JwtAuthGuard)
         .useValue({
-          canActivate(ctx) {
+          canActivate(ctx: any) {
             const r = ctx.switchToHttp().getRequest();
             if (!r.headers['x-user']) throw new UnauthorizedException();
             r.user = {

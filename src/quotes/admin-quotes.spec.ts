@@ -43,7 +43,7 @@ describe('PublicQuote administrative API', () => {
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({
-        canActivate: (context) => {
+        canActivate: (context: any) => {
           const req = context.switchToHttp().getRequest();
           req.user = { role: req.headers['x-test-role'] };
           return true;

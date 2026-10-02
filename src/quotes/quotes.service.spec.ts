@@ -32,6 +32,7 @@ const dto: CreatePublicQuoteDto = {
 describe('QuotesService', () => {
   const repository: QuoteRepository = {
     create: vi.fn(),
+    findByPublicCode: vi.fn(),
   };
 
   const catalog: QuoteCatalog = {

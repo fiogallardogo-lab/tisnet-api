@@ -57,7 +57,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       const module = await createAppTestModule()
         .overrideGuard(JwtAuthGuard)
         .useValue({
-          canActivate(ctx) {
+          canActivate(ctx: any) {
             const r = ctx.switchToHttp().getRequest();
             if (!r.headers['x-user']) throw new UnauthorizedException();
             r.user = {
@@ -228,7 +228,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         .get('/api/v1/meetings/my')
         .set(adminHeaders())
         .expect(200);
-      expect(own.body.data.items.some((m) => m.id === id)).toBe(true);
+      expect(own.body.data.items.some((m: any) => m.id === id)).toBe(true);
       await req()
         .get('/api/v1/admin/meetings')
         .set({ 'x-user': String(client), 'x-role': 'CLIENT', 'x-email': email })
@@ -397,14 +397,14 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       expect(project.milestones).toHaveLength(2);
       expect(
         project.milestones.every(
-          (m) =>
+          (m: any) =>
             m.paymentScheduleId &&
             m.deliverables.length === 1 &&
             m.deliverables[0].milestoneId === m.id,
         ),
       ).toBe(true);
       expect(
-        project.members.reduce((sum, m) => sum + m.participationBasisPoints, 0),
+        project.members.reduce((sum: number, m: any) => sum + m.participationBasisPoints, 0),
       ).toBe(10000);
       await req()
         .post('/api/v1/kickoff')
@@ -445,7 +445,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
         .expect(200);
       expect(
         report.body.data.items.some(
-          (e) =>
+          (e: any) =>
             e.action === 'PROJECT_KICKOFF' && e.entityId === String(project.id),
         ),
       ).toBe(true);
@@ -485,7 +485,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       const check = async (status: string) => {
         for (const [url, headers] of [['/api/v1/meetings/my', clientHeaders], ['/api/v1/admin/meetings', adminHeaders()]] as const) {
           const response = await req().get(url).set(headers).expect(200);
-          expect(response.body.data.items.find((item) => item.id === meeting.id)?.status).toBe(status);
+          expect(response.body.data.items.find((item: any) => item.id === meeting.id)?.status).toBe(status);
         }
       };
       await check(meeting.status);

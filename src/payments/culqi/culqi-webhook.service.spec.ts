@@ -89,7 +89,7 @@ describe('CulqiWebhookService', () => {
       service.processEvent({
         type: 'charge.creation.succeeded',
         object: 'event',
-        data: '{',
+        data: '{' as any,
       }),
     ).rejects.toThrow();
     await expect(

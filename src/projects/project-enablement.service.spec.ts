@@ -137,8 +137,8 @@ describe('ProjectEnablementService.enableFromPayment', () => {
 
   it('throws ConflictException when quote has no prospect', async () => {
     const schedule = makeSchedule();
-    schedule.quoteVersion.quote.prospectId = null;
-    schedule.quoteVersion.quote.prospect = null;
+    (schedule.quoteVersion.quote as any).prospectId = null;
+    (schedule.quoteVersion.quote as any).prospect = null;
     prisma._tx.paymentSchedule.findUnique.mockResolvedValue(schedule);
 
     await expect(

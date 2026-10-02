@@ -9,7 +9,10 @@ describe('ClientPortalController', () => {
   });
   it('uses the authenticated account for reads and cancellation', () => {
     const service = { overview: vi.fn(), cancelMeeting: vi.fn() };
-    const controller = new ClientPortalController(service as unknown as ClientPortalService);
+    const controller = new ClientPortalController(
+      service as unknown as ClientPortalService,
+      {} as any,
+    );
     controller.overview({ user: { id: 7, email: 'lucia@example.test' } });
     controller.cancelMeeting({ user: { id: 7 } }, 4);
     expect(service.overview).toHaveBeenCalledWith({ id: 7, email: 'lucia@example.test' });
