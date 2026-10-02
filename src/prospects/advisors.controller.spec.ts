@@ -5,6 +5,7 @@ import { AdvisorsAdminController } from './advisors-admin.controller.js';
 describe('Advisors Controllers', () => {
   const prospectsService = {
     findPublicAdvisors: vi.fn(),
+    findAssignableAdvisors: vi.fn(),
     setAdvisorVisibility: vi.fn(),
   };
 
@@ -12,7 +13,9 @@ describe('Advisors Controllers', () => {
     const controller = new PublicAdvisorsController(prospectsService as never);
 
     it('delega findPublicAdvisors al servicio', async () => {
-      prospectsService.findPublicAdvisors.mockResolvedValue([{ id: 1, name: 'Asesor' }]);
+      prospectsService.findPublicAdvisors.mockResolvedValue([
+        { id: 1, name: 'Asesor' },
+      ]);
 
       const result = await controller.findAll();
       expect(prospectsService.findPublicAdvisors).toHaveBeenCalled();
@@ -24,11 +27,30 @@ describe('Advisors Controllers', () => {
     const controller = new AdvisorsAdminController(prospectsService as never);
 
     it('delega setAdvisorVisibility con profileId y valor booleano', async () => {
-      prospectsService.setAdvisorVisibility.mockResolvedValue({ id: 2, isPublicAdvisor: true });
+      prospectsService.setAdvisorVisibility.mockResolvedValue({
+        id: 2,
+        isPublicAdvisor: true,
+      });
 
-      const result = await controller.setVisibility(2, { isPublicAdvisor: true });
-      expect(prospectsService.setAdvisorVisibility).toHaveBeenCalledWith(2, true);
+      const result = await controller.setVisibility(2, {
+        isPublicAdvisor: true,
+      });
+      expect(prospectsService.setAdvisorVisibility).toHaveBeenCalledWith(
+        2,
+        true,
+      );
       expect(result).toEqual({ id: 2, isPublicAdvisor: true });
+    });
+
+    it('delega findAssignable para el selector autenticado', async () => {
+      prospectsService.findAssignableAdvisors.mockResolvedValue([
+        { id: 4, name: 'Administrador' },
+      ]);
+
+      const result = await controller.findAssignable();
+
+      expect(prospectsService.findAssignableAdvisors).toHaveBeenCalled();
+      expect(result).toEqual([{ id: 4, name: 'Administrador' }]);
     });
   });
 });

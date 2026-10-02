@@ -36,6 +36,8 @@ Todas requieren JWT Bearer salvo catálogos públicos y health. Admin incluye SU
 | Horas/avances | GET /projects/{projectId}/work-logs | LogQuery → WorkLogPageDto | Developer ve sus registros; PO/Admin ve equipo; Cliente no accede |
 | Registrar horas/avance | POST /projects/{projectId}/work-logs | CreateWorkLogDto → WorkLogDto, 201 | Developer/PO, siempre trabajo propio |
 | Agenda de proyectos | GET /workspace/meetings | page,limit,from,to → MeetingsPageDto | Developer/PO; reuniones vinculadas al kickoff de sus proyectos |
+| Asesores asignables | GET /advisors/assignable | Sin body → perfiles activos con rol ADMIN | ADMIN, SUPER_ADMIN |
+| Asignar asesor a prospecto | PATCH /prospects/{id}/advisor | {advisorProfileId:number|null} → prospecto actualizado | ADMIN, SUPER_ADMIN; null retira asignación |
 | Subir CV | POST /users/me/cv | multipart file=PDF → CvFileDto, 201 | DEVELOPER propio |
 | Descargar CV | GET /users/me/cv/{id} | PDF binario | DEVELOPER propietario, no URL pública |
 | Subir documento privado | POST /projects/{projectId}/files | multipart file=PDF → PrivateFileDto, 201 | Developer/PO/Admin |

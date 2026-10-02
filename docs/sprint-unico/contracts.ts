@@ -348,6 +348,7 @@ export type CreatePublicQuoteResponseDto = {"success": boolean;
 "data": PublicQuoteResponseDto;};
 export type LinkQuoteDto = {"publicCode": string;};
 export type UpdateProspectStatusDto = {"status": "NEW" | "CONTACTED" | "QUALIFIED" | "CONVERTED" | "LOST";};
+export type AssignProspectAdvisorDto = {"advisorProfileId": (number) | null;};
 export type UpdateMeetingStatusDto = {};
 export type RescheduleMeetingDto = {};
 export type BookMeetingDto = {};

@@ -21,6 +21,7 @@ describe('Prospects API (e2e, base aislada)', () => {
 
   let clientToken: string;
   let adminToken: string;
+  let adminProfileId: number;
 
   beforeAll(async () => {
     const databaseUrl = process.env.DATABASE_URL;
@@ -78,6 +79,11 @@ describe('Prospects API (e2e, base aislada)', () => {
         },
       },
     });
+    const adminProfile = await prisma.adminProfile.findFirstOrThrow({
+      where: { user: { email: adminEmail } },
+      select: { id: true },
+    });
+    adminProfileId = adminProfile.id;
 
     await prisma.quote.createMany({
       data: [
@@ -187,5 +193,45 @@ describe('Prospects API (e2e, base aislada)', () => {
       ]),
     );
     expect(advisors.body.data[0]).not.toHaveProperty('email');
+  });
+
+  it('permite asignar, consultar y retirar el asesor de un prospecto', async () => {
+    const prospect = await prisma.prospect.findUniqueOrThrow({
+      where: { email: clientEmail },
+    });
+
+    const assignable = await request(app.getHttpServer())
+      .get('/api/v1/advisors/assignable')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(assignable.body.data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: adminProfileId })]),
+    );
+
+    const assigned = await request(app.getHttpServer())
+      .patch(`/api/v1/prospects/${prospect.id}/advisor`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ advisorProfileId: adminProfileId })
+      .expect(200);
+    expect(assigned.body.data).toMatchObject({
+      advisorProfileId: adminProfileId,
+      advisor: { id: adminProfileId, name: 'Asesor Prospect E2E' },
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/prospects/${prospect.id}/advisor`)
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ advisorProfileId: adminProfileId })
+      .expect(403);
+
+    const unassigned = await request(app.getHttpServer())
+      .patch(`/api/v1/prospects/${prospect.id}/advisor`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ advisorProfileId: null })
+      .expect(200);
+    expect(unassigned.body.data).toMatchObject({
+      advisorProfileId: null,
+      advisor: null,
+    });
   });
 });

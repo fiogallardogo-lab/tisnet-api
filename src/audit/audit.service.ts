@@ -21,6 +21,9 @@ export function safeAuditMetadata(value: Record<string, unknown> = {}) {
     'role',
     'resultingUserId',
     'fileType',
+    'advisorProfileId',
+    'previousAdvisorProfileId',
+    'unassigned',
   ]) {
     const v = value[key];
     if (
