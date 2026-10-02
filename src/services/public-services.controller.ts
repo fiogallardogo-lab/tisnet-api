@@ -1,9 +1,11 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ListPublicServicesQueryDto } from './dto/list-public-services-query.dto';
 import { ServicesService } from './services.service';
 
 @ApiTags('Public Services')
+@SkipThrottle({ auth: true, webhook: true })
 @Controller('public/services')
 export class PublicServicesController {
   constructor(private readonly servicesService: ServicesService) {}
