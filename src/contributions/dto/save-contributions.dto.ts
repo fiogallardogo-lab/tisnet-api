@@ -20,7 +20,7 @@ export class MemberContributionItemDto {
 
   @ApiProperty({ example: 70, description: 'Porcentaje de contribución (1-100)' })
   @IsInt()
-  @Min(1, { message: 'El porcentaje debe ser al menos 1%' })
+  @Min(0, { message: 'El porcentaje debe ser al menos 0%' })
   @Max(100, { message: 'El porcentaje no puede exceder 100%' })
   percentage: number;
 

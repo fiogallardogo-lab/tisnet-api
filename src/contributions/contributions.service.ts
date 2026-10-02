@@ -121,8 +121,10 @@ export class ContributionsService {
   ) {
     const { memberRole } = await this.requireProjectAccess(projectId, actor);
 
-    // Only PO, Admin or Super Admin
-    if (!ADMIN_ROLES.has(actor.role) && memberRole !== ProjectMemberRole.PRODUCT_OWNER) {
+    const isDeveloperSelfWrite = actor.role === PLATFORM_ROLES.DEVELOPER &&
+      dto.contributions.length === 1 && dto.contributions[0].userId === actor.id;
+    // Developers may save only their own record; PO/Admin retain team allocation.
+    if (!ADMIN_ROLES.has(actor.role) && memberRole !== ProjectMemberRole.PRODUCT_OWNER && !isDeveloperSelfWrite) {
       throw new ForbiddenException(
         'Solo el Product Owner del proyecto o un Administrador puede registrar contribuciones.',
       );
@@ -132,7 +134,7 @@ export class ContributionsService {
 
     // Validate percentage sum
     const totalPercentage = dto.contributions.reduce((sum, item) => sum + item.percentage, 0);
-    if (totalPercentage !== 100) {
+    if (!isDeveloperSelfWrite && totalPercentage !== 100) {
       throw new BadRequestException(
         `La suma de porcentajes debe ser exactamente 100%. Suma actual: ${totalPercentage}%`,
       );
@@ -173,6 +175,25 @@ export class ContributionsService {
 
     // Persist in transaction
     return this.prisma.$transaction(async (tx) => {
+      if (isDeveloperSelfWrite) {
+        const contributionData = {
+          percentage: dto.contributions[0].percentage,
+          description: dto.contributions[0].description.trim(),
+        };
+        const where = target.deliverableId
+          ? { projectId, deliverableId: target.deliverableId, userId: actor.id }
+          : { projectId, milestoneId: target.milestoneId, userId: actor.id };
+        const existing = await tx.milestoneContribution.findFirst({ where });
+        const contribution = existing
+          ? await tx.milestoneContribution.update({ where: { id: existing.id }, data: contributionData, include: { user: { select: { id: true, name: true, email: true, role: { select: { name: true } } } } } })
+          : await tx.milestoneContribution.create({ data: { projectId, deliverableId: target.deliverableId, milestoneId: target.milestoneId, userId: actor.id, ...contributionData }, include: { user: { select: { id: true, name: true, email: true, role: { select: { name: true } } } } } });
+        await tx.auditEvent.create({ data: {
+          actorId: actor.id, action: 'MILESTONE_CONTRIBUTION_SAVED', entityType: 'PROJECT_MILESTONE',
+          entityId: String(target.deliverableId ?? target.milestoneId),
+          metadata: { projectId, milestoneOrder: target.milestoneOrder, userId: actor.id },
+        } });
+        return [contribution];
+      }
       // Clear previous contributions for this target
       if (target.deliverableId) {
         await tx.milestoneContribution.deleteMany({
@@ -248,8 +269,8 @@ export class ContributionsService {
     const target = await this.findDeliverableOrMilestone(projectId, milestoneId, exactDeliverable);
 
     const where = target.deliverableId
-      ? { projectId, deliverableId: target.deliverableId }
-      : { projectId, milestoneId: target.milestoneId! };
+      ? { projectId, deliverableId: target.deliverableId, ...(actor.role === PLATFORM_ROLES.DEVELOPER ? { userId: actor.id } : {}) }
+      : { projectId, milestoneId: target.milestoneId!, ...(actor.role === PLATFORM_ROLES.DEVELOPER ? { userId: actor.id } : {}) };
 
     return this.prisma.milestoneContribution.findMany({
       where,
@@ -283,7 +304,7 @@ export class ContributionsService {
     });
 
     const allContributions = await this.prisma.milestoneContribution.findMany({
-      where: { projectId },
+      where: { projectId, ...(actor.role === PLATFORM_ROLES.DEVELOPER ? { userId: actor.id } : {}) },
       include: {
         user: {
           select: {

@@ -379,9 +379,11 @@ export class KickoffService {
       role: m.memberRole,
       memberRole: m.memberRole,
       technicalRole: m.technicalRole,
-      participation: m.participationBasisPoints / 100,
-      participationBasisPoints: m.participationBasisPoints,
       isActive: m.isActive,
+      ...(actor.role === 'DEVELOPER' ? {} : {
+        participation: m.participationBasisPoints / 100,
+        participationBasisPoints: m.participationBasisPoints,
+      }),
     }));
 
     // DoD: "El Product Owner no recibe montos económicos"
