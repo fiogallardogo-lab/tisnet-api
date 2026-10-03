@@ -70,7 +70,7 @@ export class ActivationController {
   })
   @ApiResponse({ status: 401, description: 'Sesión requerida' })
   @ApiResponse({ status: 403, description: 'Solo ADMIN y SUPER_ADMIN' })
-  @ApiResponse({ status: 503, description: 'Rol CLIENT no configurado' })
+  @ApiResponse({ status: 503, description: 'Rol CLIENT o proveedor de correo real no configurado' })
   @Post('client-invitations')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')

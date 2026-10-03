@@ -271,7 +271,18 @@ export class UsersService {
           id: number;
           prospectId: number;
           status: string;
-          prospect: { email: string; userId: number | null };
+          prospect: {
+            email: string;
+            userId: number | null;
+            name: string;
+            company: string | null;
+            quotes: Array<{
+              id: number;
+              publicCode: string;
+              solutionType: string;
+              notes: string | null;
+            }>;
+          };
         } | null = null;
         if (dto.activationRequestId !== undefined) {
           if (dto.role !== PLATFORM_ROLES.CLIENT) {
@@ -285,7 +296,24 @@ export class UsersService {
               id: true,
               prospectId: true,
               status: true,
-              prospect: { select: { email: true, userId: true } },
+              prospect: {
+                select: {
+                  email: true,
+                  userId: true,
+                  name: true,
+                  company: true,
+                  quotes: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    select: {
+                      id: true,
+                      publicCode: true,
+                      solutionType: true,
+                      notes: true,
+                    },
+                  },
+                },
+              },
             },
           });
           if (!activationRequest) {
@@ -372,6 +400,7 @@ export class UsersService {
           },
         });
 
+        let linkedProjectId: number | null = null;
         if (activationRequest) {
           const claimed = await tx.clientActivationRequest.updateMany({
             where: {
@@ -394,6 +423,60 @@ export class UsersService {
             where: { id: activationRequest.prospectId },
             data: { userId: user.id, status: 'CONVERTED' },
           });
+          const quote = activationRequest.prospect.quotes[0];
+          if (quote) {
+            const existingProject = await tx.project.findUnique({
+              where: { quoteId: quote.id },
+              select: { id: true },
+            });
+            if (existingProject) {
+              linkedProjectId = existingProject.id;
+              await tx.project.update({
+                where: { id: existingProject.id },
+                data: {
+                  clientUserId: user.id,
+                  prospectId: activationRequest.prospectId,
+                  clientName: activationRequest.prospect.name,
+                },
+              });
+            } else {
+              const category = await tx.category.findFirst({
+                where: { isActive: true },
+                orderBy: { id: 'asc' },
+                select: { id: true },
+              });
+              if (!category) {
+                throw new InternalServerErrorException(
+                  'No se puede crear el proyecto: no hay una categoría activa configurada.',
+                );
+              }
+              const projectName = quote.solutionType
+                .replaceAll('_', ' ')
+                .toLowerCase()
+                .replace(/\b\w/g, (letter) => letter.toUpperCase());
+              const description =
+                quote.notes?.trim() ||
+                `Proyecto generado desde la cotización ${quote.publicCode}. Pendiente de validar alcance, hitos y fecha de inicio con el cliente.`;
+              const project = await tx.project.create({
+                data: {
+                  name: projectName,
+                  slug: `cotizacion-${quote.id}-${quote.publicCode
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')}`,
+                  shortDescription: `Proyecto asociado a la cotización ${quote.publicCode}.`,
+                  description,
+                  categoryId: category.id,
+                  status: 'DRAFT',
+                  clientName: activationRequest.prospect.name,
+                  clientUserId: user.id,
+                  prospectId: activationRequest.prospectId,
+                  quoteId: quote.id,
+                },
+                select: { id: true },
+              });
+              linkedProjectId = project.id;
+            }
+          }
           if (actorId !== undefined) {
             await auditRecord(tx, {
               actorId,
@@ -413,6 +496,8 @@ export class UsersService {
           acceptedTermsAt: user.acceptedTermsAt,
           termsVersion: user.termsVersion,
           privacyVersion: user.privacyVersion,
+          projectId: linkedProjectId,
+          projectCreated: linkedProjectId !== null,
         };
       });
     } catch (error) {

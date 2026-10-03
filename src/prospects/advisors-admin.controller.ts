@@ -46,6 +46,15 @@ export class AdvisorsAdminController {
     );
   }
 
+  @Get()
+  @ApiOperation({
+    summary: 'Listar todos los administradores (para gestión de contenido público)',
+  })
+  @ApiResponse({ status: 200, description: 'Lista de todos los perfiles admin' })
+  findAll() {
+    return this.prospectsService.findAllAdminProfiles();
+  }
+
   @Get('assignable')
   @ApiOperation({
     summary: 'Listar administradores activos asignables como asesores',

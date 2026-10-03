@@ -23,6 +23,7 @@ export interface NotificationResult {
 }
 
 export interface NotificationProvider {
+  readonly deliveryMode?: 'real' | 'simulated';
   send(input: SendNotificationInput): Promise<NotificationResult>;
 }
 

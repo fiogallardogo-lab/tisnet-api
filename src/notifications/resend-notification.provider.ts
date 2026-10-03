@@ -19,6 +19,7 @@ const PERMANENT_HTTP_CODES = new Set([400, 401, 403, 422]);
 
 @Injectable()
 export class ResendNotificationProvider implements NotificationProvider {
+  readonly deliveryMode = 'real' as const;
   private readonly logger = new Logger(ResendNotificationProvider.name);
   private readonly apiKey: string;
   private readonly mailFrom: string;
