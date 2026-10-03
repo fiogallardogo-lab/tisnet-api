@@ -3,7 +3,10 @@ import {
   Equals,
   IsBoolean,
   IsEmail,
+  IsInt,
   IsIn,
+  IsOptional,
+  IsPositive,
   IsString,
   Length,
   MaxLength,
@@ -85,4 +88,14 @@ export class CreateUserDto {
   @IsString()
   @Length(1, 50)
   privacyVersion!: string;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Solicitud de activación que se completará junto con la creación manual de una cuenta CLIENT.',
+  })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  activationRequestId?: number;
 }

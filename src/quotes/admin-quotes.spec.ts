@@ -23,6 +23,8 @@ describe('PublicQuote administrative API', () => {
     createdAt: new Date('2026-09-24'),
     notes: null,
     snapshot: {},
+    prospectId: 3,
+    prospect: { userId: 11 },
   };
   const db = {
     quote: { findMany: vi.fn(), count: vi.fn(), findUnique: vi.fn() },
@@ -68,6 +70,7 @@ describe('PublicQuote administrative API', () => {
         publicCode: quote.publicCode,
         email: quote.contactEmail,
         estimatedAmount: 292500,
+        clientUserId: 11,
       });
       expect(result.body.meta).toEqual({
         page: 1,

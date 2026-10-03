@@ -55,7 +55,10 @@ export class AdminQuotesService {
     const [items, totalItems] = await this.prisma.$transaction([
       this.prisma.quote.findMany({
         where,
-        include: { options: { orderBy: { displayOrder: 'asc' } } },
+        include: {
+          options: { orderBy: { displayOrder: 'asc' } },
+          prospect: { select: { userId: true } },
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
@@ -76,14 +79,20 @@ export class AdminQuotesService {
   async findOne(id: number) {
     const item = await this.prisma.quote.findUnique({
       where: { id },
-      include: { options: { orderBy: { displayOrder: 'asc' } } },
+      include: {
+        options: { orderBy: { displayOrder: 'asc' } },
+        prospect: { select: { userId: true } },
+      },
     });
     if (!item) throw new NotFoundException('Cotización no encontrada');
     return this.map(item);
   }
 
   private map(
-    item: Quote & { options?: { optionCode: string; optionName: string }[] },
+    item: Quote & {
+      options?: { optionCode: string; optionName: string }[];
+      prospect?: { userId: number | null } | null;
+    },
   ) {
     return {
       id: item.id,
@@ -110,6 +119,7 @@ export class AdminQuotesService {
         })) ??
         [],
       prospectId: item.prospectId,
+      clientUserId: item.prospect?.userId ?? null,
     };
   }
 }

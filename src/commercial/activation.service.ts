@@ -71,6 +71,7 @@ export class ActivationService {
     const delivery = await this.sendToken(user);
     return { id: user.id, email: user.email, isActive: false, ...delivery };
   }
+
   private async sendToken(user: {
     id: number;
     email: string;

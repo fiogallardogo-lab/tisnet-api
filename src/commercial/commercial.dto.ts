@@ -128,3 +128,10 @@ export class RequestActivationDto {
   @MaxLength(150)
   email!: string;
 }
+
+export class CreateClientActivationRequestDto {
+  @ApiProperty({ minimum: 1 })
+  @IsInt()
+  @Min(1)
+  prospectId!: number;
+}

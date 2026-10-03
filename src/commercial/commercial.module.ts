@@ -13,6 +13,8 @@ import { CommercialService } from './commercial.service';
 import { CommercialMailService } from './commercial-mail.service';
 import { ActivationService } from './activation.service';
 import { ActivationController } from './activation.controller';
+import { ClientActivationRequestsController } from './client-activation-requests.controller';
+import { ClientActivationRequestsService } from './client-activation-requests.service';
 @Module({
   imports: [
     ConfigModule,
@@ -22,8 +24,18 @@ import { ActivationController } from './activation.controller';
     NotificationsModule,
     JwtModule.register({}),
   ],
-  controllers: [CommercialController, ContactController, ActivationController],
-  providers: [CommercialService, CommercialMailService, ActivationService],
+  controllers: [
+    CommercialController,
+    ContactController,
+    ActivationController,
+    ClientActivationRequestsController,
+  ],
+  providers: [
+    CommercialService,
+    CommercialMailService,
+    ActivationService,
+    ClientActivationRequestsService,
+  ],
   exports: [CommercialMailService],
 })
 export class CommercialModule {}

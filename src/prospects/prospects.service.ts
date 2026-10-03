@@ -409,6 +409,7 @@ export class ProspectsService {
   ) {
     return {
       id: prospect.id,
+      userId: prospect.userId,
       name: prospect.name,
       email: prospect.email,
       phone: prospect.phone,
