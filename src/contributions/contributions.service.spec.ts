@@ -152,7 +152,7 @@ describe('ContributionsService', () => {
     ).rejects.toThrow(/no es un integrante activo/);
   });
 
-  it('rechaza si un DEVELOPER intenta registrar contribuciones', async () => {
+  it('rechaza si un DEVELOPER intenta registrar contribuciones de otros integrantes', async () => {
     prisma.projectMember.findUnique.mockResolvedValue({
       projectId: 100,
       userId: 10,
@@ -163,7 +163,7 @@ describe('ContributionsService', () => {
     await expect(
       service.recordContributions(100, 1, dev1, {
         contributions: [
-          { userId: 10, percentage: 100, description: 'Desarrollo' },
+          { userId: 20, percentage: 100, description: 'Desarrollo' },
         ],
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);

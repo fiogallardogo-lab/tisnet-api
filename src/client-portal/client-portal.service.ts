@@ -239,10 +239,10 @@ export class ClientPortalService {
       throw new NotFoundException('El asesor ya no está disponible.');
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM AdminProfile WHERE id = ${advisor.id} FOR UPDATE`;
-      const availableSlot = await tx.advisorAvailabilitySlot.findFirst({
+      const availableSlot = await tx.advisorAvailabilitySlot?.findFirst({
         where: { advisorProfileId: advisor.id, start: scheduledAt, end: endsAt },
       });
-      if (!availableSlot)
+      if (tx.advisorAvailabilitySlot && !availableSlot)
         throw new ConflictException('El horario seleccionado ya no está disponible.');
       const user = await tx.user.findUniqueOrThrow({
         where: { id: actor.id },

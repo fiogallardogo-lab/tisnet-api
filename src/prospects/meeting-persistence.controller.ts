@@ -21,6 +21,7 @@ import {
   UpdateMeetingStatusDto,
   RescheduleMeetingDto,
   ReplaceAdvisorAvailabilityDto,
+  NotifyMeetingLinkDto,
 } from './meeting-persistence.dto';
 import { MeetingPersistenceService } from './meeting-persistence.service';
 @Controller('public')
@@ -70,6 +71,15 @@ export class CommercialMeetingsController {
     @Request() req: { user: { id: number; role: string } },
   ) {
     return this.service.manageMeeting(id, req.user, dto);
+  }
+  @Post('meetings/:id/notify-link')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  notifyLink(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: NotifyMeetingLinkDto,
+    @Request() req: { user: { id: number; role: string } },
+  ) {
+    return this.service.notifyMeetingLink(id, req.user, dto?.message);
   }
   @Get('meetings/my') @Roles('CLIENT', 'ADMIN', 'SUPER_ADMIN') own(
     @Query() query: MeetingListQuery,

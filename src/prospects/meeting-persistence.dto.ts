@@ -13,6 +13,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+
 export class BookMeetingDto {
   @IsInt() @Min(1) advisorId: number;
   @IsString() @MaxLength(100) @Matches(/\S/) name: string;
@@ -22,6 +23,7 @@ export class BookMeetingDto {
   @IsDateString({ strict: true }) start: string;
   @IsDateString({ strict: true }) end: string;
 }
+
 export class AvailabilityQuery {
   @IsOptional()
   @IsDateString({ strict: true })
@@ -39,6 +41,7 @@ export class AvailabilityQuery {
   @IsString()
   timezone?: string;
 }
+
 export class MeetingListQuery {
   @Type(() => Number) @IsInt() @Min(1) page = 1;
   @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
@@ -48,6 +51,7 @@ export class UpdateMeetingStatusDto {
   @IsIn(['SCHEDULED', 'COMPLETED', 'CANCELLED']) status:
     'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 }
+
 export class RescheduleMeetingDto {
   @IsDateString({ strict: true }) start: string;
   @IsDateString({ strict: true }) end: string;
@@ -59,8 +63,15 @@ export class AdvisorAvailabilitySlotDto {
 }
 
 export class ReplaceAdvisorAvailabilityDto {
-  @ArrayMaxSize(100)
+  @ArrayMaxSize(500)
   @ValidateNested({ each: true })
   @Type(() => AdvisorAvailabilitySlotDto)
   slots: AdvisorAvailabilitySlotDto[];
+}
+
+export class NotifyMeetingLinkDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  message?: string;
 }

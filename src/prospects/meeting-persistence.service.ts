@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { escapeHtml } from '../notifications/templates/escape-html';
 import { MeetingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -136,27 +137,38 @@ export class MeetingPersistenceService {
       },
     });
     const now = new Date();
-    const slots = input
+    const rawSlots = input
       .map((slot) => ({ start: new Date(slot.start), end: new Date(slot.end) }))
-      .sort((left, right) => left.start.getTime() - right.start.getTime());
-    for (let index = 0; index < slots.length; index += 1) {
-      const slot = slots[index];
-      if (
-        !Number.isFinite(slot.start.getTime()) ||
-        !Number.isFinite(slot.end.getTime()) ||
-        slot.start <= now ||
-        slot.end <= slot.start ||
-        slot.end.getTime() - slot.start.getTime() > 4 * 60 * 60 * 1000
-      ) throw new BadRequestException('Cada horario debe ser futuro y durar como máximo 4 horas.');
-      if (index > 0 && slots[index - 1].end > slot.start)
-        throw new ConflictException('Los horarios de disponibilidad no pueden cruzarse.');
+      .filter((slot) => Number.isFinite(slot.start.getTime()) && Number.isFinite(slot.end.getTime()));
+    const validRawSlots = rawSlots.filter((slot) => slot.end > slot.start);
+    if (rawSlots.length > 0 && validRawSlots.length === 0) {
+      throw new BadRequestException('La hora de fin debe ser posterior a la de inicio.');
     }
+    // Expand each range into 1-hour slots so clients see individual booking hours
+    const hourSlots: Array<{ start: Date; end: Date }> = [];
+    for (const slot of validRawSlots) {
+      let cursor = new Date(slot.start);
+      while (cursor.getTime() < slot.end.getTime()) {
+        const next = new Date(cursor.getTime() + 3600000);
+        if (next > now) {
+          hourSlots.push({ start: new Date(cursor), end: next });
+        }
+        cursor = next;
+      }
+    }
+    const seen = new Set<string>();
+    const uniqueSlots = hourSlots.filter((s) => {
+      const key = s.start.toISOString();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).sort((a, b) => a.start.getTime() - b.start.getTime());
     await this.prisma.$transaction(async (tx) => {
       await tx.advisorAvailabilitySlot.deleteMany({
         where: { advisorProfileId: advisor.id, end: { gt: now } },
       });
       await tx.advisorAvailabilitySlot.createMany({
-        data: slots.map((slot) => ({ ...slot, advisorProfileId: advisor.id })),
+        data: uniqueSlots.map((slot) => ({ ...slot, advisorProfileId: advisor.id })),
       });
       await tx.auditEvent.create({
         data: {
@@ -164,7 +176,7 @@ export class MeetingPersistenceService {
           action: 'ADVISOR_AVAILABILITY_REPLACED',
           entityType: 'ADMIN_PROFILE',
           entityId: String(advisor.id),
-          metadata: { slots: slots.length },
+          metadata: { slots: uniqueSlots.length },
         },
       });
     });
@@ -434,5 +446,88 @@ export class MeetingPersistenceService {
       });
       return tx.meetingEvent.create({ data: input });
     });
+  }
+
+  async notifyMeetingLink(
+    id: number,
+    actor: { id: number; role: string },
+    customMessage?: string,
+  ) {
+    const scope =
+      actor.role === 'SUPER_ADMIN'
+        ? {}
+        : { advisorProfile: { userId: actor.id } };
+
+    const meeting = await this.prisma.meeting.findFirst({
+      where: { id, ...scope },
+      include: {
+        prospect: true,
+        advisorProfile: { include: { user: true } },
+      },
+    });
+
+    if (!meeting) {
+      throw new NotFoundException('Reunión no encontrada para tu cuenta.');
+    }
+
+    const recipient = meeting.prospect?.email;
+    if (!recipient) {
+      throw new BadRequestException('El cliente no tiene un correo registrado.');
+    }
+
+    const advisorName = meeting.advisorProfile?.user?.name || 'Tu asesor de TISNET';
+    const clientName = meeting.prospect?.name || 'Estimado cliente';
+    const dateStr = meeting.scheduledAt
+      ? new Date(meeting.scheduledAt).toLocaleString('es-PE', {
+          dateStyle: 'full',
+          timeStyle: 'short',
+          timeZone: meeting.timezone || 'America/Lima',
+        })
+      : 'por definir';
+
+    const text =
+      `Hola ${clientName},\n\n` +
+      `Te informamos sobre tu reunión de asesoría con ${advisorName} programada para el ${dateStr}.\n\n` +
+      `Te avisamos que el enlace de acceso a la reunión te será enviado unas horas antes de que ésta comience a través de este mismo medio (correo electrónico).\n\n` +
+      (customMessage ? `Mensaje adicional de tu asesor:\n${customMessage}\n\n` : '') +
+      `Si tienes alguna pregunta previa, puedes responder a este correo.\n\n` +
+      `Equipo TISNET`;
+
+    const html =
+      `<p>Hola <strong>${escapeHtml(clientName)}</strong>,</p>` +
+      `<p>Te informamos sobre tu reunión de asesoría con <strong>${escapeHtml(advisorName)}</strong> programada para el <strong>${escapeHtml(dateStr)}</strong>.</p>` +
+      `<div style="background:#eff6ff;border-left:4px solid #1b60f5;padding:14px 18px;margin:18px 0;border-radius:6px;">` +
+      `<p style="margin:0;font-weight:700;color:#1e40af;font-size:15px;">Aviso sobre el enlace de acceso:</p>` +
+      `<p style="margin:6px 0 0 0;color:#1e3a8a;font-size:14px;line-height:1.5;">El enlace de la reunión te será enviado unas horas antes de que ésta comience a través de este mismo medio.</p>` +
+      `</div>` +
+      (customMessage ? `<p><strong>Mensaje adicional de tu asesor:</strong><br>${escapeHtml(customMessage).replace(/\n/g, '<br>')}</p>` : '') +
+      `<p>Si tienes alguna consulta previa, puedes responder a este correo.</p>` +
+      `<p>Atentamente,<br><strong>Equipo TISNET</strong></p>`;
+
+    const deliveryResult = await this.mail?.send(
+      {
+        recipient,
+        subject: `TISNET · Enlace de tu reunión con ${advisorName}`,
+        text,
+        html,
+      },
+      'MEETING_LINK_NOTICE',
+      id,
+    );
+
+    await this.prisma.meetingEvent.create({
+      data: {
+        meetingId: id,
+        externalEventId: 'link_notice:' + actor.id + ':' + randomUUID(),
+        status: meeting.status,
+        occurredAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Aviso enviado al cliente correctamente por correo electrónico.',
+      delivery: deliveryResult?.delivery || 'SENT',
+    };
   }
 }

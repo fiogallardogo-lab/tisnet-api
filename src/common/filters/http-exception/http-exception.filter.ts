@@ -14,6 +14,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const exceptionResponse =
       exception instanceof HttpException ? exception.getResponse() : null;
 
+    if (!(exception instanceof HttpException)) {
+      console.error('[HttpExceptionFilter 500 Uncaught Exception]:', exception);
+    }
+
     const message =
       typeof exceptionResponse === 'object' && exceptionResponse !== null
         ? (exceptionResponse as any).message || 'Error en la solicitud'

@@ -17,6 +17,7 @@ describe('ClientPortalService', () => {
       updateMany: vi.fn(),
     },
     adminProfile: { findFirst: vi.fn() },
+    advisorAvailabilitySlot: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
     prospect: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
@@ -41,6 +42,7 @@ describe('ClientPortalService', () => {
     prisma.quote.findMany.mockResolvedValue([]);
     prisma.publicQuote.findMany.mockResolvedValue([]);
     prisma.meeting.findMany.mockResolvedValue([]);
+    prisma.advisorAvailabilitySlot.findFirst.mockResolvedValue({ id: 1 });
     prisma.$transaction.mockImplementation((callback) => callback(prisma));
   });
   it('scopes all private records to the authenticated client and never returns internal user fields', async () => {

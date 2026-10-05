@@ -423,7 +423,7 @@ export class UsersService {
             where: { id: activationRequest.prospectId },
             data: { userId: user.id, status: 'CONVERTED' },
           });
-          const quote = activationRequest.prospect.quotes[0];
+          const quote = activationRequest.prospect.quotes?.[0];
           if (quote) {
             const existingProject = await tx.project.findUnique({
               where: { quoteId: quote.id },
