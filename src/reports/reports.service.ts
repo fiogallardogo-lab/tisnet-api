@@ -191,6 +191,9 @@ export class ReportsService {
         ? Math.round((approvedDeliverables / totalDeliverables) * 100)
         : 0;
 
+    const visibleDeliverables = user.role === 'DEVELOPER'
+      ? project.deliverables.map((d) => ({ ...d, contributions: d.contributions.filter((c) => c.userId === user.id) }))
+      : project.deliverables;
     // Aggregate team contributions
     const contributionMap = new Map<
       number,
@@ -201,7 +204,7 @@ export class ReportsService {
         tasks: string[];
       }
     >();
-    for (const d of project.deliverables) {
+    for (const d of visibleDeliverables) {
       for (const c of d.contributions) {
         const item = contributionMap.get(c.userId) ?? {
           user: { id: c.user.id, name: c.user.name },
@@ -238,7 +241,7 @@ export class ReportsService {
           ? { name: project.productOwner.name }
           : null,
       },
-      commercial: activeVersion
+      commercial: activeVersion && user.role !== 'DEVELOPER'
         ? {
             quoteCode: project.quote?.publicCode,
             version: activeVersion.version,
@@ -252,9 +255,9 @@ export class ReportsService {
         name: m.user.name,
         memberRole: m.memberRole,
         technicalRole: m.technicalRole,
-        participationBasisPoints: m.participationBasisPoints,
+        ...(user.role === 'DEVELOPER' ? {} : { participationBasisPoints: m.participationBasisPoints }),
       })),
-      milestones: project.deliverables.map((d) => ({
+      milestones: visibleDeliverables.map((d) => ({
         id: d.id,
         milestoneOrder: d.milestoneOrder,
         title: d.title,

@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  BadRequestException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -11,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 
 import { PLATFORM_ROLES } from '../common/constants/platform-roles';
 import { validateLegalVersions } from '../common/legal/legal-versions';
+import { auditRecord } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
@@ -30,7 +32,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async listUsers(query: ListUsersQueryDto) {
     const page = query.page ?? 1;
@@ -42,25 +44,25 @@ export class UsersService {
     const where: Prisma.UserWhereInput = {
       ...(typeof query.isActive === 'boolean'
         ? {
-          isActive: query.isActive,
-        }
+            isActive: query.isActive,
+          }
         : {}),
 
       ...(search
         ? {
-          OR: [
-            {
-              name: {
-                contains: search,
+            OR: [
+              {
+                name: {
+                  contains: search,
+                },
               },
-            },
-            {
-              email: {
-                contains: search,
+              {
+                email: {
+                  contains: search,
+                },
               },
-            },
-          ],
-        }
+            ],
+          }
         : {}),
     };
 
@@ -125,14 +127,18 @@ export class UsersService {
     });
     if (!current) throw new NotFoundException('Usuario no encontrado');
     if (current.role.name === PLATFORM_ROLES.SUPER_ADMIN) {
-      throw new ForbiddenException('No se puede modificar una cuenta SUPER_ADMIN');
+      throw new ForbiddenException(
+        'No se puede modificar una cuenta SUPER_ADMIN',
+      );
     }
 
     const role = dto.role
       ? await this.prisma.role.findUnique({ where: { name: dto.role } })
       : null;
     if (dto.role && !role) {
-      throw new InternalServerErrorException(`El rol ${dto.role} no está configurado`);
+      throw new InternalServerErrorException(
+        `El rol ${dto.role} no está configurado`,
+      );
     }
 
     const changedRole = role && role.id !== current.roleId;
@@ -143,7 +149,9 @@ export class UsersService {
       where: { id },
       data: {
         ...(role ? { roleId: role.id } : {}),
-        ...(typeof dto.isActive === 'boolean' ? { isActive: dto.isActive } : {}),
+        ...(typeof dto.isActive === 'boolean'
+          ? { isActive: dto.isActive }
+          : {}),
         ...(changedRole || changedActive
           ? { tokenVersion: { increment: 1 } }
           : {}),
@@ -249,7 +257,7 @@ export class UsersService {
     }
   }
 
-  async createAdministrativeUser(dto: CreateUserDto) {
+  async createAdministrativeUser(dto: CreateUserDto, actorId?: number) {
     const { termsVersion, privacyVersion } = validateLegalVersions(
       this.configService,
       dto,
@@ -259,6 +267,80 @@ export class UsersService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        let activationRequest: {
+          id: number;
+          prospectId: number;
+          status: string;
+          prospect: {
+            email: string;
+            userId: number | null;
+            name: string;
+            company: string | null;
+            quotes: Array<{
+              id: number;
+              publicCode: string;
+              solutionType: string;
+              notes: string | null;
+            }>;
+          };
+        } | null = null;
+        if (dto.activationRequestId !== undefined) {
+          if (dto.role !== PLATFORM_ROLES.CLIENT) {
+            throw new BadRequestException(
+              'Una solicitud de activación solo puede completarse con una cuenta CLIENT.',
+            );
+          }
+          activationRequest = await tx.clientActivationRequest.findUnique({
+            where: { id: dto.activationRequestId },
+            select: {
+              id: true,
+              prospectId: true,
+              status: true,
+              prospect: {
+                select: {
+                  email: true,
+                  userId: true,
+                  name: true,
+                  company: true,
+                  quotes: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    select: {
+                      id: true,
+                      publicCode: true,
+                      solutionType: true,
+                      notes: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+          if (!activationRequest) {
+            throw new NotFoundException(
+              'Solicitud de activación no encontrada.',
+            );
+          }
+          if (activationRequest.status !== 'PENDING') {
+            throw new ConflictException(
+              'La solicitud de activación ya fue atendida.',
+            );
+          }
+          if (
+            activationRequest.prospect.email.toLowerCase() !==
+            dto.email.toLowerCase()
+          ) {
+            throw new BadRequestException(
+              'El correo debe coincidir con el registrado en la solicitud del visitante.',
+            );
+          }
+          if (activationRequest.prospect.userId !== null) {
+            throw new ConflictException(
+              'El visitante ya tiene una cuenta vinculada.',
+            );
+          }
+        }
+
         const role = await tx.role.findUnique({
           where: {
             name: dto.role,
@@ -283,40 +365,127 @@ export class UsersService {
 
             ...(dto.role === PLATFORM_ROLES.CLIENT
               ? {
-                clientProfile: {
-                  create: {},
-                },
-              }
+                  clientProfile: {
+                    create: {},
+                  },
+                }
               : {}),
 
             ...(dto.role === PLATFORM_ROLES.DEVELOPER
               ? {
-                developerProfile: {
-                  create: {},
-                },
-              }
+                  developerProfile: {
+                    create: {},
+                  },
+                }
               : {}),
 
             ...(dto.role === PLATFORM_ROLES.PRODUCT_OWNER
               ? {
-                productOwnerProfile: {
-                  create: {},
-                },
-              }
+                  productOwnerProfile: {
+                    create: {},
+                  },
+                }
               : {}),
 
             ...(dto.role === PLATFORM_ROLES.ADMIN
               ? {
-                adminProfile: {
-                  create: {},
-                },
-              }
+                  adminProfile: {
+                    create: {},
+                  },
+                }
               : {}),
           },
           include: {
             role: true,
           },
         });
+
+        let linkedProjectId: number | null = null;
+        if (activationRequest) {
+          const claimed = await tx.clientActivationRequest.updateMany({
+            where: {
+              id: activationRequest.id,
+              status: 'PENDING',
+            },
+            data: {
+              status: 'APPROVED',
+              reviewerId: actorId ?? null,
+              clientUserId: user.id,
+              reviewedAt: new Date(),
+            },
+          });
+          if (claimed.count !== 1) {
+            throw new ConflictException(
+              'La solicitud fue atendida por otra persona.',
+            );
+          }
+          await tx.prospect.update({
+            where: { id: activationRequest.prospectId },
+            data: { userId: user.id, status: 'CONVERTED' },
+          });
+          const quote = activationRequest.prospect.quotes[0];
+          if (quote) {
+            const existingProject = await tx.project.findUnique({
+              where: { quoteId: quote.id },
+              select: { id: true },
+            });
+            if (existingProject) {
+              linkedProjectId = existingProject.id;
+              await tx.project.update({
+                where: { id: existingProject.id },
+                data: {
+                  clientUserId: user.id,
+                  prospectId: activationRequest.prospectId,
+                  clientName: activationRequest.prospect.name,
+                },
+              });
+            } else {
+              const category = await tx.category.findFirst({
+                where: { isActive: true },
+                orderBy: { id: 'asc' },
+                select: { id: true },
+              });
+              if (!category) {
+                throw new InternalServerErrorException(
+                  'No se puede crear el proyecto: no hay una categoría activa configurada.',
+                );
+              }
+              const projectName = quote.solutionType
+                .replaceAll('_', ' ')
+                .toLowerCase()
+                .replace(/\b\w/g, (letter) => letter.toUpperCase());
+              const description =
+                quote.notes?.trim() ||
+                `Proyecto generado desde la cotización ${quote.publicCode}. Pendiente de validar alcance, hitos y fecha de inicio con el cliente.`;
+              const project = await tx.project.create({
+                data: {
+                  name: projectName,
+                  slug: `cotizacion-${quote.id}-${quote.publicCode
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')}`,
+                  shortDescription: `Proyecto asociado a la cotización ${quote.publicCode}.`,
+                  description,
+                  categoryId: category.id,
+                  status: 'DRAFT',
+                  clientName: activationRequest.prospect.name,
+                  clientUserId: user.id,
+                  prospectId: activationRequest.prospectId,
+                  quoteId: quote.id,
+                },
+                select: { id: true },
+              });
+              linkedProjectId = project.id;
+            }
+          }
+          if (actorId !== undefined) {
+            await auditRecord(tx, {
+              actorId,
+              action: 'CLIENT_ACTIVATION_REQUEST_APPROVED',
+              entityType: 'CLIENT_ACTIVATION_REQUEST',
+              entityId: String(activationRequest.id),
+            });
+          }
+        }
 
         return {
           id: user.id,
@@ -327,6 +496,8 @@ export class UsersService {
           acceptedTermsAt: user.acceptedTermsAt,
           termsVersion: user.termsVersion,
           privacyVersion: user.privacyVersion,
+          projectId: linkedProjectId,
+          projectCreated: linkedProjectId !== null,
         };
       });
     } catch (error) {

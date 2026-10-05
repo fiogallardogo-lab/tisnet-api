@@ -96,10 +96,63 @@ export class ProjectEnablementService {
         // Idempotency check: project may already exist for this quote
         const existing = await tx.project.findUnique({
           where: { quoteId: quote.id },
-          select: { id: true },
+          select: { id: true, status: true },
         });
 
         if (existing) {
+          if (existing.status === 'DRAFT') {
+            const client = await tx.user.findFirst({
+              where: {
+                id: quoteVersion.clientUserId,
+                isActive: true,
+                role: { name: 'CLIENT' },
+              },
+              select: { id: true },
+            });
+            if (!client) {
+              throw new ConflictException(
+                `Client user ${quoteVersion.clientUserId} is not available for project enablement.`,
+              );
+            }
+            const scope = quoteVersion.scope as { description?: string };
+            const projectName =
+              scope.description?.slice(0, 150) || `Proyecto ${quote.publicCode}`;
+            await tx.project.update({
+              where: { id: existing.id },
+              data: {
+                name: projectName,
+                shortDescription: (scope.description || projectName).slice(0, 300),
+                description: scope.description || projectName,
+                status: 'IN_DEVELOPMENT',
+                clientUserId: client.id,
+                prospectId: quote.prospectId,
+              },
+            });
+            await tx.projectMember.upsert({
+              where: {
+                projectId_userId: { projectId: existing.id, userId: client.id },
+              },
+              create: {
+                projectId: existing.id,
+                userId: client.id,
+                memberRole: 'CLIENT',
+                participationBasisPoints: 0,
+              },
+              update: { memberRole: 'CLIENT', isActive: true },
+            });
+            await auditRecord(tx, {
+              actorId,
+              action: 'PROJECT_ENABLED',
+              entityType: 'PROJECT',
+              entityId: String(existing.id),
+              metadata: {
+                quoteId: quote.id,
+                scheduleId,
+                paymentId,
+                triggeredBy: actorId ? 'ADMIN' : 'WEBHOOK',
+              },
+            });
+          }
           await this.ensureMilestones(
             tx,
             existing.id,

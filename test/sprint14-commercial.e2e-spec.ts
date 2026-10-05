@@ -127,7 +127,7 @@ describe.skipIf(!/(^|[_-])test($|[_-])/i.test(dbName))(
       );
       expect(doc.paths[api + '/auth/activate']?.post).toBeDefined();
       expect(
-        doc.components?.schemas?.OfficialQuoteDto?.['properties']?.installments,
+        (doc.components?.schemas?.OfficialQuoteDto as any)?.properties?.installments,
       ).toBeDefined();
       await req()
         .post(api + '/auth/client-invitations')

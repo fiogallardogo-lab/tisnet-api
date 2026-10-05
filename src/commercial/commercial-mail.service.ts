@@ -60,6 +60,9 @@ export class CommercialMailService {
         '">Agendar asesoría</a></p>',
     };
   }
+  isRealDeliveryConfigured() {
+    return this.provider.deliveryMode !== 'simulated';
+  }
   async send(
     input: SendNotificationInput,
     entityType: string,

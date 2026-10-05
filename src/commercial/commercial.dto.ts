@@ -118,6 +118,12 @@ export class InviteClientDto {
   @IsEmail()
   @MaxLength(150)
   email!: string;
+  @ApiPropertyOptional({ minimum: 1 })
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'number' ? value : Number(value)))
+  @IsInt()
+  @Min(1)
+  activationRequestId?: number;
 }
 export class RequestActivationDto {
   @ApiProperty()
@@ -127,4 +133,11 @@ export class RequestActivationDto {
   @IsEmail()
   @MaxLength(150)
   email!: string;
+}
+
+export class CreateClientActivationRequestDto {
+  @ApiProperty({ minimum: 1 })
+  @IsInt()
+  @Min(1)
+  prospectId!: number;
 }

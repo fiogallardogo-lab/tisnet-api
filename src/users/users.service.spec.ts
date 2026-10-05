@@ -21,6 +21,16 @@ describe('UsersService', () => {
     user: {
       create: vi.fn(),
     },
+    clientActivationRequest: {
+      findUnique: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    prospect: {
+      update: vi.fn(),
+    },
+    auditEvent: {
+      create: vi.fn(),
+    },
   };
 
   const prismaMock = {
@@ -131,6 +141,57 @@ describe('UsersService', () => {
     );
 
     expect(result.role).toBe(PLATFORM_ROLES.CLIENT);
+  });
+
+  it('links a manually created CLIENT to its pending activation request atomically', async () => {
+    txMock.role.findUnique.mockResolvedValue({
+      id: 1,
+      name: PLATFORM_ROLES.CLIENT,
+    });
+    txMock.clientActivationRequest.findUnique.mockResolvedValue({
+      id: 32,
+      prospectId: 18,
+      status: 'PENDING',
+      prospect: { email: 'visitante@example.com', userId: null },
+    });
+    txMock.clientActivationRequest.updateMany.mockResolvedValue({ count: 1 });
+    txMock.user.create.mockResolvedValue({
+      id: 70,
+      name: 'Visitante',
+      email: 'visitante@example.com',
+      role: { name: PLATFORM_ROLES.CLIENT },
+      isActive: true,
+      acceptedTermsAt: new Date(),
+      termsVersion: 'v1.0',
+      privacyVersion: 'v1.0',
+    });
+
+    await service.createAdministrativeUser(
+      {
+        name: 'Visitante',
+        email: 'visitante@example.com',
+        password: 'password123',
+        role: PLATFORM_ROLES.CLIENT,
+        acceptedTerms: true,
+        termsVersion: 'v1.0',
+        privacyVersion: 'v1.0',
+        activationRequestId: 32,
+      },
+      9,
+    );
+
+    expect(txMock.clientActivationRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: 32, status: 'PENDING' },
+      data: expect.objectContaining({
+        status: 'APPROVED',
+        reviewerId: 9,
+        clientUserId: 70,
+      }),
+    });
+    expect(txMock.prospect.update).toHaveBeenCalledWith({
+      where: { id: 18 },
+      data: { userId: 70, status: 'CONVERTED' },
+    });
   });
 
   it('creates a DEVELOPER with DeveloperProfile', async () => {

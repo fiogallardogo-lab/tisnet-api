@@ -63,7 +63,9 @@ export class UsersController {
 
   @Patch(':id')
   @Roles(PLATFORM_ROLES.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Actualizar rol o estado de una cuenta gestionable' })
+  @ApiOperation({
+    summary: 'Actualizar rol o estado de una cuenta gestionable',
+  })
   updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Request() request: { user: { id: number } },
@@ -97,10 +99,15 @@ export class UsersController {
     description: 'El correo ya está registrado.',
   })
   @ApiServiceUnavailableResponse({
-    description:
-      'Configuración legal ausente o inválida; no se crean datos.',
+    description: 'Configuración legal ausente o inválida; no se crean datos.',
   })
-  createUser(@Body() dto: CreateUserDto) {
-    return this.usersService.createAdministrativeUser(dto);
+  createUser(
+    @Body() dto: CreateUserDto,
+    @Request() request?: { user?: { id?: number } },
+  ) {
+    const actorId = request?.user?.id;
+    return actorId !== undefined
+      ? this.usersService.createAdministrativeUser(dto, actorId)
+      : this.usersService.createAdministrativeUser(dto);
   }
 }

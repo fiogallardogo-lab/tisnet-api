@@ -225,6 +225,29 @@ export class ProspectsService {
     return this.toProspectResponse(prospect);
   }
 
+  async findAllAdminProfiles() {
+    const profiles = await this.prisma.adminProfile.findMany({
+      where: { user: { isActive: true, role: { name: { in: ['ADMIN', 'SUPER_ADMIN'] } } } },
+      select: {
+        id: true,
+        executiveTitle: true,
+        specialty: true,
+        photoUrl: true,
+        calendlyUrl: true,
+        isPublicAdvisor: true,
+        user: { select: { name: true, isActive: true, role: { select: { name: true } } } },
+      },
+      orderBy: { user: { name: 'asc' } },
+    });
+
+    return profiles.map(({ user, ...profile }) => ({
+      ...profile,
+      name: user.name,
+      isActive: user.isActive,
+      role: user.role.name,
+    }));
+  }
+
   async findAssignableAdvisors() {
     const profiles = await this.prisma.adminProfile.findMany({
       where: { user: { isActive: true, role: { name: 'ADMIN' } } },
@@ -409,6 +432,7 @@ export class ProspectsService {
   ) {
     return {
       id: prospect.id,
+      userId: prospect.userId,
       name: prospect.name,
       email: prospect.email,
       phone: prospect.phone,

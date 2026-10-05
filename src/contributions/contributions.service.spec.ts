@@ -66,7 +66,7 @@ describe('ContributionsService', () => {
       { userId: 12 },
     ]);
 
-    prisma.milestoneContribution.create.mockImplementation(({ data }) => ({
+    prisma.milestoneContribution.create.mockImplementation(({ data }: any) => ({
       id: Math.floor(Math.random() * 1000),
       ...data,
       user: {
@@ -227,7 +227,7 @@ describe('ContributionsService', () => {
   });
 
   it('exact ID lookup never falls back to a colliding milestone or sequence', async () => {
-    prisma.projectDeliverable.findFirst.mockImplementation(({where}) =>
+    prisma.projectDeliverable.findFirst.mockImplementation(({ where }: any) =>
       where.OR.length === 1 && where.OR[0].id === 5 ? null : mockDeliverable);
     await expect(service.getMilestoneContributions(100, 5, po, true)).rejects.toThrow('Entregable no encontrado');
     expect(prisma.projectMilestone.findFirst).not.toHaveBeenCalled();

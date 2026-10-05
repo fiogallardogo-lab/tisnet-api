@@ -23,6 +23,7 @@ const SEND_TIMEOUT_MS = 10_000;
 export class SmtpNotificationProvider
   implements NotificationProvider, OnModuleDestroy
 {
+  readonly deliveryMode = 'real' as const;
   private readonly logger = new Logger(SmtpNotificationProvider.name);
   private readonly transporter: Transporter;
   private readonly mailFrom: string;

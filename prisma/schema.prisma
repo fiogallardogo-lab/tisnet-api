@@ -35,6 +35,11 @@ enum ProspectStatus {
   LOST
 }
 
+enum ClientActivationRequestStatus {
+  PENDING
+  APPROVED
+}
+
 enum ProspectSource {
   QUOTE
   MEETING
@@ -70,46 +75,49 @@ model Role {
 }
 
 model User {
-  assignedWorkTasks        WorkTask[]                @relation("WorkTaskAssignee")
-  createdWorkTasks         WorkTask[]                @relation("WorkTaskCreator")
-  workResources            WorkResource[]
-  workLogs                 WorkLog[]
-  privateFiles             PrivateFile[]
-  publicTeamProfile        PublicTeamProfile?
-  reminderDeliveries       PaymentReminderDelivery[]
-  quoteObservations        QuoteObservation[]
-  resultingApplications    TeamApplication[]         @relation("ApplicationAccount")
-  applicationDecisions     TeamApplication[]         @relation("ApplicationDecisionActor")
-  ownedProjects            Project[]                 @relation("ProjectOwner")
-  clientProjects           Project[]                 @relation("ProjectClient")
-  kickoffs                 Kickoff[]
-  auditEvents              AuditEvent[]
-  id                       Int                       @id @default(autoincrement())
-  name                     String                    @db.VarChar(100)
-  email                    String                    @unique @db.VarChar(150)
-  passwordHash             String                    @db.VarChar(255)
-  roleId                   Int
-  isActive                 Boolean                   @default(true)
-  acceptedTermsAt          DateTime?
-  termsVersion             String?                   @db.VarChar(50)
-  privacyVersion           String?                   @db.VarChar(50)
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime                  @updatedAt
-  tokenVersion             Int                       @default(0)
-  role                     Role                      @relation(fields: [roleId], references: [id])
-  clientProfile            ClientProfile?
-  developerProfile         DeveloperProfile?
-  productOwnerProfile      ProductOwnerProfile?
-  adminProfile             AdminProfile?
-  prospect                 Prospect?
-  projectMemberships       ProjectMember[]
-  reviewedDeliverables     ProjectDeliverable[]      @relation("DeliverableReviewer")
-  authoredQuoteVersions    QuoteVersion[]            @relation("QuoteVersionAuthor")
-  commercialQuotes         QuoteVersion[]            @relation("QuoteVersionClient")
-  acceptedQuoteVersions    QuoteVersion[]            @relation("QuoteVersionAccepter")
-  reviewedTeamApplications TeamApplication[]         @relation("TeamApplicationReviewer")
-  milestoneContributions   MilestoneContribution[]   @relation("UserMilestoneContributions")
-  deliverableHistories     DeliverableHistory[]      @relation("DeliverableHistoryActor")
+  assignedWorkTasks                WorkTask[]                @relation("WorkTaskAssignee")
+  createdWorkTasks                 WorkTask[]                @relation("WorkTaskCreator")
+  workResources                    WorkResource[]
+  workLogs                         WorkLog[]
+  privateFiles                     PrivateFile[]
+  publicTeamProfile                PublicTeamProfile?
+  reminderDeliveries               PaymentReminderDelivery[]
+  quoteObservations                QuoteObservation[]
+  resultingApplications            TeamApplication[]         @relation("ApplicationAccount")
+  applicationDecisions             TeamApplication[]         @relation("ApplicationDecisionActor")
+  ownedProjects                    Project[]                 @relation("ProjectOwner")
+  clientProjects                   Project[]                 @relation("ProjectClient")
+  kickoffs                         Kickoff[]
+  auditEvents                      AuditEvent[]
+  id                               Int                       @id @default(autoincrement())
+  name                             String                    @db.VarChar(100)
+  email                            String                    @unique @db.VarChar(150)
+  passwordHash                     String                    @db.VarChar(255)
+  roleId                           Int
+  isActive                         Boolean                   @default(true)
+  acceptedTermsAt                  DateTime?
+  termsVersion                     String?                   @db.VarChar(50)
+  privacyVersion                   String?                   @db.VarChar(50)
+  createdAt                        DateTime                  @default(now())
+  updatedAt                        DateTime                  @updatedAt
+  tokenVersion                     Int                       @default(0)
+  role                             Role                      @relation(fields: [roleId], references: [id])
+  clientProfile                    ClientProfile?
+  developerProfile                 DeveloperProfile?
+  productOwnerProfile              ProductOwnerProfile?
+  adminProfile                     AdminProfile?
+  prospect                         Prospect?
+  projectMemberships               ProjectMember[]
+  reviewedDeliverables             ProjectDeliverable[]      @relation("DeliverableReviewer")
+  authoredQuoteVersions            QuoteVersion[]            @relation("QuoteVersionAuthor")
+  commercialQuotes                 QuoteVersion[]            @relation("QuoteVersionClient")
+  acceptedQuoteVersions            QuoteVersion[]            @relation("QuoteVersionAccepter")
+  reviewedTeamApplications         TeamApplication[]         @relation("TeamApplicationReviewer")
+  milestoneContributions           MilestoneContribution[]   @relation("UserMilestoneContributions")
+  deliverableHistories             DeliverableHistory[]      @relation("DeliverableHistoryActor")
+  clientActivationRequestsCreated  ClientActivationRequest[] @relation("ClientActivationRequestRequester")
+  clientActivationRequestsReviewed ClientActivationRequest[] @relation("ClientActivationRequestReviewer")
+  clientActivationRequestsAsClient ClientActivationRequest[] @relation("ClientActivationRequestClient")
 
   @@index([roleId, isActive])
 }
@@ -223,26 +231,46 @@ model Quote {
 }
 
 model Prospect {
-  advisorProfileId Int?
-  projects         Project[]
-  id               Int            @id @default(autoincrement())
-  userId           Int?           @unique
-  name             String         @db.VarChar(100)
-  email            String         @unique @db.VarChar(150)
-  phone            String?        @db.VarChar(30)
-  company          String?        @db.VarChar(150)
-  status           ProspectStatus @default(NEW)
-  source           ProspectSource @default(QUOTE)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  advisorProfile   AdminProfile?  @relation("ProspectAdvisor", fields: [advisorProfileId], references: [id], onDelete: SetNull)
-  quotes           Quote[]
-  meetings         Meeting[]
+  advisorProfileId   Int?
+  projects           Project[]
+  id                 Int                       @id @default(autoincrement())
+  userId             Int?                      @unique
+  name               String                    @db.VarChar(100)
+  email              String                    @unique @db.VarChar(150)
+  phone              String?                   @db.VarChar(30)
+  company            String?                   @db.VarChar(150)
+  status             ProspectStatus            @default(NEW)
+  source             ProspectSource            @default(QUOTE)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  user               User?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  advisorProfile     AdminProfile?             @relation("ProspectAdvisor", fields: [advisorProfileId], references: [id], onDelete: SetNull)
+  quotes             Quote[]
+  meetings           Meeting[]
+  activationRequests ClientActivationRequest[]
 
   @@index([status, createdAt])
   @@index([source, createdAt])
   @@index([advisorProfileId, createdAt])
+}
+
+model ClientActivationRequest {
+  id           Int                           @id @default(autoincrement())
+  prospectId   Int
+  requesterId  Int
+  reviewerId   Int?
+  clientUserId Int?                          @unique
+  status       ClientActivationRequestStatus @default(PENDING)
+  createdAt    DateTime                      @default(now())
+  reviewedAt   DateTime?
+  prospect     Prospect                      @relation(fields: [prospectId], references: [id], onDelete: Restrict)
+  requester    User                          @relation("ClientActivationRequestRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  reviewer     User?                         @relation("ClientActivationRequestReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  clientUser   User?                         @relation("ClientActivationRequestClient", fields: [clientUserId], references: [id], onDelete: SetNull)
+
+  @@unique([prospectId, status])
+  @@index([status, createdAt])
+  @@index([requesterId, createdAt])
 }
 
 model Meeting {

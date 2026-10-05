@@ -28,6 +28,8 @@ describe('AuditService helpers', () => {
   const prismaMock = {
     auditEvent: {
       create: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
     },
   };
 

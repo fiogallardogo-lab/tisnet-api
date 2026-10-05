@@ -10,6 +10,7 @@ import {
 
 @Injectable()
 export class FakeNotificationProvider implements NotificationProvider {
+  readonly deliveryMode = 'simulated' as const;
   readonly sentNotifications: SendNotificationInput[] = [];
   private readonly applicationAttempts: ApplicationNotificationAttempt[] = [];
 
@@ -20,7 +21,10 @@ export class FakeNotificationProvider implements NotificationProvider {
   async send(input: SendNotificationInput): Promise<NotificationResult> {
     const type = input.metadata?.type;
     const isApplication =
-      type === 'INTERVIEW_ASSIGNED' || type === 'APPLICATION_REJECTED' || type === 'APPLICATION_RECEIVED' || type === 'APPLICATION_ACCEPTED';
+      type === 'INTERVIEW_ASSIGNED' ||
+      type === 'APPLICATION_REJECTED' ||
+      type === 'APPLICATION_RECEIVED' ||
+      type === 'APPLICATION_ACCEPTED';
     if (isApplication) {
       if (!input.metadata?.applicationCode?.trim()) {
         throw new NotificationDeliveryError('applicationCode is required');

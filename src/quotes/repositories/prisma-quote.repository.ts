@@ -97,6 +97,24 @@ export class PrismaQuoteRepository implements QuoteRepository {
           },
         });
 
+        const txAny = tx as unknown as {
+          prospect?: {
+            update?: (args: unknown) => Promise<unknown>;
+          };
+        };
+        if (typeof txAny.prospect?.update === 'function') {
+          await txAny.prospect
+            .update({
+              where: { email: input.contactEmail },
+              data: {
+                name: input.contactName,
+                ...(input.contactPhone ? { phone: input.contactPhone } : {}),
+                ...(input.contactCompany ? { company: input.contactCompany } : {}),
+              },
+            })
+            .catch(() => {});
+        }
+
         return {
           publicCode: quote.publicCode,
           status: toDomainStatus(quote.status),
