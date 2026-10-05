@@ -9,11 +9,17 @@ describe('AuthController', () => {
   let controller: AuthController;
 
   const authServiceMock = {
+    getLegalVersions: vi.fn(),
     login: vi.fn(),
     refresh: vi.fn(),
     forgotPassword: vi.fn(),
     resetPassword: vi.fn(),
   };
+
+  it('returns configured legal versions from the service', () => {
+    authServiceMock.getLegalVersions.mockReturnValue({ termsVersion: 'terms-v2', privacyVersion: 'privacy-v3' });
+    expect(controller.getLegalVersions()).toEqual({ termsVersion: 'terms-v2', privacyVersion: 'privacy-v3' });
+  });
 
   beforeEach(async () => {
     vi.resetAllMocks();

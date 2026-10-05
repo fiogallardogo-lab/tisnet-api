@@ -22,6 +22,13 @@ interface RefreshTokenPayload {
 
 @Injectable()
 export class AuthService {
+  getLegalVersions() {
+    return validateLegalVersions(this.configService, {
+      termsVersion: this.configService.get<string>('TERMS_VERSION')?.trim(),
+      privacyVersion: this.configService.get<string>('PRIVACY_VERSION')?.trim(),
+    });
+  }
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,

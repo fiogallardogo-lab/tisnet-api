@@ -1,3 +1,4 @@
+import { THROTTLER_LIMIT } from '@nestjs/throttler/dist/throttler.constants';
 import { PublicCatalogModule } from './dashboard/public-catalog.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { WorkModule } from './work/work.module';
@@ -60,7 +61,14 @@ import { ContributionsModule } from './contributions/contributions.module.js';
      */
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60000, limit: 120 },
-      { name: 'auth', ttl: 60000, limit: 10 },
+      {
+        name: 'auth', ttl: 60000, limit: 10,
+        // Named profiles otherwise apply to every route, including calendars.
+        skipIf: (context) =>
+          ![context.getHandler(), context.getClass()].some((target) =>
+            Reflect.hasMetadata(THROTTLER_LIMIT + 'auth', target),
+          ),
+      },
       { name: 'public', ttl: 60000, limit: 30 },
       { name: 'webhook', ttl: 60000, limit: 60 },
     ]),

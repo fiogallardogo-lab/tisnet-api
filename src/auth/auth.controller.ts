@@ -34,6 +34,13 @@ interface AuthenticatedRequest extends ExpressRequest {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Get('legal-versions')
+  @SkipThrottle({ auth: true, webhook: true })
+  @ApiOperation({ summary: 'Consultar versiones legales vigentes' })
+  getLegalVersions() {
+    return this.authService.getLegalVersions();
+  }
+
   /** 10 attempts / 60 s to limit brute-force */
   @Post('login')
   @Throttle({ auth: { ttl: 60000, limit: 10 } })
