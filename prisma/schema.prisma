@@ -190,8 +190,22 @@ model AdminProfile {
   updatedAt                DateTime          @updatedAt
   user                     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   advisedMeetings          Meeting[]         @relation("MeetingAdvisor")
+  availabilitySlots        AdvisorAvailabilitySlot[]
   assignedProspects        Prospect[]        @relation("ProspectAdvisor")
   assignedTeamApplications TeamApplication[] @relation("TeamApplicationInterviewer")
+}
+
+model AdvisorAvailabilitySlot {
+  id               Int          @id @default(autoincrement())
+  advisorProfileId Int
+  start            DateTime
+  end              DateTime
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  advisorProfile   AdminProfile @relation(fields: [advisorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([advisorProfileId, start, end])
+  @@index([advisorProfileId, start])
 }
 
 model Quote {

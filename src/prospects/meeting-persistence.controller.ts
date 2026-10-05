@@ -6,6 +6,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Query,
   Request,
   UseGuards,
@@ -19,6 +20,7 @@ import {
   MeetingListQuery,
   UpdateMeetingStatusDto,
   RescheduleMeetingDto,
+  ReplaceAdvisorAvailabilityDto,
 } from './meeting-persistence.dto';
 import { MeetingPersistenceService } from './meeting-persistence.service';
 @Controller('public')
@@ -38,6 +40,19 @@ export class CommercialMeetingsPublicController {
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CommercialMeetingsController {
   constructor(private readonly service: MeetingPersistenceService) {}
+  @Get('meetings/my/availability')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  ownAvailability(@Request() req: { user: { id: number; role: string } }) {
+    return this.service.ownAvailability(req.user.id);
+  }
+  @Put('meetings/my/availability')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  replaceOwnAvailability(
+    @Body() dto: ReplaceAdvisorAvailabilityDto,
+    @Request() req: { user: { id: number; role: string } },
+  ) {
+    return this.service.replaceOwnAvailability(req.user.id, dto.slots);
+  }
   @Patch('meetings/:id/status')
   @Roles('ADMIN', 'SUPER_ADMIN')
   updateStatus(

@@ -73,10 +73,9 @@ export class MeetingPersistenceService {
     });
     if (!advisor) throw new NotFoundException('Asesor no disponible');
     const [slots, booked] = await Promise.all([
-      this.scheduling.getAvailability({
-        advisorId: String(advisorId),
-        from: a,
-        to: b,
+      this.prisma.advisorAvailabilitySlot.findMany({
+        where: { advisorProfileId: advisorId, start: { gte: a }, end: { lte: b } },
+        orderBy: { start: 'asc' },
       }),
       this.prisma.meeting.findMany({
         where: {
@@ -95,7 +94,6 @@ export class MeetingPersistenceService {
     ]);
     return slots.filter(
       (slot) =>
-        slot.status === 'AVAILABLE' &&
         slot.start >= a &&
         slot.end <= b &&
         slot.start > new Date() &&
@@ -106,7 +104,71 @@ export class MeetingPersistenceService {
             (m.endsAt || new Date(m.scheduledAt.getTime() + 3600000)) >
               slot.start,
         ),
-    );
+    ).map((slot) => ({
+      id: slot.id,
+      start: slot.start,
+      end: slot.end,
+      label: new Intl.DateTimeFormat('es-PE', {
+        timeZone: 'America/Lima',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(slot.start),
+    }));
+  }
+  async ownAvailability(userId: number) {
+    const advisor = await this.prisma.adminProfile.findUnique({ where: { userId } });
+    if (!advisor) return [];
+    return this.prisma.advisorAvailabilitySlot.findMany({
+      where: { advisorProfileId: advisor.id, end: { gt: new Date() } },
+      orderBy: { start: 'asc' },
+    });
+  }
+  async replaceOwnAvailability(userId: number, input: Array<{ start: string; end: string }>) {
+    const advisor = await this.prisma.adminProfile.upsert({
+      where: { userId },
+      update: { isPublicAdvisor: true },
+      create: {
+        userId,
+        executiveTitle: 'Asesor comercial y técnico',
+        specialty: 'Consultoría y soluciones digitales',
+        isPublicAdvisor: true,
+      },
+    });
+    const now = new Date();
+    const slots = input
+      .map((slot) => ({ start: new Date(slot.start), end: new Date(slot.end) }))
+      .sort((left, right) => left.start.getTime() - right.start.getTime());
+    for (let index = 0; index < slots.length; index += 1) {
+      const slot = slots[index];
+      if (
+        !Number.isFinite(slot.start.getTime()) ||
+        !Number.isFinite(slot.end.getTime()) ||
+        slot.start <= now ||
+        slot.end <= slot.start ||
+        slot.end.getTime() - slot.start.getTime() > 4 * 60 * 60 * 1000
+      ) throw new BadRequestException('Cada horario debe ser futuro y durar como máximo 4 horas.');
+      if (index > 0 && slots[index - 1].end > slot.start)
+        throw new ConflictException('Los horarios de disponibilidad no pueden cruzarse.');
+    }
+    await this.prisma.$transaction(async (tx) => {
+      await tx.advisorAvailabilitySlot.deleteMany({
+        where: { advisorProfileId: advisor.id, end: { gt: now } },
+      });
+      await tx.advisorAvailabilitySlot.createMany({
+        data: slots.map((slot) => ({ ...slot, advisorProfileId: advisor.id })),
+      });
+      await tx.auditEvent.create({
+        data: {
+          actorId: userId,
+          action: 'ADVISOR_AVAILABILITY_REPLACED',
+          entityType: 'ADMIN_PROFILE',
+          entityId: String(advisor.id),
+          metadata: { slots: slots.length },
+        },
+      });
+    });
+    return this.ownAvailability(userId);
   }
   async book(dto: BookMeetingDto) {
     const { a, b } = this.range(dto.start, dto.end, 1);

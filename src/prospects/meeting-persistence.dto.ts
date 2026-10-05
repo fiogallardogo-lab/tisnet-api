@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsDateString,
   IsIn,
   IsEmail,
@@ -10,6 +11,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 export class BookMeetingDto {
   @IsInt() @Min(1) advisorId: number;
@@ -49,4 +51,16 @@ export class UpdateMeetingStatusDto {
 export class RescheduleMeetingDto {
   @IsDateString({ strict: true }) start: string;
   @IsDateString({ strict: true }) end: string;
+}
+
+export class AdvisorAvailabilitySlotDto {
+  @IsDateString({ strict: true }) start: string;
+  @IsDateString({ strict: true }) end: string;
+}
+
+export class ReplaceAdvisorAvailabilityDto {
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => AdvisorAvailabilitySlotDto)
+  slots: AdvisorAvailabilitySlotDto[];
 }

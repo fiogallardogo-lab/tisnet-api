@@ -21,6 +21,7 @@ import { ScheduleKickoffDto } from '../kickoff/kickoff-sprint14.dto';
 export class RequestClientMeetingDto {
   @IsInt() @Min(1) advisorId!: number;
   @IsDateString() scheduledAt!: string;
+  @IsOptional() @IsDateString() endsAt?: string;
   @IsOptional() @IsString() @MaxLength(1000) notes?: string;
 }
 

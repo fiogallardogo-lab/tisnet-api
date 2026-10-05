@@ -217,11 +217,16 @@ export class ClientPortalService {
 
   async requestMeeting(
     actor: { id: number; email: string },
-    input: { advisorId: number; scheduledAt: string; notes?: string },
+    input: { advisorId: number; scheduledAt: string; endsAt?: string; notes?: string },
   ) {
     const scheduledAt = new Date(input.scheduledAt);
+    const endsAt = input.endsAt
+      ? new Date(input.endsAt)
+      : new Date(scheduledAt.getTime() + 3600000);
     if (!Number.isFinite(scheduledAt.getTime()) || scheduledAt <= new Date())
       throw new BadRequestException('Elige una fecha futura.');
+    if (!Number.isFinite(endsAt.getTime()) || endsAt <= scheduledAt)
+      throw new BadRequestException('El horario seleccionado no es válido.');
     const advisor = await this.prisma.adminProfile.findFirst({
       where: {
         id: input.advisorId,
@@ -234,6 +239,11 @@ export class ClientPortalService {
       throw new NotFoundException('El asesor ya no está disponible.');
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM AdminProfile WHERE id = ${advisor.id} FOR UPDATE`;
+      const availableSlot = await tx.advisorAvailabilitySlot.findFirst({
+        where: { advisorProfileId: advisor.id, start: scheduledAt, end: endsAt },
+      });
+      if (!availableSlot)
+        throw new ConflictException('El horario seleccionado ya no está disponible.');
       const user = await tx.user.findUniqueOrThrow({
         where: { id: actor.id },
         select: { name: true },
@@ -266,7 +276,7 @@ export class ClientPortalService {
       const duplicate = await tx.meeting.findFirst({
         where: {
           advisorProfileId: advisor.id,
-          scheduledAt: { lt: new Date(scheduledAt.getTime() + 3600000) },
+          scheduledAt: { lt: endsAt },
           OR: [
             { endsAt: { gt: scheduledAt } },
             {
@@ -287,7 +297,7 @@ export class ClientPortalService {
           prospectId: prospect.id,
           advisorProfileId: advisor.id,
           scheduledAt,
-          endsAt: new Date(scheduledAt.getTime() + 3600000),
+          endsAt,
           bookingKey: `${advisor.id}:${scheduledAt.toISOString()}`,
           notes: input.notes?.trim() || null,
           timezone: 'America/Lima',
