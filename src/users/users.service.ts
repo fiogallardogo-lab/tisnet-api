@@ -54,6 +54,14 @@ export class UsersService {
           }
         : {}),
 
+      ...(query.role?.trim()
+        ? {
+            role: {
+              name: query.role.trim(),
+            },
+          }
+        : {}),
+
       ...(search
         ? {
             OR: [

@@ -30,4 +30,8 @@ export class ListUsersQueryDto {
     @Type(() => Boolean)
     @IsBoolean()
     isActive?: boolean;
+
+    @IsOptional()
+    @IsString()
+    role?: string;
 }
