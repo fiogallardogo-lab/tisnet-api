@@ -1,17 +1,28 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectEnablementService } from '../projects/project-enablement.service';
+import { CommercialMailService } from '../commercial/commercial-mail.service';
+import {
+  WHATSAPP_NOTIFICATION_PROVIDER,
+  type WhatsAppNotificationProvider,
+} from '../notifications/whatsapp-notification-provider.interface';
 
 @Injectable()
 export class ClientPortalService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly enablement: ProjectEnablementService,
+    @Optional() private readonly mail?: CommercialMailService,
+    @Optional()
+    @Inject(WHATSAPP_NOTIFICATION_PROVIDER)
+    private readonly whatsapp?: WhatsAppNotificationProvider,
   ) {}
 
   async overview(actor: { id: number; email: string }) {
@@ -217,7 +228,14 @@ export class ClientPortalService {
 
   async requestMeeting(
     actor: { id: number; email: string },
-    input: { advisorId: number; scheduledAt: string; endsAt?: string; notes?: string },
+    input: {
+      advisorId: number;
+      scheduledAt: string;
+      endsAt?: string;
+      notes?: string;
+      notifyWhatsapp?: boolean;
+      phone?: string;
+    },
   ) {
     const scheduledAt = new Date(input.scheduledAt);
     const endsAt = input.endsAt
@@ -233,11 +251,16 @@ export class ClientPortalService {
         isPublicAdvisor: true,
         user: { isActive: true },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        executiveTitle: true,
+        specialty: true,
+        user: { select: { id: true, name: true, email: true } },
+      },
     });
     if (!advisor)
       throw new NotFoundException('El asesor ya no está disponible.');
-    return this.prisma.$transaction(async (tx) => {
+    const meeting = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM AdminProfile WHERE id = ${advisor.id} FOR UPDATE`;
       const availableSlot = await tx.advisorAvailabilitySlot?.findFirst({
         where: { advisorProfileId: advisor.id, start: scheduledAt, end: endsAt },
@@ -263,7 +286,10 @@ export class ClientPortalService {
       prospect = prospect
         ? await tx.prospect.update({
             where: { id: prospect.id },
-            data: { userId: actor.id },
+            data: {
+              userId: actor.id,
+              ...(input.phone?.trim() ? { phone: input.phone.trim() } : {}),
+            },
           })
         : await tx.prospect.create({
             data: {
@@ -271,6 +297,7 @@ export class ClientPortalService {
               name: user.name,
               email: actor.email.trim().toLowerCase(),
               source: 'MEETING',
+              phone: input.phone?.trim() || null,
             },
           });
       const duplicate = await tx.meeting.findFirst({
@@ -291,7 +318,6 @@ export class ClientPortalService {
         throw new ConflictException(
           'Ya tienes una solicitud para ese asesor y horario.',
         );
-      // This is a request for the advisor, not a fabricated calendar confirmation.
       return tx.meeting.create({
         data: {
           prospectId: prospect.id,
@@ -303,9 +329,43 @@ export class ClientPortalService {
           timezone: 'America/Lima',
           status: 'PENDING',
         },
-        select: { id: true, status: true, scheduledAt: true },
+        select: {
+          id: true,
+          status: true,
+          scheduledAt: true,
+          endsAt: true,
+        },
       });
     });
+
+    await this.mail?.meeting(meeting.id);
+
+    if (input.notifyWhatsapp && input.phone?.trim()) {
+      try {
+        const advisorName = advisor.user?.name || 'tu asesor TISNET';
+        const formattedDate = scheduledAt.toLocaleString('es-PE', {
+          dateStyle: 'full',
+          timeStyle: 'short',
+          timeZone: 'America/Lima',
+        });
+        const meetingUrl = `https://app.tisnet.pe/meetings/${meeting.id}`;
+
+        await this.whatsapp?.send({
+          recipientPhone: input.phone.trim(),
+          message:
+            `¡Hola! 🚀\n\n` +
+            `Tu solicitud de reunión con *${advisorName}* ha sido registrada con éxito.\n\n` +
+            `📅 *Fecha y hora:* ${formattedDate}\n` +
+            `🔗 *Enlace de la videollamada:* ${meetingUrl}\n\n` +
+            `Te enviaremos una notificación cuando el asesor confirme la cita y un recordatorio 15 minutos antes de la llamada.\n\n` +
+            `_Equipo TISNET Soluciones Digitales_`,
+        });
+      } catch {
+        // Non-blocking
+      }
+    }
+
+    return meeting;
   }
 
   async cancelMeeting(userId: number, id: number) {

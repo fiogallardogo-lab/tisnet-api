@@ -20,16 +20,6 @@ export class ClientActivationRequestsService {
     if (!prospect) throw new NotFoundException('Visitante no encontrado.');
     if (prospect.userId || prospect.status === 'CONVERTED')
       throw new ConflictException('El visitante ya fue convertido en cliente.');
-
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: prospect.email },
-      select: { id: true },
-    });
-    if (existingUser)
-      throw new ConflictException(
-        'Ya existe una cuenta con el correo del visitante.',
-      );
-
     const pending = await this.prisma.clientActivationRequest.findFirst({
       where: { prospectId, status: ClientActivationRequestStatus.PENDING },
       select: { id: true, status: true, createdAt: true },

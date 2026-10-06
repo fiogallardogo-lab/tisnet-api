@@ -5,6 +5,8 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Logger,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
@@ -14,6 +16,7 @@ import { PLATFORM_ROLES } from '../common/constants/platform-roles';
 import { validateLegalVersions } from '../common/legal/legal-versions';
 import { auditRecord } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CommercialMailService } from '../commercial/commercial-mail.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
@@ -29,9 +32,12 @@ interface CreateClientInput {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    @Optional() private readonly mail?: CommercialMailService,
   ) {}
 
   async listUsers(query: ListUsersQueryDto) {
@@ -266,7 +272,7 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const createdUser = await this.prisma.$transaction(async (tx) => {
         let activationRequest: {
           id: number;
           prospectId: number;
@@ -353,55 +359,101 @@ export class UsersService {
           );
         }
 
-        const user = await tx.user.create({
-          data: {
-            name: dto.name,
-            email: dto.email,
-            passwordHash,
-            roleId: role.id,
-            acceptedTermsAt: new Date(),
-            termsVersion,
-            privacyVersion,
+        let user;
+        const existingUser =
+          typeof tx.user?.findUnique === 'function'
+            ? await tx.user.findUnique({
+                where: { email: dto.email },
+                include: { role: true },
+              })
+            : null;
 
-            ...(dto.role === PLATFORM_ROLES.CLIENT
-              ? {
-                  clientProfile: {
-                    create: {},
-                  },
-                }
-              : {}),
+        if (existingUser) {
+          if (dto.activationRequestId === undefined) {
+            throw new ConflictException('El correo ya está registrado');
+          }
+          user = await tx.user.update({
+            where: { id: existingUser.id },
+            data: {
+              name: dto.name,
+              roleId: role.id,
+              isActive: true,
+              ...(dto.role === PLATFORM_ROLES.CLIENT
+                ? {
+                    clientProfile: {
+                      upsert: { create: {}, update: {} },
+                    },
+                  }
+                : {}),
+            },
+            include: {
+              role: true,
+            },
+          });
+        } else {
+          user = await tx.user.create({
+            data: {
+              name: dto.name,
+              email: dto.email,
+              passwordHash,
+              roleId: role.id,
+              acceptedTermsAt: new Date(),
+              termsVersion,
+              privacyVersion,
 
-            ...(dto.role === PLATFORM_ROLES.DEVELOPER
-              ? {
-                  developerProfile: {
-                    create: {},
-                  },
-                }
-              : {}),
+              ...(dto.role === PLATFORM_ROLES.CLIENT
+                ? {
+                    clientProfile: {
+                      create: {},
+                    },
+                  }
+                : {}),
 
-            ...(dto.role === PLATFORM_ROLES.PRODUCT_OWNER
-              ? {
-                  productOwnerProfile: {
-                    create: {},
-                  },
-                }
-              : {}),
+              ...(dto.role === PLATFORM_ROLES.DEVELOPER
+                ? {
+                    developerProfile: {
+                      create: {},
+                    },
+                  }
+                : {}),
 
-            ...(dto.role === PLATFORM_ROLES.ADMIN
-              ? {
-                  adminProfile: {
-                    create: {},
-                  },
-                }
-              : {}),
-          },
-          include: {
-            role: true,
-          },
-        });
+              ...(dto.role === PLATFORM_ROLES.PRODUCT_OWNER
+                ? {
+                    productOwnerProfile: {
+                      create: {},
+                    },
+                  }
+                : {}),
+
+              ...(dto.role === PLATFORM_ROLES.ADMIN
+                ? {
+                    adminProfile: {
+                      create: {},
+                    },
+                  }
+                : {}),
+            },
+            include: {
+              role: true,
+            },
+          });
+        }
 
         let linkedProjectId: number | null = null;
+        let prospectInfo: {
+          company: string | null;
+          quoteCode: string | null;
+          solutionType: string | null;
+        } | null = null;
+
         if (activationRequest) {
+          prospectInfo = {
+            company: activationRequest.prospect.company,
+            quoteCode:
+              activationRequest.prospect.quotes?.[0]?.publicCode ?? null,
+            solutionType:
+              activationRequest.prospect.quotes?.[0]?.solutionType ?? null,
+          };
           const claimed = await tx.clientActivationRequest.updateMany({
             where: {
               id: activationRequest.id,
@@ -485,6 +537,26 @@ export class UsersService {
               entityId: String(activationRequest.id),
             });
           }
+        } else if (
+          dto.role === PLATFORM_ROLES.CLIENT &&
+          typeof tx.prospect?.findFirst === 'function'
+        ) {
+          const matchedProspect = await tx.prospect.findFirst({
+            where: { email: dto.email.toLowerCase() },
+            include: {
+              quotes: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          });
+          if (matchedProspect) {
+            prospectInfo = {
+              company: matchedProspect.company,
+              quoteCode: matchedProspect.quotes?.[0]?.publicCode ?? null,
+              solutionType: matchedProspect.quotes?.[0]?.solutionType ?? null,
+            };
+          }
         }
 
         return {
@@ -498,8 +570,37 @@ export class UsersService {
           privacyVersion: user.privacyVersion,
           projectId: linkedProjectId,
           projectCreated: linkedProjectId !== null,
+          prospectInfo,
         };
       });
+
+      let emailDelivery: 'SENT' | 'FAILED' | 'SKIPPED' = 'SKIPPED';
+      if (dto.role === PLATFORM_ROLES.CLIENT && this.mail) {
+        try {
+          const mailResult = await this.mail.sendClientActivationEmail({
+            recipientName: createdUser.name,
+            recipientEmail: createdUser.email,
+            password: dto.password,
+            company: createdUser.prospectInfo?.company,
+            quoteCode: createdUser.prospectInfo?.quoteCode,
+            solutionType: createdUser.prospectInfo?.solutionType,
+            userId: createdUser.id,
+          });
+          emailDelivery = mailResult.delivery === 'SENT' ? 'SENT' : 'FAILED';
+        } catch (mailError) {
+          this.logger.error(
+            `No se pudo enviar el correo de activación para el usuario ${createdUser.email}:`,
+            mailError,
+          );
+          emailDelivery = 'FAILED';
+        }
+      }
+
+      const { prospectInfo: _ignored, ...result } = createdUser;
+      return {
+        ...result,
+        delivery: emailDelivery,
+      };
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

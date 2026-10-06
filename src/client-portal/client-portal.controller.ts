@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -23,6 +23,8 @@ export class RequestClientMeetingDto {
   @IsDateString() scheduledAt!: string;
   @IsOptional() @IsDateString() endsAt?: string;
   @IsOptional() @IsString() @MaxLength(1000) notes?: string;
+  @IsOptional() @IsBoolean() notifyWhatsapp?: boolean;
+  @IsOptional() @IsString() @MaxLength(30) phone?: string;
 }
 
 @ApiTags('Client portal')

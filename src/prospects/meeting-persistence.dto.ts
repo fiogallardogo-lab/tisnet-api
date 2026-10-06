@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  IsBoolean,
   IsDateString,
   IsIn,
   IsEmail,
@@ -19,6 +20,7 @@ export class BookMeetingDto {
   @IsString() @MaxLength(100) @Matches(/\S/) name: string;
   @IsEmail() @MaxLength(150) email: string;
   @IsOptional() @IsString() @MaxLength(30) phone?: string;
+  @IsOptional() @IsBoolean() notifyWhatsapp?: boolean;
   @IsString() @MaxLength(100) quoteId: string;
   @IsDateString({ strict: true }) start: string;
   @IsDateString({ strict: true }) end: string;

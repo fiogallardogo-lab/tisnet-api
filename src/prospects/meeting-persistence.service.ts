@@ -16,6 +16,11 @@ import {
   type SchedulingProvider,
 } from '../scheduling/scheduling-provider.interface';
 import {
+  WHATSAPP_NOTIFICATION_PROVIDER,
+  type WhatsAppNotificationProvider,
+} from '../notifications/whatsapp-notification-provider.interface';
+import { CalendarUtils } from '../common/utils/calendar.utils';
+import {
   BookMeetingDto,
   AvailabilityQuery,
   MeetingListQuery,
@@ -27,6 +32,9 @@ export class MeetingPersistenceService {
     @Inject(SCHEDULING_PROVIDER)
     private readonly scheduling: SchedulingProvider,
     @Optional() private readonly mail?: CommercialMailService,
+    @Optional()
+    @Inject(WHATSAPP_NOTIFICATION_PROVIDER)
+    private readonly whatsapp?: WhatsAppNotificationProvider,
   ) {}
   private range(start: string, end: string, maximumDays: number) {
     const a = new Date(start),
@@ -186,6 +194,13 @@ export class MeetingPersistenceService {
     const { a, b } = this.range(dto.start, dto.end, 1);
     if (a <= new Date())
       throw new BadRequestException('La reunión debe ser futura.');
+
+    if (dto.notifyWhatsapp && (!dto.phone || !dto.phone.trim())) {
+      throw new BadRequestException(
+        'Debes ingresar un número de teléfono válido para recibir recordatorios por WhatsApp.',
+      );
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM AdminProfile WHERE id = ${dto.advisorId} FOR UPDATE`;
       const advisor = await tx.adminProfile.findFirst({
@@ -193,6 +208,9 @@ export class MeetingPersistenceService {
           id: dto.advisorId,
           isPublicAdvisor: true,
           user: { isActive: true },
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
         },
       });
       if (!advisor) throw new NotFoundException('Asesor no disponible');
@@ -207,6 +225,14 @@ export class MeetingPersistenceService {
       });
       if (!quote?.prospectId)
         throw new NotFoundException('Cotización y contacto no encontrados');
+
+      if (dto.phone?.trim()) {
+        await tx.prospect.update({
+          where: { id: quote.prospectId },
+          data: { phone: dto.phone.trim() },
+        });
+      }
+
       const overlap = await tx.meeting.findFirst({
         where: {
           advisorProfileId: advisor.id,
@@ -245,11 +271,87 @@ export class MeetingPersistenceService {
         start: meeting.scheduledAt,
         end: meeting.endsAt,
         quoteId: quote.publicCode,
-        advisorId: advisor.id,
+        advisor: {
+          id: advisor.id,
+          name: advisor.user.name,
+          email: advisor.user.email,
+          title: advisor.executiveTitle,
+          specialty: advisor.specialty,
+        },
       };
     });
+
+    const meetingUrl = `https://app.tisnet.pe/meetings/${result.id}`;
+    const advisorName = result.advisor.name;
+    const advisorEmail = result.advisor.email;
+
+    const calendarLinks = CalendarUtils.generateLinks({
+      title: `Sesión de Asesoría TISNET (${result.quoteId})`,
+      description: `Reunión de alineación de cotización y alcance con tu asesor ${advisorName}.\nVideollamada: ${meetingUrl}`,
+      location: meetingUrl,
+      startTime: result.start!,
+      endTime: result.end!,
+      organizerName: advisorName,
+      organizerEmail: advisorEmail,
+      attendeeName: dto.name.trim(),
+      attendeeEmail: dto.email.trim(),
+      url: meetingUrl,
+    });
+
     await this.mail?.meeting(result.id);
-    return result;
+
+    if (dto.notifyWhatsapp && dto.phone?.trim()) {
+      try {
+        const formattedDate = new Date(result.start!).toLocaleString('es-PE', {
+          dateStyle: 'full',
+          timeStyle: 'short',
+          timeZone: 'America/Lima',
+        });
+        const waText =
+          `¡Hola ${dto.name.trim()}! 🚀\n\n` +
+          `Tu sesión de asesoría comercial y técnica con *${advisorName}* para revisar tu cotización *${result.quoteId}* ha sido agendada con éxito.\n\n` +
+          `📅 *Fecha y hora:* ${formattedDate}\n` +
+          `📍 *Enlace de la reunión:* ${meetingUrl}\n\n` +
+          `*Importante:* Te enviaremos un recordatorio con el enlace directo 15 minutos antes de la llamada por este medio. También enviamos la invitación a tu correo *${dto.email.trim()}*.\n\n` +
+          `_Equipo TISNET Soluciones Digitales_`;
+
+        await this.whatsapp?.send({
+          recipientPhone: dto.phone.trim(),
+          message: waText,
+        });
+      } catch {
+        // WhatsApp notification failure is non-blocking
+      }
+    }
+
+    return {
+      id: result.id,
+      createdAt: result.createdAt,
+      timezone: result.timezone,
+      status: result.status,
+      start: result.start,
+      end: result.end,
+      quoteId: result.quoteId,
+      advisorId: result.advisor.id,
+      advisor: {
+        id: result.advisor.id,
+        name: result.advisor.name,
+        title: result.advisor.title,
+        specialty: result.advisor.specialty,
+      },
+      meetingUrl,
+      calendarLinks: {
+        googleCalendarUrl: calendarLinks.googleCalendarUrl,
+        outlookUrl: calendarLinks.outlookUrl,
+        office365Url: calendarLinks.office365Url,
+      },
+      notifications: {
+        email: dto.email.trim(),
+        whatsapp:
+          dto.notifyWhatsapp && dto.phone?.trim() ? dto.phone.trim() : null,
+      },
+      message: 'Reunión agendada con éxito.',
+    };
   }
   async list(
     query: MeetingListQuery,
@@ -392,6 +494,42 @@ export class MeetingPersistenceService {
       });
     });
     await this.mail?.meeting(id);
+
+    if (
+      'status' in change &&
+      change.status === 'SCHEDULED' &&
+      result.prospect?.phone
+    ) {
+      try {
+        const formattedDate = result.scheduledAt
+          ? new Date(result.scheduledAt).toLocaleString('es-PE', {
+              dateStyle: 'full',
+              timeStyle: 'short',
+              timeZone: result.timezone || 'America/Lima',
+            })
+          : 'fecha programada';
+        const advisorName = result.advisorProfile?.user?.name || 'tu asesor';
+        const quoteInfo = result.quote?.publicCode
+          ? ` (${result.quote.publicCode})`
+          : '';
+        const meetingUrl =
+          result.externalEventUri || `https://app.tisnet.pe/meetings/${result.id}`;
+
+        await this.whatsapp?.send({
+          recipientPhone: result.prospect.phone,
+          message:
+            `¡Hola ${result.prospect.name || 'estimado cliente'}! 🎉\n\n` +
+            `Tu reunión de asesoría con *${advisorName}*${quoteInfo} ha sido *CONFIRMADA*.\n\n` +
+            `📅 *Fecha y hora:* ${formattedDate}\n` +
+            `🔗 *Enlace de la videollamada:* ${meetingUrl}\n\n` +
+            `También enviamos los detalles a tu correo. Te recordaremos 15 minutos antes por este medio.\n\n` +
+            `_Equipo TISNET Soluciones Digitales_`,
+        });
+      } catch {
+        // Non-blocking
+      }
+    }
+
     return result;
   }
   // B calls this after authenticating Calendly events. No external provider implementation here.
@@ -485,24 +623,30 @@ export class MeetingPersistenceService {
         })
       : 'por definir';
 
+    const meetingUrl =
+      meeting.externalEventUri || `https://app.tisnet.pe/meetings/${meeting.id}`;
+
     const text =
       `Hola ${clientName},\n\n` +
-      `Te informamos sobre tu reunión de asesoría con ${advisorName} programada para el ${dateStr}.\n\n` +
-      `Te avisamos que el enlace de acceso a la reunión te será enviado unas horas antes de que ésta comience a través de este mismo medio (correo electrónico).\n\n` +
+      `Te enviamos el enlace de acceso directo para tu reunión de asesoría con ${advisorName} programada para el ${dateStr}.\n\n` +
+      `Enlace de la videollamada: ${meetingUrl}\n\n` +
       (customMessage ? `Mensaje adicional de tu asesor:\n${customMessage}\n\n` : '') +
       `Si tienes alguna pregunta previa, puedes responder a este correo.\n\n` +
       `Equipo TISNET`;
 
     const html =
+      `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b;">` +
       `<p>Hola <strong>${escapeHtml(clientName)}</strong>,</p>` +
-      `<p>Te informamos sobre tu reunión de asesoría con <strong>${escapeHtml(advisorName)}</strong> programada para el <strong>${escapeHtml(dateStr)}</strong>.</p>` +
-      `<div style="background:#eff6ff;border-left:4px solid #1b60f5;padding:14px 18px;margin:18px 0;border-radius:6px;">` +
-      `<p style="margin:0;font-weight:700;color:#1e40af;font-size:15px;">Aviso sobre el enlace de acceso:</p>` +
-      `<p style="margin:6px 0 0 0;color:#1e3a8a;font-size:14px;line-height:1.5;">El enlace de la reunión te será enviado unas horas antes de que ésta comience a través de este mismo medio.</p>` +
+      `<p>Aquí tienes el enlace de acceso directo para tu reunión de asesoría con <strong>${escapeHtml(advisorName)}</strong> programada para el <strong>${escapeHtml(dateStr)}</strong>.</p>` +
+      `<div style="background:#eff6ff;border-left:4px solid #2563eb;padding:16px 20px;margin:20px 0;border-radius:6px;text-align:center;">` +
+      `<p style="margin:0 0 12px 0;font-weight:600;color:#1e40af;font-size:15px;">Tu reunión está lista para comenzar</p>` +
+      `<a href="${escapeHtml(meetingUrl)}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;font-size:15px;">Unirme a la Videollamada Ahora</a>` +
+      `<p style="margin:12px 0 0 0;color:#64748b;font-size:12px;">Enlace: <a href="${escapeHtml(meetingUrl)}" style="color:#2563eb;">${escapeHtml(meetingUrl)}</a></p>` +
       `</div>` +
-      (customMessage ? `<p><strong>Mensaje adicional de tu asesor:</strong><br>${escapeHtml(customMessage).replace(/\n/g, '<br>')}</p>` : '') +
+      (customMessage ? `<p><strong>Mensaje de tu asesor:</strong><br>${escapeHtml(customMessage).replace(/\n/g, '<br>')}</p>` : '') +
       `<p>Si tienes alguna consulta previa, puedes responder a este correo.</p>` +
-      `<p>Atentamente,<br><strong>Equipo TISNET</strong></p>`;
+      `<p>Atentamente,<br><strong>Equipo TISNET</strong></p>` +
+      `</div>`;
 
     const deliveryResult = await this.mail?.send(
       {
@@ -515,6 +659,26 @@ export class MeetingPersistenceService {
       id,
     );
 
+    let whatsappSent = false;
+    if (meeting.prospect?.phone) {
+      try {
+        const waText =
+          `¡Hola ${clientName}! 🔔\n\n` +
+          `Aquí tienes el enlace para conectarte a tu sesión de asesoría con *${advisorName}*:\n\n` +
+          `🔗 *Ingresar a la videollamada:* ${meetingUrl}\n\n` +
+          (customMessage ? `Mensaje de tu asesor: "${customMessage}"\n\n` : '') +
+          `¡Te esperamos en sala!\n_Equipo TISNET_`;
+
+        await this.whatsapp?.send({
+          recipientPhone: meeting.prospect.phone,
+          message: waText,
+        });
+        whatsappSent = true;
+      } catch {
+        // Safe catch
+      }
+    }
+
     await this.prisma.meetingEvent.create({
       data: {
         meetingId: id,
@@ -526,8 +690,12 @@ export class MeetingPersistenceService {
 
     return {
       success: true,
-      message: 'Aviso enviado al cliente correctamente por correo electrónico.',
+      message:
+        'Aviso con enlace enviado al cliente correctamente por correo electrónico' +
+        (whatsappSent ? ' y WhatsApp.' : '.'),
       delivery: deliveryResult?.delivery || 'SENT',
+      whatsappSent,
+      meetingUrl,
     };
   }
 }

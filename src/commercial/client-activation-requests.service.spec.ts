@@ -60,6 +60,7 @@ describe('ClientActivationRequestsService', () => {
     expect(prisma.clientActivationRequest.create).not.toHaveBeenCalled();
   });
 
+
   it('shows the global pending queue only to the Super Admin', async () => {
     await service.list(99, 'SUPER_ADMIN');
     expect(prisma.clientActivationRequest.findMany).toHaveBeenCalledWith(

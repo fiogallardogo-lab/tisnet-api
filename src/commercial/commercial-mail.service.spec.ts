@@ -104,4 +104,26 @@ describe('Commercial mail delivery boundaries', () => {
     await expect(service.quote(3, 999)).rejects.toMatchObject({ status: 404 });
     expect(provider.send).not.toHaveBeenCalled();
   });
+
+  it('sends client activation email with credentials and login link', async () => {
+    const result = await service.sendClientActivationEmail({
+      recipientName: 'Carlos Gomez',
+      recipientEmail: 'carlos@example.com',
+      password: 'TemporaryPass123!',
+      company: 'Tech SAC',
+      quoteCode: 'TIS-98213',
+      userId: 55,
+    });
+
+    expect(result).toEqual({ delivery: 'SENT', messageId: 'test-message' });
+    expect(provider.send).toHaveBeenCalledTimes(1);
+    const sent = provider.send.mock.calls[0][0];
+    expect(sent.recipient).toBe('carlos@example.com');
+    expect(sent.subject).toContain('¡Tu cuenta ha sido activada!');
+    expect(sent.html).toContain('Carlos Gomez');
+    expect(sent.html).toContain('TemporaryPass123!');
+    expect(sent.html).toContain('https://tisnet.test/login');
+    expect(sent.text).toContain('Carlos Gomez');
+    expect(sent.text).toContain('TemporaryPass123!');
+  });
 });

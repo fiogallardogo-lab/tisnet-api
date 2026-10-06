@@ -1,5 +1,6 @@
 import { CommercialModule } from '../commercial/commercial.module';
 import { SchedulingModule } from '../scheduling/scheduling.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { MeetingPersistenceService } from './meeting-persistence.service';
 import {
   CommercialMeetingsController,
@@ -19,6 +20,7 @@ import { AdvisorsAdminController } from './advisors-admin.controller';
   imports: [
     CommercialModule,
     SchedulingModule,
+    NotificationsModule,
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],

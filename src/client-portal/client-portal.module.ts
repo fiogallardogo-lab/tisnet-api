@@ -10,6 +10,8 @@ import { ClientQuotesController } from './client-quotes.controller';
 import { ClientQuotesService } from './client-quotes.service';
 import { ClientPaymentsController } from './client-payments.controller';
 import { ClientPaymentsService } from './client-payments.service';
+import { CommercialModule } from '../commercial/commercial.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { KickoffModule } from '../kickoff/kickoff.module';
 import { ProjectsModule } from '../projects/projects.module';
 
@@ -17,6 +19,8 @@ import { ProjectsModule } from '../projects/projects.module';
   imports: [
     PaymentsModule,
     PrismaModule,
+    CommercialModule,
+    NotificationsModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     forwardRef(() => KickoffModule),
     forwardRef(() => ProjectsModule),
