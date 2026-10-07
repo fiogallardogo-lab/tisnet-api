@@ -224,6 +224,14 @@ export class DashboardService {
       integrations: superadmin
         ? [
             {
+              name: 'Google Calendar',
+              status:
+                process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+                  ? 'CONFIGURED'
+                  : 'NOT_CONFIGURED',
+              connectivity: 'NOT_PROBED',
+            },
+            {
               name: 'Calendly',
               status: process.env.CALENDLY_WEBHOOK_SECRET
                 ? 'CONFIGURED'
