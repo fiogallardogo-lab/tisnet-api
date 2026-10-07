@@ -109,7 +109,7 @@ export class QuotesService {
           items: pricing?.items ?? [],
         });
 
-        await this.mail?.quoteByCode(created.publicCode);
+        await this.mail?.quoteReceivedByCode(created.publicCode);
         return toPublicQuoteResponse(created);
       } catch (error) {
         if (!(error instanceof QuoteCodeCollisionError)) throw error;

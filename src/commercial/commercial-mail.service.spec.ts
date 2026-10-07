@@ -68,6 +68,21 @@ describe('Commercial mail delivery boundaries', () => {
     expect(message.attachments[0].filename).toBe('Q-ABCDEFGH-v2.pdf');
     expect(message.text).toContain('https://tisnet.test/register');
   });
+  it('confirms that a visitor quote was received and is being evaluated', async () => {
+    const result = await service.quoteReceivedByCode('Q-ABCDEFGH');
+
+    expect(result).toEqual({ delivery: 'SENT', messageId: 'test-message' });
+    const sent = provider.send.mock.calls[0][0];
+    expect(sent.recipient).toBe('client@example.test');
+    expect(sent.subject).toContain('Recibimos tu cotización Q-ABCDEFGH');
+    expect(sent.text).toContain('fue recibida correctamente');
+    expect(sent.text).toContain('está siendo evaluada por el asesor a cargo');
+    expect(sent.html).toContain('Q-ABCDEFGH');
+    expect(sent.metadata).toEqual({
+      type: 'QUOTE_RECEIVED',
+      quoteCode: 'Q-ABCDEFGH',
+    });
+  });
   it('records renderer failure without sending or undoing the saved business operation', async () => {
     renderer.renderQuote.mockRejectedValue(new Error('render failed'));
     expect(await service.quoteAfterCommit(3, 12)).toEqual({

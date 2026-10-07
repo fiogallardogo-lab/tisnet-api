@@ -603,22 +603,20 @@ export class KickoffService {
     },
   ) {
     await this.access(projectId, actor);
-    if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER'].includes(actor.role)) {
+    if (actor.role !== 'PRODUCT_OWNER') {
       throw new ForbiddenException(
-        'Solo administración o el Product Owner puede agregar miembros.',
+        'Solo el Product Owner asignado puede agregar developers.',
       );
     }
     // S14-B06: PRODUCT_OWNER must be the assigned PO of this specific project
-    if (actor.role === 'PRODUCT_OWNER') {
-      const project = await this.prisma.project.findUnique({
-        where: { id: projectId },
-        select: { productOwnerId: true },
-      });
-      if (project?.productOwnerId !== actor.id) {
-        throw new ForbiddenException(
-          'Solo el Product Owner asignado a este proyecto puede gestionar el equipo.',
-        );
-      }
+    const assignedProject = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { productOwnerId: true },
+    });
+    if (assignedProject?.productOwnerId !== actor.id) {
+      throw new ForbiddenException(
+        'Solo el Product Owner asignado a este proyecto puede gestionar el equipo.',
+      );
     }
     return this.prisma.$transaction(
       async (tx) => {
@@ -709,9 +707,9 @@ export class KickoffService {
     dto: ProjectTeamDto,
   ) {
     await this.access(projectId, actor);
-    if (!['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER'].includes(actor.role))
+    if (actor.role !== 'PRODUCT_OWNER')
       throw new ForbiddenException(
-        'Solo administración puede reasignar equipo y participaciones.',
+        'Solo el Product Owner asignado puede reasignar developers y participaciones.',
       );
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM Project WHERE id = ${projectId} FOR UPDATE`;

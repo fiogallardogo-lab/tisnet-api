@@ -99,7 +99,7 @@ export class KickoffController {
    * PRODUCT_OWNER can only add to the project they are assigned to.
    */
   @Post('projects/:id/members')
-  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER')
+  @Roles('PRODUCT_OWNER')
   addMember(
     @Param('id', ParseIntPipe) id: number,
     @Request() r: ActorRequest,
@@ -109,10 +109,10 @@ export class KickoffController {
   }
 
   /**
-   * Bulk replace team (ADMIN only): replaces all non-CLIENT members atomically.
+   * Bulk replace team: the assigned Product Owner replaces all non-CLIENT members atomically.
    */
   @Patch('projects/:id/members')
-  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER')
+  @Roles('PRODUCT_OWNER')
   setTeam(
     @Param('id', ParseIntPipe) id: number,
     @Request() r: ActorRequest,
