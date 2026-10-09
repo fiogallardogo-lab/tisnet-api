@@ -199,6 +199,75 @@ export class CommercialMailService {
       this.logger.error('Falló el envío de cotización; solicitud preservada.');
     }
   }
+  async quoteReceivedByCode(code: string) {
+    try {
+      const q = await this.db.quote.findUnique({
+        where: { publicCode: code },
+        select: {
+          id: true,
+          publicCode: true,
+          contactName: true,
+          contactEmail: true,
+          solutionType: true,
+          createdAt: true,
+        },
+      });
+      if (!q) throw new NotFoundException('Cotización no encontrada.');
+
+      const safeName = escapeHtml(q.contactName);
+      const safeCode = escapeHtml(q.publicCode);
+      const safeSolution = escapeHtml(q.solutionType.replaceAll('_', ' '));
+      const receivedAt = q.createdAt.toLocaleString('es-PE', {
+        dateStyle: 'long',
+        timeStyle: 'short',
+        timeZone: 'America/Lima',
+      });
+      const quoteUrl = this.links().quote;
+      return await this.send(
+        {
+          idempotencyKey: `quote-received-${q.id}`,
+          recipient: q.contactEmail,
+          subject: `Recibimos tu cotización ${q.publicCode} | TISNET`,
+          text: [
+            `Hola ${q.contactName},`,
+            '',
+            `Tu cotización ${q.publicCode} fue recibida correctamente y está siendo evaluada por el asesor a cargo.`,
+            `Solución solicitada: ${q.solutionType.replaceAll('_', ' ')}`,
+            `Fecha de registro: ${receivedAt}`,
+            '',
+            'Conserva tu código de cotización. Nuestro equipo se pondrá en contacto contigo cuando la evaluación esté lista.',
+            `Puedes consultar o realizar otra cotización en ${quoteUrl}`,
+            '',
+            'Equipo TISNET',
+          ].join('\n'),
+          html:
+            '<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#17213a">' +
+            '<div style="padding:24px;background:#075ee8;color:#fff;border-radius:14px 14px 0 0">' +
+            '<strong style="font-size:22px">TISNET</strong><br><span>Confirmación de cotización</span></div>' +
+            '<div style="padding:28px;border:1px solid #dce5f2;border-top:0;border-radius:0 0 14px 14px">' +
+            `<h2 style="margin-top:0">Hola ${safeName},</h2>` +
+            `<p>Tu cotización <strong>${safeCode}</strong> fue recibida correctamente y <strong>está siendo evaluada por el asesor a cargo</strong>.</p>` +
+            '<div style="margin:22px 0;padding:18px;background:#f3f7ff;border-left:4px solid #075ee8;border-radius:8px">' +
+            `<div><strong>Código:</strong> ${safeCode}</div>` +
+            `<div style="margin-top:8px"><strong>Solución:</strong> ${safeSolution}</div>` +
+            `<div style="margin-top:8px"><strong>Fecha de registro:</strong> ${escapeHtml(receivedAt)}</div>` +
+            '</div>' +
+            '<p>Conserva tu código de cotización. Nuestro equipo se pondrá en contacto contigo cuando la evaluación esté lista.</p>' +
+            `<p style="margin-top:24px"><a href="${escapeHtml(quoteUrl)}" style="display:inline-block;padding:12px 18px;background:#075ee8;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">Ir al portal de cotizaciones</a></p>` +
+            '<p style="margin:28px 0 0;color:#64748b">Equipo TISNET</p></div></div>',
+          metadata: {
+            type: 'QUOTE_RECEIVED',
+            quoteCode: q.publicCode,
+          },
+        },
+        'QUOTE',
+        q.id,
+      );
+    } catch {
+      this.logger.error('Falló la confirmación de recepción; cotización preservada.');
+      return { delivery: 'FAILED' as const };
+    }
+  }
   async meeting(id: number) {
     try {
       const m = await this.db.meeting.findUnique({

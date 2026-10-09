@@ -21,7 +21,7 @@ export class BookMeetingDto {
   @IsEmail() @MaxLength(150) email: string;
   @IsOptional() @IsString() @MaxLength(30) phone?: string;
   @IsOptional() @IsBoolean() notifyWhatsapp?: boolean;
-  @IsString() @MaxLength(100) quoteId: string;
+  @IsOptional() @IsString() @MaxLength(100) quoteId?: string;
   @IsDateString({ strict: true }) start: string;
   @IsDateString({ strict: true }) end: string;
 }

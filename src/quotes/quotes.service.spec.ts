@@ -106,6 +106,24 @@ describe('QuotesService', () => {
     });
   });
 
+  it('envía la confirmación de recepción después de guardar la cotización', async () => {
+    const mail = {
+      quoteReceivedByCode: vi.fn().mockResolvedValue({ delivery: 'SENT' }),
+    };
+    const service = new QuotesService(
+      repository,
+      catalog,
+      undefined,
+      () => 'Q-AAAAAAAA',
+      mail as never,
+    );
+
+    const result = await service.createPublic(dto);
+
+    expect(result.code).toBe('Q-AAAAAAAA');
+    expect(mail.quoteReceivedByCode).toHaveBeenCalledWith('Q-AAAAAAAA');
+  });
+
   it('debe registrar PENDING_RULES cuando el PricingEngine no tiene regla aprobada', async () => {
     const pricingEngine: PricingEngine = {
       calculate: vi.fn().mockReturnValue(undefined),

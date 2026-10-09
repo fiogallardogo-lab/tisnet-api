@@ -40,6 +40,11 @@ export interface SchedulingProvider {
     createMeeting(
         input: CreateMeetingInput,
     ): Promise<ScheduledMeetingResult>;
+
+    sendMeetingNotification?(
+        identifier: { eventId?: string; meetingUrl?: string; attendeeEmail?: string },
+        customMessage?: string,
+    ): Promise<boolean>;
 }
 
 export class SlotUnavailableError extends Error {
