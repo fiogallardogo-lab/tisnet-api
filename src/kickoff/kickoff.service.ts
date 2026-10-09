@@ -48,6 +48,9 @@ export class KickoffService {
       },
       include: {
         members: { where: { isActive: true }, select: { id: true } },
+        client: { select: { name: true } },
+        kickoff: { include: { meeting: { include: { advisorProfile: { include: { user: { select: { name: true } } } } } } } },
+        milestones: { orderBy: { sequence: 'asc' }, select: { id: true, title: true, sequence: true, dueDate: true } },
         deliverables: { orderBy: [{ milestoneOrder: 'asc' }, { id: 'asc' }] },
       },
       orderBy: { updatedAt: 'desc' },
@@ -64,6 +67,17 @@ export class KickoffService {
       return {
         id: project.id,
         name: project.name,
+        clientName: project.clientName || project.client?.name || null,
+        kickoffAdvisor: project.kickoff?.meeting?.advisorProfile ? { id: project.kickoff.meeting.advisorProfile.id, name: project.kickoff.meeting.advisorProfile.user.name } : null,
+        kickoff: project.kickoff?.meeting ? {
+          status: project.kickoff.meeting.status,
+          scheduledAt: project.kickoff.meeting.scheduledAt?.toISOString() ?? null,
+          notes: project.kickoff.notes || project.kickoff.meeting.notes || '',
+          meetingUrl: project.kickoff.meeting.externalEventUri,
+          timezone: project.kickoff.meeting.timezone,
+          endsAt: project.kickoff.meeting.endsAt?.toISOString() ?? null,
+          advisorName: project.kickoff.meeting.advisorProfile?.user.name ?? null,
+        } : { status: 'PENDING', scheduledAt: null, notes: '', meetingUrl: null, timezone: 'America/Lima', endsAt: null, advisorName: null },
         summary: project.shortDescription,
         description: project.description,
         status: project.status,
@@ -75,12 +89,23 @@ export class KickoffService {
         teamSize: project.members.length,
         totalDeliverables: total,
         pendingDeliverables: total - approved,
-        milestones: project.deliverables.map((item) => ({
+        milestones: project.milestones.length ? project.milestones.map((milestone) => {
+          const items = project.deliverables.filter((item) => item.milestoneId === milestone.id);
+          return {
+            id: milestone.id,
+            title: milestone.title,
+            status: items.length && items.every((item) => item.status === 'APPROVED' && item.clientReviewStatus === 'APPROVED') ? 'APPROVED' : items.some((item) => ['IN_REVIEW', 'OBSERVED', 'APPROVED'].includes(item.status)) ? 'IN_REVIEW' : 'PENDING',
+            clientReviewStatus: items.length && items.every((item) => item.clientReviewStatus === 'APPROVED') ? 'APPROVED' : 'PENDING',
+            date: milestone.dueDate.toISOString(),
+            sequence: milestone.sequence,
+          };
+        }) : project.deliverables.map((item) => ({
           id: item.milestoneId ?? item.id,
           title: item.title,
           status: item.status,
           clientReviewStatus: item.clientReviewStatus,
           date: item.dueDate.toISOString(),
+          sequence: item.milestoneOrder,
         })),
       };
     });
@@ -312,7 +337,7 @@ export class KickoffService {
     return this.prisma.project.findUniqueOrThrow({
       where: { id: projectId },
       include: {
-        kickoff: { include: { meeting: true } },
+        kickoff: { include: { meeting: { include: { advisorProfile: { include: { user: { select: { name: true } } } } } } } },
         members: { include: { user: { select: { name: true } } } },
         milestones: { include: { deliverables: true, paymentSchedule: true } },
       },
@@ -360,6 +385,10 @@ export class KickoffService {
               ? project.kickoff.heldAt.toISOString()
               : null),
           notes: project.kickoff.notes || '',
+          meetingUrl: project.kickoff.meeting?.externalEventUri ?? null,
+          timezone: project.kickoff.meeting?.timezone ?? 'America/Lima',
+          endsAt: project.kickoff.meeting?.endsAt?.toISOString() ?? null,
+          advisorName: project.kickoff.meeting?.advisorProfile?.user.name ?? null,
           canStart,
           blockingReason: canStart
             ? undefined
@@ -590,9 +619,10 @@ export class KickoffService {
     actor: { id: number; role: string },
     dto: ReviewKickoffDto,
   ) {
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(actor.role))
-      throw new ForbiddenException('Solo administración puede revisar el kickoff.');
-    await this.access(projectId, actor);
+    const projectAccess = await this.access(projectId, actor);
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(actor.role) &&
+        !(actor.role === 'PRODUCT_OWNER' && projectAccess.productOwnerId === actor.id))
+      throw new ForbiddenException('Solo administración o el Product Owner asignado pueden revisar el kickoff.');
     if (dto.action === 'RESCHEDULE' && !dto.scheduledAt)
       throw new BadRequestException('Indica la nueva fecha y hora.');
     if (dto.action === 'CONFIRM' && dto.scheduledAt)
@@ -602,7 +632,9 @@ export class KickoffService {
       await tx.$queryRaw`SELECT id FROM Project WHERE id = ${projectId} FOR UPDATE`;
       const project = await tx.project.findUniqueOrThrow({
         where: { id: projectId },
-        include: { kickoff: { include: { meeting: true } } },
+        include: {
+          kickoff: { include: { meeting: { include: { advisorProfile: { include: { user: { select: { name: true } } } } } } } },
+        },
       });
       if (!project.quoteId)
         throw new ConflictException('El proyecto no tiene un acuerdo comercial.');

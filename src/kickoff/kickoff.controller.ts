@@ -85,7 +85,7 @@ export class KickoffController {
   }
 
   @Patch('projects/:id/kickoff/review')
-  @Roles('ADMIN', 'SUPER_ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER')
   reviewKickoff(
     @Param('id', ParseIntPipe) id: number,
     @Request() r: ActorRequest,
