@@ -389,7 +389,20 @@ export class UsersService {
               ...(dto.role === PLATFORM_ROLES.CLIENT
                 ? {
                     clientProfile: {
-                      upsert: { create: {}, update: {} },
+                      upsert: {
+                        create: {
+                          phone:
+                            dto.phone ||
+                            activationRequest?.prospect?.phone ||
+                            undefined,
+                        },
+                        update: {
+                          phone:
+                            dto.phone ||
+                            activationRequest?.prospect?.phone ||
+                            undefined,
+                        },
+                      },
                     },
                   }
                 : {}),
@@ -412,7 +425,12 @@ export class UsersService {
               ...(dto.role === PLATFORM_ROLES.CLIENT
                 ? {
                     clientProfile: {
-                      create: {},
+                      create: {
+                        phone:
+                          dto.phone ||
+                          activationRequest?.prospect?.phone ||
+                          undefined,
+                      },
                     },
                   }
                 : {}),

@@ -98,4 +98,14 @@ export class CreateUserDto {
   @IsInt()
   @IsPositive()
   activationRequestId?: number;
+
+  @ApiProperty({
+    required: false,
+    example: '987654321',
+  })
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(20)
+  phone?: string;
 }

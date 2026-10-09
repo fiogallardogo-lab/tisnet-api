@@ -88,6 +88,10 @@ export function renderClientActivationEmail(input: ClientActivationEmailInput): 
         🔒 <strong>Recomendación de seguridad:</strong> Por tu seguridad, te sugerimos cambiar tu contraseña temporal después de tu primer inicio de sesión desde el menú de perfil.
       </div>
 
+      <div style="background-color: #eff6ff; border-left: 4px solid #2563eb; padding: 14px 16px; margin: 20px 0; font-size: 13.5px; color: #1e40af; border-radius: 4px; line-height: 1.5;">
+        📌 <strong>Aviso Importante:</strong> Recuerda contactarte con un asesor o administrador de TISNET para emitir y formalizar tu cotización oficial en caso aún no lo hayas realizado.
+      </div>
+
       <p style="font-size: 13px; color: #64748b;">
         Si el botón superior no abre la página, ingresa directamente copiando este enlace en tu navegador:<br>
         <span class="link-alt">${escapeHtml(input.loginUrl)}</span>
@@ -114,6 +118,8 @@ Tus credenciales de acceso son:
 Puedes iniciar sesión en: ${input.loginUrl}
 
 Por seguridad, te sugerimos actualizar tu contraseña luego de ingresar.
+
+📌 Importante: Recuerda contactarte con un asesor o administrador de TISNET para emitir y formalizar tu cotización oficial en caso aún no lo hayas realizado.
 
 Equipo TISNET · Soluciones Digitales`;
 
