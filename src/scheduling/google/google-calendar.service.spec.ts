@@ -35,6 +35,31 @@ vi.mock('googleapis', () => {
     setCredentials = vi.fn();
   }
 
+  const getMock = vi.fn().mockResolvedValue({
+    data: {
+      id: 'mock-event-123',
+      description: 'Reunión inicial',
+    },
+  });
+
+  const patchMock = vi.fn().mockResolvedValue({
+    data: {
+      id: 'mock-event-123',
+    },
+  });
+
+  const listMock = vi.fn().mockResolvedValue({
+    data: {
+      items: [
+        {
+          id: 'mock-event-123',
+          hangoutLink: 'https://meet.google.com/abc-defg-hij',
+          attendees: [{ email: 'carlos@cliente.pe' }],
+        },
+      ],
+    },
+  });
+
   return {
     google: {
       auth: {
@@ -43,6 +68,9 @@ vi.mock('googleapis', () => {
       calendar: vi.fn().mockReturnValue({
         events: {
           insert: insertMock,
+          get: getMock,
+          patch: patchMock,
+          list: listMock,
         },
         freebusy: {
           query: queryMock,
@@ -132,5 +160,16 @@ describe('GoogleCalendarService and Provider', () => {
     expect(result[0].status).toBe('BUSY');
     expect(result[0].start.toISOString()).toBe('2026-10-10T10:00:00.000Z');
     expect(result[0].end.toISOString()).toBe('2026-10-10T11:00:00.000Z');
+  });
+
+  it('envía notificación de actualización a través de Google Calendar patch con sendUpdates all', async () => {
+    service.setRefreshToken('mock-token');
+
+    const notified = await provider.sendMeetingNotification(
+      { eventId: 'mock-event-123' },
+      'Nos vemos a las 10 am',
+    );
+
+    expect(notified).toBe(true);
   });
 });

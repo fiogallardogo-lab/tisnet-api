@@ -144,4 +144,82 @@ describe('MeetingPersistenceService - Booking with Calendar & WhatsApp', () => {
     expect(fakeWhatsApp.sentMessages).toHaveLength(0);
     expect(mockMail.meeting).toHaveBeenCalledWith(501);
   });
+
+  it('triggers Google Calendar meeting creation and returns Google Meet link when confirming reservation', async () => {
+    const scheduledAt = new Date(Date.now() + 86400000 * 2);
+    const endsAt = new Date(scheduledAt.getTime() + 3600000);
+
+    const pendingMeeting = {
+      id: 501,
+      status: 'PENDING',
+      scheduledAt,
+      endsAt,
+      timezone: 'America/Lima',
+      externalEventUri: null,
+      advisorProfileId: 10,
+      prospect: { name: 'Carlos Cliente', email: 'cliente@ejemplo.com', phone: '+51987654321' },
+      quote: { publicCode: 'COT-8899' },
+      advisorProfile: { user: { name: 'Oliver Asesor' } },
+    };
+
+    mockScheduling.createMeeting = vi.fn().mockResolvedValue({
+      meetingId: 'google-meet-123',
+      meetingUrl: 'https://meet.google.com/xyz-abcd-efg',
+      advisorId: '10',
+      attendeeName: 'Carlos Cliente',
+      attendeeEmail: 'cliente@ejemplo.com',
+      start: scheduledAt,
+      end: endsAt,
+    });
+
+    mockPrisma.meeting = {
+      findFirst: vi.fn().mockResolvedValue(pendingMeeting),
+    };
+
+    mockPrisma.$transaction = vi.fn(async (cb) => {
+      const tx = {
+        $queryRaw: vi.fn().mockResolvedValue([]),
+        meeting: {
+          findFirst: vi.fn().mockResolvedValue(pendingMeeting),
+          update: vi.fn().mockResolvedValue({
+            ...pendingMeeting,
+            status: 'SCHEDULED',
+            externalEventUri: 'https://meet.google.com/xyz-abcd-efg',
+            externalProvider: 'GOOGLE',
+          }),
+          findUniqueOrThrow: vi.fn().mockResolvedValue({
+            ...pendingMeeting,
+            status: 'SCHEDULED',
+            externalEventUri: 'https://meet.google.com/xyz-abcd-efg',
+            externalProvider: 'GOOGLE',
+          }),
+        },
+        meetingEvent: {
+          create: vi.fn().mockResolvedValue({ id: 1 }),
+        },
+      };
+      return cb(tx);
+    });
+
+    const confirmed = await service.manageMeeting(
+      501,
+      { id: 5, role: 'ADMIN' },
+      { status: 'SCHEDULED' },
+    );
+
+    // Verify createMeeting was called with the prospect and advisor details
+    expect(mockScheduling.createMeeting).toHaveBeenCalledWith({
+      advisorId: '10',
+      attendeeName: 'Carlos Cliente',
+      attendeeEmail: 'cliente@ejemplo.com',
+      start: scheduledAt,
+      end: endsAt,
+      quoteId: 'COT-8899',
+    });
+
+    // Verify the confirmed result contains the Google Meet URL
+    expect(confirmed.status).toBe('SCHEDULED');
+    expect(confirmed.externalEventUri).toBe('https://meet.google.com/xyz-abcd-efg');
+    expect(confirmed.meetingUrl).toBe('https://meet.google.com/xyz-abcd-efg');
+  });
 });

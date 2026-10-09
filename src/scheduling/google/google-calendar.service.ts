@@ -199,6 +199,7 @@ export class GoogleCalendarService {
       const response = await calendar.events.insert({
         calendarId,
         conferenceDataVersion: 1, // Requests Google Meet conference generation
+        sendUpdates: 'all', // Sends Google Calendar invitation email to attendees
         requestBody: {
           summary: `Reunión TISNET: ${input.attendeeName}`,
           description: `Reunión de asesoría TISNET solicitada por ${input.attendeeName} (${input.attendeeEmail}).${
@@ -255,6 +256,91 @@ export class GoogleCalendarService {
       throw new SchedulingProviderError(
         `Error al crear reunión en Google Calendar: ${error?.message || 'Error desconocido'}`,
       );
+    }
+  }
+
+  public async sendMeetingNotification(
+    identifier: { eventId?: string; meetingUrl?: string; attendeeEmail?: string },
+    customMessage?: string,
+  ): Promise<boolean> {
+    if (!this.isAuthorized()) {
+      return false;
+    }
+    const calendar = this.getCalendarClient();
+    const calendarId =
+      clean(this.configService?.get<string>('GOOGLE_CALENDAR_ID')) ||
+      clean(process.env.GOOGLE_CALENDAR_ID) ||
+      'primary';
+
+    try {
+      let targetEventId = identifier.eventId;
+
+      if (!targetEventId && (identifier.attendeeEmail || identifier.meetingUrl)) {
+        const listResp = await calendar.events.list({
+          calendarId,
+          q: identifier.attendeeEmail,
+          maxResults: 10,
+        });
+        const items = listResp.data.items || [];
+        const found = items.find((item) => {
+          if (
+            identifier.meetingUrl &&
+            (item.hangoutLink === identifier.meetingUrl ||
+              item.htmlLink === identifier.meetingUrl)
+          ) {
+            return true;
+          }
+          if (
+            identifier.attendeeEmail &&
+            item.attendees?.some(
+              (a) =>
+                a.email?.toLowerCase() ===
+                identifier.attendeeEmail?.toLowerCase(),
+            )
+          ) {
+            return true;
+          }
+          return false;
+        });
+        if (found?.id) {
+          targetEventId = found.id;
+        }
+      }
+
+      if (!targetEventId) {
+        this.logger.warn(
+          '[GoogleCalendar] No target event ID found to send notification.',
+        );
+        return false;
+      }
+
+      const existing = await calendar.events.get({
+        calendarId,
+        eventId: targetEventId,
+      });
+      const currentDesc = existing.data.description || '';
+      const updatedDesc = customMessage
+        ? `${currentDesc}\n\nNota del asesor: ${customMessage}`
+        : currentDesc;
+
+      await calendar.events.patch({
+        calendarId,
+        eventId: targetEventId,
+        sendUpdates: 'all',
+        requestBody: {
+          description: updatedDesc,
+        },
+      });
+
+      this.logger.log(
+        `[GoogleCalendar] Notification sent via Google Calendar for event ${targetEventId}`,
+      );
+      return true;
+    } catch (err: any) {
+      this.logger.warn(
+        `[GoogleCalendar] Error sending notification for event: ${err?.message}`,
+      );
+      return false;
     }
   }
 

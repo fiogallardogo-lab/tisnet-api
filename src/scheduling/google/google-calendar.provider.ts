@@ -21,4 +21,11 @@ export class GoogleCalendarProvider implements SchedulingProvider {
   ): Promise<ScheduledMeetingResult> {
     return this.service.createMeeting(input);
   }
+
+  async sendMeetingNotification(
+    identifier: { eventId?: string; meetingUrl?: string; attendeeEmail?: string },
+    customMessage?: string,
+  ): Promise<boolean> {
+    return this.service.sendMeetingNotification(identifier, customMessage);
+  }
 }

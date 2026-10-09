@@ -5,6 +5,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -27,6 +28,8 @@ import {
 } from './meeting-persistence.dto';
 @Injectable()
 export class MeetingPersistenceService {
+  private readonly logger = new Logger(MeetingPersistenceService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(SCHEDULING_PROVIDER)
@@ -101,29 +104,64 @@ export class MeetingPersistenceService {
         },
       }),
     ]);
-    return slots.filter(
-      (slot) =>
-        slot.start >= a &&
-        slot.end <= b &&
-        slot.start > new Date() &&
-        !booked.some(
-          (m) =>
-            m.scheduledAt &&
-            m.scheduledAt < slot.end &&
-            (m.endsAt || new Date(m.scheduledAt.getTime() + 3600000)) >
-              slot.start,
-        ),
-    ).map((slot) => ({
-      id: slot.id,
-      start: slot.start,
-      end: slot.end,
-      label: new Intl.DateTimeFormat('es-PE', {
-        timeZone: 'America/Lima',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).format(slot.start),
-    }));
+    const hasCustomSlots =
+      (await this.prisma.advisorAvailabilitySlot.count({
+        where: { advisorProfileId: advisorId },
+      })) > 0;
+
+    let candidateSlots: Array<{ id: number; start: Date; end: Date }> = slots;
+    if (candidateSlots.length === 0 && !hasCustomSlots) {
+      // Default business hours in Lima (UTC-5): 09:00, 10:00, 11:00, 15:00, 16:00, 17:00
+      // In UTC hours: 14, 15, 16, 20, 21, 22
+      const defaultHoursUtc = [14, 15, 16, 20, 21, 22];
+      const generated: Array<{ id: number; start: Date; end: Date }> = [];
+      const currentDay = new Date(a);
+      currentDay.setUTCHours(0, 0, 0, 0);
+
+      let genId = -1;
+      while (currentDay <= b) {
+        if (currentDay.getUTCDay() !== 0) {
+          for (const hour of defaultHoursUtc) {
+            const slotStart = new Date(currentDay);
+            slotStart.setUTCHours(hour, 0, 0, 0);
+            const slotEnd = new Date(currentDay);
+            slotEnd.setUTCHours(hour + 1, 0, 0, 0);
+
+            if (slotStart >= a && slotEnd <= b) {
+              generated.push({ id: genId--, start: slotStart, end: slotEnd });
+            }
+          }
+        }
+        currentDay.setUTCDate(currentDay.getUTCDate() + 1);
+      }
+      candidateSlots = generated;
+    }
+
+    return candidateSlots
+      .filter(
+        (slot) =>
+          slot.start >= a &&
+          slot.end <= b &&
+          slot.start > new Date() &&
+          !booked.some((m) => {
+            const mStart = m.scheduledAt ? m.scheduledAt.getTime() : 0;
+            const mEnd = m.endsAt
+              ? m.endsAt.getTime()
+              : mStart + 3600000;
+            return mStart < slot.end.getTime() && mEnd > slot.start.getTime();
+          }),
+      )
+      .map((slot) => ({
+        id: slot.id,
+        start: slot.start,
+        end: slot.end,
+        label: new Intl.DateTimeFormat('es-PE', {
+          timeZone: 'America/Lima',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(slot.start),
+      }));
   }
   async ownAvailability(userId: number) {
     const advisor = await this.prisma.adminProfile.findUnique({ where: { userId } });
@@ -214,21 +252,54 @@ export class MeetingPersistenceService {
         },
       });
       if (!advisor) throw new NotFoundException('Asesor no disponible');
-      const quote = await tx.quote.findFirst({
-        where: {
-          OR: [
-            { publicCode: dto.quoteId.toUpperCase() },
-            { legacyCode: dto.quoteId },
-          ],
-          contactEmail: dto.email.trim().toLowerCase(),
-        },
-      });
-      if (!quote?.prospectId)
-        throw new NotFoundException('Cotización y contacto no encontrados');
+
+      let quote: { id: number; publicCode: string; prospectId: number | null } | null = null;
+      let prospectId = 0;
+
+      if (dto.quoteId && dto.quoteId.trim()) {
+        const foundQuote = await tx.quote.findFirst({
+          where: {
+            OR: [
+              { publicCode: dto.quoteId.trim().toUpperCase() },
+              { legacyCode: dto.quoteId.trim() },
+            ],
+            contactEmail: dto.email.trim().toLowerCase(),
+          },
+          select: { id: true, publicCode: true, prospectId: true },
+        });
+        if (foundQuote) {
+          quote = foundQuote;
+          if (foundQuote.prospectId) {
+            prospectId = foundQuote.prospectId;
+          }
+        }
+      }
+
+      if (!prospectId) {
+        let prospect = await tx.prospect.findUnique({
+          where: { email: dto.email.trim().toLowerCase() },
+        });
+        if (!prospect) {
+          prospect = await tx.prospect.create({
+            data: {
+              name: dto.name.trim(),
+              email: dto.email.trim().toLowerCase(),
+              phone: dto.phone?.trim() || null,
+            },
+          });
+        }
+        prospectId = prospect.id;
+        if (quote && !quote.prospectId) {
+          await tx.quote.update({
+            where: { id: quote.id },
+            data: { prospectId },
+          });
+        }
+      }
 
       if (dto.phone?.trim()) {
         await tx.prospect.update({
-          where: { id: quote.prospectId },
+          where: { id: prospectId },
           data: { phone: dto.phone.trim() },
         });
       }
@@ -249,18 +320,19 @@ export class MeetingPersistenceService {
       });
       if (overlap)
         throw new ConflictException(
-          'El asesor ya tiene una reunión en ese intervalo.',
+          'El horario seleccionado ya no está disponible. Por favor elige otro horario.',
         );
       const meeting = await tx.meeting.create({
         data: {
           advisorProfileId: advisor.id,
-          quoteId: quote.id,
-          prospectId: quote.prospectId,
+          quoteId: quote?.id ?? null,
+          prospectId: prospectId,
           scheduledAt: a,
           endsAt: b,
           bookingKey: `${advisor.id}:${a.toISOString()}`,
           status: 'PENDING',
           timezone: 'America/Lima',
+          notes: dto.notifyWhatsapp ? 'CHANNEL:WHATSAPP' : 'CHANNEL:EMAIL',
         },
       });
       return {
@@ -270,7 +342,7 @@ export class MeetingPersistenceService {
         status: meeting.status,
         start: meeting.scheduledAt,
         end: meeting.endsAt,
-        quoteId: quote.publicCode,
+        quoteId: quote?.publicCode ?? null,
         advisor: {
           id: advisor.id,
           name: advisor.user.name,
@@ -286,8 +358,12 @@ export class MeetingPersistenceService {
     const advisorEmail = result.advisor.email;
 
     const calendarLinks = CalendarUtils.generateLinks({
-      title: `Sesión de Asesoría TISNET (${result.quoteId})`,
-      description: `Reunión de alineación de cotización y alcance con tu asesor ${advisorName}.\nVideollamada: ${meetingUrl}`,
+      title: result.quoteId
+        ? `Sesión de Asesoría TISNET (${result.quoteId})`
+        : `Sesión de Asesoría TISNET`,
+      description: result.quoteId
+        ? `Reunión de alineación de cotización y alcance con tu asesor ${advisorName}.\nVideollamada: ${meetingUrl}`
+        : `Reunión de asesoría técnica y comercial con tu asesor ${advisorName}.\nVideollamada: ${meetingUrl}`,
       location: meetingUrl,
       startTime: result.start!,
       endTime: result.end!,
@@ -307,9 +383,10 @@ export class MeetingPersistenceService {
           timeStyle: 'short',
           timeZone: 'America/Lima',
         });
+        const quoteText = result.quoteId ? ` para revisar tu cotización *${result.quoteId}*` : '';
         const waText =
           `¡Hola ${dto.name.trim()}! 🚀\n\n` +
-          `Tu sesión de asesoría comercial y técnica con *${advisorName}* para revisar tu cotización *${result.quoteId}* ha sido agendada con éxito.\n\n` +
+          `Tu sesión de asesoría comercial y técnica con *${advisorName}*${quoteText} ha sido agendada con éxito.\n\n` +
           `📅 *Fecha y hora:* ${formattedDate}\n` +
           `📍 *Enlace de la reunión:* ${meetingUrl}\n\n` +
           `*Importante:* Te enviaremos un recordatorio con el enlace directo 15 minutos antes de la llamada por este medio. También enviamos la invitación a tu correo *${dto.email.trim()}*.\n\n` +
@@ -331,7 +408,7 @@ export class MeetingPersistenceService {
       status: result.status,
       start: result.start,
       end: result.end,
-      quoteId: result.quoteId,
+      quoteId: result.quoteId ?? undefined,
       advisorId: result.advisor.id,
       advisor: {
         id: result.advisor.id,
@@ -379,7 +456,15 @@ export class MeetingPersistenceService {
       this.prisma.meeting.count({ where }),
     ]);
     return {
-      items,
+      items: items.map((m) => ({
+        ...m,
+        meetingUrl:
+          m.externalEventUri ||
+          (m.status === 'SCHEDULED'
+            ? `https://app.tisnet.pe/meetings/${m.id}`
+            : undefined),
+        channel: m.notes?.includes('CHANNEL:EMAIL') ? 'EMAIL' : 'WHATSAPP',
+      })),
       meta: {
         page: query.page,
         limit: query.limit,
@@ -399,21 +484,64 @@ export class MeetingPersistenceService {
       actor.role === 'SUPER_ADMIN'
         ? {}
         : { advisorProfile: { userId: actor.id } };
+
+    const initial = await this.prisma.meeting.findFirst({
+      where: { id, ...scope },
+      include: {
+        prospect: { select: { name: true, email: true, phone: true } },
+        quote: { select: { publicCode: true } },
+        advisorProfile: { select: { user: { select: { name: true } } } },
+      },
+    });
+    if (!initial)
+      throw new NotFoundException('Reunión no encontrada para tu cuenta.');
+
+    if (initial.externalProvider === 'CALENDLY') {
+      throw new ConflictException(
+        'Gestiona esta reunión desde el proveedor externo.',
+      );
+    }
+
+    let generatedMeetingUrl: string | null = initial.externalEventUri;
+    let scheduledMeetingId: string | null = null;
+    if (
+      'status' in change &&
+      change.status === 'SCHEDULED' &&
+      !initial.externalEventUri &&
+      initial.scheduledAt
+    ) {
+      try {
+        const scheduled = await this.scheduling.createMeeting({
+          advisorId: String(initial.advisorProfileId || actor.id),
+          attendeeName: initial.prospect?.name || 'Cliente TISNET',
+          attendeeEmail: initial.prospect?.email || '',
+          start: initial.scheduledAt,
+          end:
+            initial.endsAt ||
+            new Date(initial.scheduledAt.getTime() + 3600000),
+          quoteId: initial.quote?.publicCode,
+        });
+        if (scheduled?.meetingUrl) {
+          generatedMeetingUrl = scheduled.meetingUrl;
+        }
+        if (scheduled?.meetingId) {
+          scheduledMeetingId = scheduled.meetingId;
+        }
+      } catch (err: any) {
+        this.logger.warn(
+          `[MeetingPersistence] Error creating meeting in scheduling provider: ${err?.message}`,
+        );
+        generatedMeetingUrl = `https://app.tisnet.pe/meetings/${id}`;
+      }
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
-      const initial = await tx.meeting.findFirst({ where: { id, ...scope } });
-      if (!initial)
-        throw new NotFoundException('Reunión no encontrada para tu cuenta.');
       if ('start' in change && initial.advisorProfileId) {
         await tx.$queryRaw`SELECT id FROM AdminProfile WHERE id = ${initial.advisorProfileId} FOR UPDATE`;
       }
       await tx.$queryRaw`SELECT id FROM Meeting WHERE id = ${id} FOR UPDATE`;
       const meeting = await tx.meeting.findFirst({ where: { id, ...scope } });
       if (!meeting) throw new NotFoundException('Reunión no encontrada.');
-      if (meeting.externalProvider || meeting.externalEventUri) {
-        throw new ConflictException(
-          'Gestiona esta reunión desde el proveedor externo.',
-        );
-      }
       if ('status' in change) {
         const allowed: Record<MeetingStatus, MeetingStatus[]> = {
           PENDING: ['SCHEDULED', 'CANCELLED'],
@@ -428,13 +556,21 @@ export class MeetingPersistenceService {
             where: { id },
             data: {
               status: change.status,
+              ...(generatedMeetingUrl
+                ? {
+                    externalEventUri: generatedMeetingUrl,
+                    externalProvider: 'GOOGLE',
+                  }
+                : {}),
               ...(change.status === 'CANCELLED' ? { bookingKey: null } : {}),
             },
           });
           await tx.meetingEvent.create({
             data: {
               meetingId: id,
-              externalEventId: 'manual:' + actor.id + ':' + randomUUID(),
+              externalEventId: scheduledMeetingId
+                ? `google:${scheduledMeetingId}`
+                : 'manual:' + actor.id + ':' + randomUUID(),
               status: change.status,
               occurredAt: new Date(),
             },
@@ -495,9 +631,16 @@ export class MeetingPersistenceService {
     });
     await this.mail?.meeting(id);
 
+    const meetingUrl =
+      result.externalEventUri || `https://app.tisnet.pe/meetings/${result.id}`;
+
+    const notifyViaWhatsapp =
+      initial.notes !== 'CHANNEL:EMAIL' && Boolean(result.prospect?.phone);
+
     if (
       'status' in change &&
       change.status === 'SCHEDULED' &&
+      notifyViaWhatsapp &&
       result.prospect?.phone
     ) {
       try {
@@ -512,8 +655,6 @@ export class MeetingPersistenceService {
         const quoteInfo = result.quote?.publicCode
           ? ` (${result.quote.publicCode})`
           : '';
-        const meetingUrl =
-          result.externalEventUri || `https://app.tisnet.pe/meetings/${result.id}`;
 
         await this.whatsapp?.send({
           recipientPhone: result.prospect.phone,
@@ -530,7 +671,11 @@ export class MeetingPersistenceService {
       }
     }
 
-    return result;
+    return {
+      ...result,
+      meetingUrl,
+      channel: result.notes?.includes('CHANNEL:EMAIL') ? 'EMAIL' : 'WHATSAPP',
+    };
   }
   // B calls this after authenticating Calendly events. No external provider implementation here.
   async recordExternalEvent(input: {
@@ -601,6 +746,7 @@ export class MeetingPersistenceService {
       include: {
         prospect: true,
         advisorProfile: { include: { user: true } },
+        externalEvents: true,
       },
     });
 
@@ -659,6 +805,33 @@ export class MeetingPersistenceService {
       id,
     );
 
+    let googleNotified = false;
+    const googleEvent = meeting.externalEvents?.find((e) =>
+      e.externalEventId?.startsWith('google:'),
+    );
+    const googleEventId = googleEvent
+      ? googleEvent.externalEventId.replace('google:', '')
+      : undefined;
+
+    if (
+      typeof (this.scheduling as any)?.sendMeetingNotification === 'function'
+    ) {
+      try {
+        googleNotified = await (this.scheduling as any).sendMeetingNotification(
+          {
+            eventId: googleEventId,
+            meetingUrl: meeting.externalEventUri || undefined,
+            attendeeEmail: recipient,
+          },
+          customMessage,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `[MeetingPersistence] Google Calendar notification warning: ${err?.message}`,
+        );
+      }
+    }
+
     let whatsappSent = false;
     if (meeting.prospect?.phone) {
       try {
@@ -688,12 +861,26 @@ export class MeetingPersistenceService {
       },
     });
 
+    let message = 'Aviso con enlace enviado al cliente por correo';
+    if (googleNotified) {
+      message = 'Invitación con enlace despachada al correo del cliente mediante Google Calendar';
+    } else if (this.mail?.isRealDeliveryConfigured() && deliveryResult?.delivery === 'SENT') {
+      message = 'Aviso con enlace enviado al correo del cliente correctamente';
+    } else if (!this.mail?.isRealDeliveryConfigured()) {
+      message = 'Aviso procesado en modo local. Para entrega SMTP directa a bandejas externas, configure NOTIFICATION_PROVIDER=smtp en .env';
+    }
+
+    if (whatsappSent) {
+      message += ' y WhatsApp.';
+    } else {
+      message += '.';
+    }
+
     return {
       success: true,
-      message:
-        'Aviso con enlace enviado al cliente correctamente por correo electrónico' +
-        (whatsappSent ? ' y WhatsApp.' : '.'),
-      delivery: deliveryResult?.delivery || 'SENT',
+      message,
+      delivery: deliveryResult?.delivery || (googleNotified ? 'SENT' : 'SIMULATED'),
+      googleNotified,
       whatsappSent,
       meetingUrl,
     };
