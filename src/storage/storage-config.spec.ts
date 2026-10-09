@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { validateStorageConfig } from '../config/storage.config';
 
 describe('Storage configuration', () => {
-  it('defaults to memory when STORAGE_DRIVER is absent', () => {
-    expect(validateStorageConfig({})).toMatchObject({ driver: 'memory' });
+  it('defaults to persistent disk storage when STORAGE_DRIVER is absent', () => {
+    expect(validateStorageConfig({})).toMatchObject({ driver: 'disk' });
   });
 
   it('accepts STORAGE_DRIVER=memory explicitly', () => {

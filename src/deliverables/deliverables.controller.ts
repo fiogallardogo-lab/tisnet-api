@@ -216,4 +216,20 @@ export class DeliverablesController {
       file,
     );
   }
+
+  @Get(':deliverableId/files')
+  @ApiOperation({ summary: 'Ver archivo de evidencia de un entregable' })
+  @ApiParam({ name: 'projectId', type: Number })
+  @ApiParam({ name: 'deliverableId', type: Number })
+  getFile(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('deliverableId', ParseIntPipe) deliverableId: number,
+    @Request() request: AuthenticatedRequest,
+  ) {
+    return this.deliverablesService.getFile(
+      projectId,
+      deliverableId,
+      request.user,
+    );
+  }
 }

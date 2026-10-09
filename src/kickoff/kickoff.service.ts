@@ -9,6 +9,7 @@ import { Prisma, ProjectMemberRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { KickoffDto, ProjectTeamDto } from './kickoff.dto';
+import { ReviewKickoffDto } from './kickoff-sprint14.dto';
 export function validateParticipation(members: ProjectTeamDto['members']) {
   if (
     !members.length ||
@@ -53,7 +54,8 @@ export class KickoffService {
     });
     return projects.map((project) => {
       const approved = project.deliverables.filter(
-        (item) => item.status === 'APPROVED',
+        (item) =>
+          item.status === 'APPROVED' && item.clientReviewStatus === 'APPROVED',
       ).length;
       const total = project.deliverables.length;
       const dueDates = project.deliverables.map((item) =>
@@ -77,6 +79,7 @@ export class KickoffService {
           id: item.milestoneId ?? item.id,
           title: item.title,
           status: item.status,
+          clientReviewStatus: item.clientReviewStatus,
           date: item.dueDate.toISOString(),
         })),
       };
@@ -434,14 +437,11 @@ export class KickoffService {
     dto: { scheduledAt: string; notes?: string; advisorId?: number },
   ) {
     await this.access(projectId, actor);
-    // S14-B04: CLIENT may request a kickoff date, ADMIN/SUPER_ADMIN/PRODUCT_OWNER may confirm it
-    if (
-      !['ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER', 'CLIENT'].includes(actor.role)
-    ) {
+    // The client proposes a date. Administration reviews it using reviewKickoff.
+    if (actor.role !== 'CLIENT')
       throw new ForbiddenException(
-        'Solo administración, el Product Owner o el Cliente puede solicitar el kickoff.',
+        'Solo el cliente puede solicitar o cambiar la fecha propuesta del kickoff.',
       );
-    }
     const heldAt = new Date(dto.scheduledAt);
     if (isNaN(heldAt.getTime())) {
       throw new BadRequestException('Fecha de kickoff inválida.');
@@ -457,14 +457,10 @@ export class KickoffService {
           throw new ConflictException(
             'El proyecto no tiene un acuerdo comercial.',
           );
-        await this.payments.assertInitialPayment(project.quoteId, tx);
-        if (
-          actor.role === 'PRODUCT_OWNER' &&
-          project.productOwnerId !== actor.id
-        )
-          throw new ForbiddenException(
-            'Solo el Product Owner asignado puede gestionar el kickoff.',
-          );
+        const activeQuoteVersion = await this.payments.assertInitialPayment(
+          project.quoteId,
+          tx,
+        );
         const existing = await tx.kickoff.findUnique({
           where: { projectId },
           include: { meeting: true },
@@ -472,7 +468,7 @@ export class KickoffService {
 
         let meetingId = existing?.meetingId;
         const advisorId = dto.advisorId ?? existing?.meeting?.advisorProfileId;
-        if (actor.role === 'CLIENT' && !advisorId)
+        if (!advisorId)
           throw new BadRequestException('Selecciona el asesor del kickoff.');
         if (advisorId) {
           if (!project.prospectId)
@@ -495,7 +491,7 @@ export class KickoffService {
             const advisor = await tx.adminProfile.findFirst({
               where: {
                 id: advisorId,
-                isPublicAdvisor: true,
+                userId: activeQuoteVersion.authorId,
                 user: { isActive: true },
               },
             });
@@ -549,9 +545,9 @@ export class KickoffService {
           if (
             existing.heldAt.getTime() === heldAt.getTime() &&
             existing.meetingId === meetingId &&
-            (actor.role === 'CLIENT' ||
-              dto.notes === undefined ||
-              dto.notes === existing.notes)
+            (dto.notes === undefined ||
+              dto.notes === existing.notes
+            )
           )
             return existing;
         }
@@ -561,10 +557,7 @@ export class KickoffService {
               data: {
                 heldAt,
                 meetingId,
-                notes:
-                  actor.role === 'CLIENT'
-                    ? existing.notes
-                    : (dto.notes ?? existing.notes),
+                notes: existing.notes,
                 actorId: actor.id,
               },
             })
@@ -573,7 +566,7 @@ export class KickoffService {
                 projectId,
                 heldAt,
                 meetingId,
-                notes: actor.role === 'CLIENT' ? '' : (dto.notes ?? ''),
+                notes: '',
                 actorId: actor.id,
               },
             });
@@ -590,6 +583,100 @@ export class KickoffService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
+  }
+
+  async reviewKickoff(
+    projectId: number,
+    actor: { id: number; role: string },
+    dto: ReviewKickoffDto,
+  ) {
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(actor.role))
+      throw new ForbiddenException('Solo administración puede revisar el kickoff.');
+    await this.access(projectId, actor);
+    if (dto.action === 'RESCHEDULE' && !dto.scheduledAt)
+      throw new BadRequestException('Indica la nueva fecha y hora.');
+    if (dto.action === 'CONFIRM' && dto.scheduledAt)
+      throw new BadRequestException('La confirmación debe conservar la fecha solicitada.');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM Project WHERE id = ${projectId} FOR UPDATE`;
+      const project = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+        include: { kickoff: { include: { meeting: true } } },
+      });
+      if (!project.quoteId)
+        throw new ConflictException('El proyecto no tiene un acuerdo comercial.');
+      await this.payments.assertInitialPayment(project.quoteId, tx);
+
+      const kickoff = project.kickoff;
+      const meeting = kickoff?.meeting;
+      if (!kickoff || !meeting?.scheduledAt || !meeting.advisorProfileId)
+        throw new ConflictException('El cliente todavía no ha solicitado un kickoff.');
+      if (meeting.status === 'COMPLETED' || meeting.status === 'CANCELLED')
+        throw new ConflictException('Este kickoff ya no puede modificarse.');
+      if (dto.action === 'CONFIRM' && meeting.status !== 'PENDING')
+        throw new ConflictException('Solo puedes confirmar una solicitud pendiente.');
+      if (!['PENDING', 'SCHEDULED'].includes(meeting.status))
+        throw new ConflictException('El estado actual del kickoff no permite cambios.');
+
+      const scheduledAt =
+        dto.action === 'RESCHEDULE'
+          ? new Date(dto.scheduledAt!)
+          : meeting.scheduledAt;
+      if (!Number.isFinite(scheduledAt.getTime()) || scheduledAt <= new Date())
+        throw new BadRequestException('La fecha del kickoff debe ser futura.');
+      const endsAt = new Date(scheduledAt.getTime() + 3600000);
+      const overlap = await tx.meeting.findFirst({
+        where: {
+          id: { not: meeting.id },
+          advisorProfileId: meeting.advisorProfileId,
+          status: { in: ['PENDING', 'SCHEDULED'] },
+          scheduledAt: { lt: endsAt },
+          OR: [
+            { endsAt: { gt: scheduledAt } },
+            {
+              endsAt: null,
+              scheduledAt: { gt: new Date(scheduledAt.getTime() - 3600000) },
+            },
+          ],
+        },
+      });
+      if (overlap)
+        throw new ConflictException('El administrador ya tiene una reunión en ese horario.');
+
+      await tx.meeting.update({
+        where: { id: meeting.id },
+        data: {
+          scheduledAt,
+          endsAt,
+          status: 'SCHEDULED',
+          bookingKey: `${meeting.advisorProfileId}:${scheduledAt.toISOString()}`,
+          notes: dto.notes?.trim().slice(0, 1000) || meeting.notes,
+        },
+      });
+      const result = await tx.kickoff.update({
+        where: { projectId },
+        data: {
+          heldAt: scheduledAt,
+          actorId: actor.id,
+          ...(dto.notes !== undefined ? { notes: dto.notes.trim().slice(0, 2000) } : {}),
+        },
+      });
+      await tx.auditEvent.create({
+        data: {
+          actorId: actor.id,
+          action: dto.action === 'CONFIRM' ? 'KICKOFF_CONFIRMED' : 'KICKOFF_RESCHEDULED',
+          entityType: 'PROJECT',
+          entityId: String(projectId),
+          metadata: {
+            scheduledAt: scheduledAt.toISOString(),
+            meetingId: meeting.id,
+            action: dto.action,
+          },
+        },
+      });
+      return result;
+    });
   }
 
   async addMember(

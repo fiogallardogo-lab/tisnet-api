@@ -14,7 +14,7 @@ export class SubmitEvidenceDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
-  @IsUrl(HTTP_URL_OPTIONS, { message: 'El enlace del documento debe ser una URL válida (http/https)' })
+  @IsUrl({ ...HTTP_URL_OPTIONS, require_tld: false }, { message: 'El enlace del documento debe ser una URL válida (http/https)' })
   pdfUrl?: string;
 
   @ApiPropertyOptional({
@@ -24,7 +24,7 @@ export class SubmitEvidenceDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
-  @IsUrl(HTTP_URL_OPTIONS, { message: 'fileUrl debe ser una URL válida (http/https)' })
+  @IsUrl({ ...HTTP_URL_OPTIONS, require_tld: false }, { message: 'fileUrl debe ser una URL válida (http/https)' })
   fileUrl?: string;
 
   @ApiProperty({
@@ -34,7 +34,7 @@ export class SubmitEvidenceDto {
   @IsNotEmpty({ message: 'El enlace de video o demostración es obligatorio.' })
   @IsString()
   @MaxLength(500)
-  @IsUrl(HTTP_URL_OPTIONS, { message: 'El videoUrl debe ser una URL válida (http/https)' })
+  @IsUrl({ ...HTTP_URL_OPTIONS, require_tld: false }, { message: 'El videoUrl debe ser una URL válida (http/https)' })
   videoUrl: string;
 
   @ApiPropertyOptional({

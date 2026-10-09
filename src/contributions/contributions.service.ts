@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -131,6 +132,28 @@ export class ContributionsService {
     }
 
     const target = await this.findDeliverableOrMilestone(projectId, milestoneId, exactDeliverable);
+    const paymentMilestone = target.milestoneId
+      ? await this.prisma.projectMilestone.findUnique({
+          where: { id: target.milestoneId },
+          include: {
+            paymentSchedule: {
+              include: { payments: { where: { status: 'CONFIRMED' }, select: { id: true } } },
+            },
+          },
+        })
+      : await this.prisma.projectMilestone.findFirst({
+          where: { projectId, sequence: target.milestoneOrder },
+          include: {
+            paymentSchedule: {
+              include: { payments: { where: { status: 'CONFIRMED' }, select: { id: true } } },
+            },
+          },
+        });
+    if (paymentMilestone && paymentMilestone.paymentSchedule.payments.length === 0) {
+      throw new ConflictException(
+        `No se puede continuar con el Hito ${paymentMilestone.sequence} hasta que el cliente confirme el abono correspondiente.`,
+      );
+    }
 
     // Validate percentage sum
     const totalPercentage = dto.contributions.reduce((sum, item) => sum + item.percentage, 0);

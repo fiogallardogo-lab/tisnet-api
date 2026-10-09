@@ -510,16 +510,21 @@ export class ProjectsService {
           );
         if (
           !project.deliverables.length ||
-          project.deliverables.some((d) => d.status !== 'APPROVED') ||
+          project.deliverables.some(
+            (d) => d.status !== 'APPROVED' || d.clientReviewStatus !== 'APPROVED',
+          ) ||
           project.milestones.some(
             (m) =>
               !project.deliverables.some(
-                (d) => d.milestoneId === m.id && d.status === 'APPROVED',
+                (d) =>
+                  d.milestoneId === m.id &&
+                  d.status === 'APPROVED' &&
+                  d.clientReviewStatus === 'APPROVED',
               ),
           )
         )
           throw new BadRequestException(
-            'Todos los hitos oficiales deben tener entregables aprobados.',
+            'Todos los hitos oficiales deben tener entregables aprobados por el Product Owner y el cliente.',
           );
         if (project.quoteId) {
           const state = await (

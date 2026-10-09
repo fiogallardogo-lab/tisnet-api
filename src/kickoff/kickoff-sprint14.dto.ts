@@ -33,6 +33,20 @@ export class ScheduleKickoffDto {
   notes?: string;
 }
 
+export class ReviewKickoffDto {
+  @IsIn(['CONFIRM', 'RESCHEDULE'])
+  action: 'CONFIRM' | 'RESCHEDULE';
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  scheduledAt?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string;
+}
+
 /** S14-B07: Validated DTO for adding a single member to a project */
 export class AddMemberDto {
   @IsOptional()

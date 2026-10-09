@@ -66,6 +66,12 @@ enum DeliverableStatus {
   OBSERVED
 }
 
+enum ClientReviewStatus {
+  PENDING
+  APPROVED
+  OBSERVED
+}
+
 model Role {
   id        Int      @id @default(autoincrement())
   name      String   @unique @db.VarChar(30)
@@ -109,6 +115,7 @@ model User {
   prospect                         Prospect?
   projectMemberships               ProjectMember[]
   reviewedDeliverables             ProjectDeliverable[]      @relation("DeliverableReviewer")
+  clientReviewedDeliverables       ProjectDeliverable[]      @relation("ClientDeliverableReviewer")
   authoredQuoteVersions            QuoteVersion[]            @relation("QuoteVersionAuthor")
   commercialQuotes                 QuoteVersion[]            @relation("QuoteVersionClient")
   acceptedQuoteVersions            QuoteVersion[]            @relation("QuoteVersionAccepter")
@@ -118,6 +125,8 @@ model User {
   clientActivationRequestsCreated  ClientActivationRequest[] @relation("ClientActivationRequestRequester")
   clientActivationRequestsReviewed ClientActivationRequest[] @relation("ClientActivationRequestReviewer")
   clientActivationRequestsAsClient ClientActivationRequest[] @relation("ClientActivationRequestClient")
+  manualPaymentSubmissions         ManualPaymentSubmission[] @relation("ManualPaymentClient")
+  reviewedManualPaymentSubmissions ManualPaymentSubmission[] @relation("ManualPaymentReviewer")
 
   @@index([roleId, isActive])
 }
@@ -179,20 +188,20 @@ model ProductOwnerProfile {
 }
 
 model AdminProfile {
-  id                       Int               @id @default(autoincrement())
-  userId                   Int               @unique
-  executiveTitle           String?           @db.VarChar(120)
-  specialty                String?           @db.VarChar(120)
-  photoUrl                 String?           @db.VarChar(500)
-  calendlyUrl              String?           @db.VarChar(500)
-  isPublicAdvisor          Boolean           @default(false)
-  createdAt                DateTime          @default(now())
-  updatedAt                DateTime          @updatedAt
-  user                     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  advisedMeetings          Meeting[]         @relation("MeetingAdvisor")
+  id                       Int                       @id @default(autoincrement())
+  userId                   Int                       @unique
+  executiveTitle           String?                   @db.VarChar(120)
+  specialty                String?                   @db.VarChar(120)
+  photoUrl                 String?                   @db.VarChar(500)
+  calendlyUrl              String?                   @db.VarChar(500)
+  isPublicAdvisor          Boolean                   @default(false)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  advisedMeetings          Meeting[]                 @relation("MeetingAdvisor")
   availabilitySlots        AdvisorAvailabilitySlot[]
-  assignedProspects        Prospect[]        @relation("ProspectAdvisor")
-  assignedTeamApplications TeamApplication[] @relation("TeamApplicationInterviewer")
+  assignedProspects        Prospect[]                @relation("ProspectAdvisor")
+  assignedTeamApplications TeamApplication[]         @relation("TeamApplicationInterviewer")
 }
 
 model AdvisorAvailabilitySlot {
@@ -466,10 +475,15 @@ model ProjectDeliverable {
   submittedAt      DateTime?
   reviewedAt       DateTime?
   reviewedById     Int?
+  clientReviewStatus ClientReviewStatus @default(PENDING)
+  clientReviewedAt DateTime?
+  clientReviewedById Int?
+  clientFeedbackNotes String? @db.VarChar(2000)
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
   project          Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   reviewedBy       User?                   @relation("DeliverableReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  clientReviewedBy User?                   @relation("ClientDeliverableReviewer", fields: [clientReviewedById], references: [id], onDelete: SetNull)
   history          DeliverableHistory[]
   contributions    MilestoneContribution[]
 
@@ -600,17 +614,18 @@ model QuoteVersion {
 }
 
 model PaymentSchedule {
-  reminder              PaymentReminder?
-  milestoneRecord       ProjectMilestone?
-  id                    Int               @id @default(autoincrement())
-  quoteVersionId        Int
-  sequence              Int
-  percentageBasisPoints Int
-  amountMinor           Decimal           @db.Decimal(15, 0)
-  dueDate               DateTime          @db.Date
-  milestone             String            @db.VarChar(150)
-  quoteVersion          QuoteVersion      @relation(fields: [quoteVersionId], references: [id], onDelete: Restrict)
-  payments              Payment[]
+  reminder                 PaymentReminder?
+  milestoneRecord          ProjectMilestone?
+  manualPaymentSubmissions ManualPaymentSubmission[]
+  id                       Int                       @id @default(autoincrement())
+  quoteVersionId           Int
+  sequence                 Int
+  percentageBasisPoints    Int
+  amountMinor              Decimal                   @db.Decimal(15, 0)
+  dueDate                  DateTime                  @db.Date
+  milestone                String                    @db.VarChar(150)
+  quoteVersion             QuoteVersion              @relation(fields: [quoteVersionId], references: [id], onDelete: Restrict)
+  payments                 Payment[]
 
   @@unique([quoteVersionId, sequence])
   @@index([dueDate])
@@ -619,6 +634,12 @@ model PaymentSchedule {
 enum PaymentStatus {
   CONFIRMED
   FAILED
+}
+
+enum ManualPaymentSubmissionStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
 }
 
 model Payment {
@@ -632,6 +653,33 @@ model Payment {
   schedule        PaymentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
 
   @@index([scheduleId, status])
+}
+
+model ManualPaymentSubmission {
+  id              Int                           @id @default(autoincrement())
+  scheduleId      Int
+  clientUserId    Int
+  status          ManualPaymentSubmissionStatus @default(SUBMITTED)
+  operationNumber String                        @db.VarChar(100)
+  paymentMethod   String                        @db.VarChar(32)
+  paidAt          DateTime
+  amountMinor     Decimal                       @db.Decimal(15, 0)
+  currency        String                        @db.Char(3)
+  storageKey      String                        @db.VarChar(255)
+  receiptName     String                        @db.VarChar(255)
+  mimeType        String                        @db.VarChar(100)
+  notes           String?                       @db.VarChar(1000)
+  reviewNote      String?                       @db.VarChar(1000)
+  reviewedById    Int?
+  reviewedAt      DateTime?
+  createdAt       DateTime                      @default(now())
+  schedule        PaymentSchedule               @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  client          User                          @relation("ManualPaymentClient", fields: [clientUserId], references: [id], onDelete: Restrict)
+  reviewedBy      User?                         @relation("ManualPaymentReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([scheduleId, status])
+  @@index([clientUserId, createdAt])
 }
 
 model MeetingEvent {

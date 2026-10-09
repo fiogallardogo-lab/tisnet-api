@@ -14,10 +14,14 @@ import { CommercialModule } from '../commercial/commercial.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { KickoffModule } from '../kickoff/kickoff.module';
 import { ProjectsModule } from '../projects/projects.module';
+import { StorageModule } from '../storage/storage.module';
+import { ManualPaymentSubmissionsController } from './manual-payment-submissions.controller';
+import { ManualPaymentSubmissionsService } from './manual-payment-submissions.service';
 
 @Module({
   imports: [
     PaymentsModule,
+    StorageModule,
     PrismaModule,
     CommercialModule,
     NotificationsModule,
@@ -25,7 +29,19 @@ import { ProjectsModule } from '../projects/projects.module';
     forwardRef(() => KickoffModule),
     forwardRef(() => ProjectsModule),
   ],
-  controllers: [ClientPortalController, ClientQuotesController, ClientPaymentsController],
-  providers: [ClientPortalService, ClientQuotesService, ClientPaymentsService, JwtAuthGuard, RolesGuard],
+  controllers: [
+    ClientPortalController,
+    ClientQuotesController,
+    ClientPaymentsController,
+    ManualPaymentSubmissionsController,
+  ],
+  providers: [
+    ClientPortalService,
+    ClientQuotesService,
+    ClientPaymentsService,
+    ManualPaymentSubmissionsService,
+    JwtAuthGuard,
+    RolesGuard,
+  ],
 })
 export class ClientPortalModule {}

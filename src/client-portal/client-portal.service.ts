@@ -26,6 +26,11 @@ export class ClientPortalService {
   ) {}
 
   async overview(actor: { id: number; email: string }) {
+    try {
+      await this.reconcileConfirmedAdvances(actor.id);
+    } catch {
+      // Keep the portal available if project repair is temporarily blocked.
+    }
     const [user, projects, quotes, meetings] = await Promise.all([
       this.prisma.user.findUniqueOrThrow({
         where: { id: actor.id },
@@ -33,9 +38,18 @@ export class ClientPortalService {
       }),
       this.prisma.project.findMany({
         where: {
-          members: {
-            some: { userId: actor.id, memberRole: 'CLIENT', isActive: true },
-          },
+          OR: [
+            { clientUserId: actor.id },
+            {
+              members: {
+                some: {
+                  userId: actor.id,
+                  memberRole: 'CLIENT',
+                  isActive: true,
+                },
+              },
+            },
+          ],
           status: { not: 'ARCHIVED' },
         },
         select: {
@@ -44,6 +58,41 @@ export class ClientPortalService {
           shortDescription: true,
           description: true,
           status: true,
+          quote: {
+            select: {
+              activeVersion: true,
+              versions: {
+                select: {
+                  version: true,
+                  acceptedAt: true,
+                  author: {
+                    select: {
+                      name: true,
+                      adminProfile: { select: { id: true } },
+                    },
+                  },
+                  schedules: {
+                    orderBy: { sequence: 'asc' },
+                    select: {
+                      sequence: true,
+                      milestone: true,
+                      amountMinor: true,
+                      dueDate: true,
+                      payments: {
+                        where: { status: 'CONFIRMED' },
+                        select: { id: true },
+                      },
+                      manualPaymentSubmissions: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 1,
+                        select: { status: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           developmentDate: true,
           createdAt: true,
           members: {
@@ -57,6 +106,7 @@ export class ClientPortalService {
               title: true,
               dueDate: true,
               status: true,
+              clientReviewStatus: true,
               updatedAt: true,
               submittedAt: true,
             },
@@ -109,11 +159,20 @@ export class ClientPortalService {
     ]);
     const ownProjects = await Promise.all(
       projects.map(async (project) => {
+        const quoteVersion = project.quote?.versions.find(
+          (item) => item.version === project.quote?.activeVersion,
+        );
+        const kickoffAdvisor = quoteVersion?.author.adminProfile
+          ? { id: quoteVersion.author.adminProfile.id, name: quoteVersion.author.name }
+          : null;
         const total = project.deliverables.length;
         const approved = project.deliverables.filter(
-          (item) => item.status === 'APPROVED',
+          (item) =>
+            item.status === 'APPROVED' && item.clientReviewStatus === 'APPROVED',
         ).length;
-        const dates = project.deliverables.map((item) => item.dueDate.getTime());
+        const dates = project.deliverables.map((item) =>
+          item.dueDate.getTime(),
+        );
         // S14-B03: project is locked until the advance payment is confirmed
         const locked = await this.enablement.isProjectLocked(project.id);
         return {
@@ -122,9 +181,11 @@ export class ClientPortalService {
           summary: project.shortDescription,
           description: project.description,
           status: project.status,
+          kickoffAdvisor,
           locked,
           progress: total ? Math.round((approved / total) * 100) : null,
-          startedAt: project.developmentDate?.toISOString().slice(0, 10) ?? null,
+          startedAt:
+            project.developmentDate?.toISOString().slice(0, 10) ?? null,
           estimatedDeliveryAt: dates.length
             ? new Date(Math.max(...dates)).toISOString().slice(0, 10)
             : null,
@@ -135,6 +196,7 @@ export class ClientPortalService {
             id: item.id,
             title: item.title,
             status: item.status,
+            clientReviewStatus: item.clientReviewStatus,
             date: item.dueDate.toISOString().slice(0, 10),
           })),
         };
@@ -203,16 +265,51 @@ export class ClientPortalService {
             id: `deliverable-${item.id}`,
             kind: 'deliverable',
             title:
-              item.status === 'APPROVED'
-                ? 'Entregable aprobado'
+              (item.status === 'APPROVED' && item.clientReviewStatus === 'PENDING') ||
+              (item.status === 'OBSERVED' && item.clientReviewStatus === 'OBSERVED')
+                ? 'Tu aprobación del entregable está pendiente'
+                : item.status === 'APPROVED'
+                  ? 'Entregable aprobado'
                 : item.status === 'OBSERVED'
                   ? 'Entregable observado'
-                  : 'Entregable cargado',
-            description: `${item.title} · ${project.name}`,
+                  : 'Entrega recibida por el Product Owner',
+            description:
+              (item.status === 'APPROVED' && item.clientReviewStatus === 'PENDING') ||
+              (item.status === 'OBSERVED' && item.clientReviewStatus === 'OBSERVED')
+                ? `${item.title} · ${project.name}. Revisa y envía tu aprobación o tus observaciones.`
+                : `${item.title} · ${project.name}`,
             date: item.updatedAt,
             to: `/client/deliverables?project=${project.id}`,
           })),
       ),
+      ...projects.flatMap((project) => {
+        const activeVersion = project.quote?.versions.find(
+          (version) => version.version === project.quote?.activeVersion,
+        );
+        if (!activeVersion?.acceptedAt) return [];
+        const schedules = activeVersion.schedules;
+        const pending = schedules.find(
+          (schedule) =>
+            schedule.sequence > 1 &&
+            schedule.payments.length === 0 &&
+            schedules
+              .filter((prior) => prior.sequence < schedule.sequence)
+              .every((prior) => prior.payments.length > 0),
+        );
+        if (!pending) return [];
+        return [{
+          id: `payment-required-${project.id}-${pending.sequence}`,
+          kind: 'payment',
+          title: pending.manualPaymentSubmissions[0]?.status === 'SUBMITTED'
+            ? `Comprobante en revisión · Hito ${pending.sequence}`
+            : `Pago pendiente para continuar · Hito ${pending.sequence}`,
+          description: pending.manualPaymentSubmissions[0]?.status === 'SUBMITTED'
+            ? `Tu comprobante de ${pending.milestone} está en revisión. La construcción continuará cuando el pago sea confirmado.`
+            : `Realiza el abono de ${pending.milestone} para continuar con la construcción del proyecto ${project.name}.`,
+          date: new Date(),
+          to: '/client/quotes/payments',
+        }];
+      }),
     ]
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .slice(0, 30);
@@ -224,6 +321,37 @@ export class ClientPortalService {
       advisor,
       activity,
     };
+  }
+
+  /**
+   * Re-run the idempotent project transition for confirmed first installments.
+   * Besides covering normal payment events, this repairs projects that were
+   * already present but lacked the CLIENT membership required by this portal.
+   */
+  private async reconcileConfirmedAdvances(clientUserId: number) {
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        status: 'CONFIRMED',
+        schedule: {
+          sequence: 1,
+          quoteVersion: { quote: { prospect: { userId: clientUserId } } },
+        },
+      },
+      select: { id: true, scheduleId: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    for (const payment of payments) {
+      try {
+        await this.enablement.enableFromPayment({
+          scheduleId: payment.scheduleId,
+          paymentId: payment.id,
+        });
+      } catch {
+        // A failed reconciliation must not hide the rest of the client's panel.
+        // ProjectEnablementService records the failure; subsequent overview loads retry.
+      }
+    }
   }
 
   async requestMeeting(
@@ -263,10 +391,16 @@ export class ClientPortalService {
     const meeting = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM AdminProfile WHERE id = ${advisor.id} FOR UPDATE`;
       const availableSlot = await tx.advisorAvailabilitySlot?.findFirst({
-        where: { advisorProfileId: advisor.id, start: scheduledAt, end: endsAt },
+        where: {
+          advisorProfileId: advisor.id,
+          start: scheduledAt,
+          end: endsAt,
+        },
       });
       if (tx.advisorAvailabilitySlot && !availableSlot)
-        throw new ConflictException('El horario seleccionado ya no está disponible.');
+        throw new ConflictException(
+          'El horario seleccionado ya no está disponible.',
+        );
       const user = await tx.user.findUniqueOrThrow({
         where: { id: actor.id },
         select: { name: true },

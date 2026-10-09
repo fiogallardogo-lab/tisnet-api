@@ -13,13 +13,19 @@ export class SubmitDeliverableDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
-  @IsUrl(HTTP_URL_OPTIONS)
+  @IsUrl({ ...HTTP_URL_OPTIONS, require_tld: false })
   fileUrl?: string;
 
   @ApiPropertyOptional({ example: 'https://www.figma.com/proto/example' })
   @IsOptional()
   @IsString()
   @MaxLength(500)
-  @IsUrl(HTTP_URL_OPTIONS)
+  @IsUrl({ ...HTTP_URL_OPTIONS, require_tld: false })
   externalLink?: string;
+
+  @ApiPropertyOptional({ example: 'Notas del desarrollador para la revisión.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string;
 }

@@ -100,45 +100,37 @@ export class ProjectEnablementService {
         });
 
         if (existing) {
+          const client = await tx.user.findFirst({
+            where: {
+              id: quoteVersion.clientUserId,
+              isActive: true,
+              role: { name: 'CLIENT' },
+            },
+            select: { id: true },
+          });
+          if (!client) {
+            throw new ConflictException(
+              `Client user ${quoteVersion.clientUserId} is not available for project enablement.`,
+            );
+          }
           if (existing.status === 'DRAFT') {
-            const client = await tx.user.findFirst({
-              where: {
-                id: quoteVersion.clientUserId,
-                isActive: true,
-                role: { name: 'CLIENT' },
-              },
-              select: { id: true },
-            });
-            if (!client) {
-              throw new ConflictException(
-                `Client user ${quoteVersion.clientUserId} is not available for project enablement.`,
-              );
-            }
             const scope = quoteVersion.scope as { description?: string };
             const projectName =
-              scope.description?.slice(0, 150) || `Proyecto ${quote.publicCode}`;
+              scope.description?.slice(0, 150) ||
+              `Proyecto ${quote.publicCode}`;
             await tx.project.update({
               where: { id: existing.id },
               data: {
                 name: projectName,
-                shortDescription: (scope.description || projectName).slice(0, 300),
+                shortDescription: (scope.description || projectName).slice(
+                  0,
+                  300,
+                ),
                 description: scope.description || projectName,
                 status: 'IN_DEVELOPMENT',
                 clientUserId: client.id,
                 prospectId: quote.prospectId,
               },
-            });
-            await tx.projectMember.upsert({
-              where: {
-                projectId_userId: { projectId: existing.id, userId: client.id },
-              },
-              create: {
-                projectId: existing.id,
-                userId: client.id,
-                memberRole: 'CLIENT',
-                participationBasisPoints: 0,
-              },
-              update: { memberRole: 'CLIENT', isActive: true },
             });
             await auditRecord(tx, {
               actorId,
@@ -152,7 +144,24 @@ export class ProjectEnablementService {
                 triggeredBy: actorId ? 'ADMIN' : 'WEBHOOK',
               },
             });
+          } else {
+            await tx.project.update({
+              where: { id: existing.id },
+              data: { clientUserId: client.id, prospectId: quote.prospectId },
+            });
           }
+          await tx.projectMember.upsert({
+            where: {
+              projectId_userId: { projectId: existing.id, userId: client.id },
+            },
+            create: {
+              projectId: existing.id,
+              userId: client.id,
+              memberRole: 'CLIENT',
+              participationBasisPoints: 0,
+            },
+            update: { memberRole: 'CLIENT', isActive: true },
+          });
           await this.ensureMilestones(
             tx,
             existing.id,
@@ -294,10 +303,18 @@ export class ProjectEnablementService {
 
       const project = await tx.project.findUnique({
         where: { id: projectId },
-        select: { id: true, productOwnerId: true },
+        select: {
+          id: true,
+          productOwnerId: true,
+          kickoff: { select: { meeting: { select: { status: true } } } },
+        },
       });
 
       if (!project) throw new NotFoundException('Proyecto no encontrado.');
+      if (!['SCHEDULED', 'COMPLETED'].includes(project.kickoff?.meeting?.status ?? ''))
+        throw new ConflictException(
+          'Confirma la fecha del kickoff antes de asignar el Product Owner.',
+        );
 
       const po = await tx.user.findFirst({
         where: {

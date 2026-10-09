@@ -19,6 +19,7 @@ import {
   ScheduleKickoffDto,
   AddMemberDto,
   AssignProductOwnerDto,
+  ReviewKickoffDto,
 } from './kickoff-sprint14.dto';
 import { ProjectEnablementService } from '../projects/project-enablement.service';
 
@@ -60,11 +61,11 @@ export class KickoffController {
   // ─── Kickoff scheduling ──────────────────────────────────────────────────────
 
   /**
-   * S14-B04: CLIENT/ADMIN/PO can request or update the kickoff date for a project.
-   * Uses the validated ScheduleKickoffDto.
+   * Clients request or change their preferred kickoff date. Administration
+   * confirms or reschedules requests through the dedicated review endpoint.
    */
   @Post('projects/:id/kickoff')
-  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER', 'CLIENT')
+  @Roles('CLIENT')
   scheduleKickoff(
     @Param('id', ParseIntPipe) id: number,
     @Request() r: ActorRequest,
@@ -74,13 +75,23 @@ export class KickoffController {
   }
 
   @Patch('projects/:id/kickoff')
-  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER', 'CLIENT')
+  @Roles('CLIENT')
   updateKickoff(
     @Param('id', ParseIntPipe) id: number,
     @Request() r: ActorRequest,
     @Body() dto: ScheduleKickoffDto,
   ) {
     return this.service.scheduleKickoff(id, r.user, dto);
+  }
+
+  @Patch('projects/:id/kickoff/review')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  reviewKickoff(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() r: ActorRequest,
+    @Body() dto: ReviewKickoffDto,
+  ) {
+    return this.service.reviewKickoff(id, r.user, dto);
   }
 
   // ─── Team management ────────────────────────────────────────────────────────

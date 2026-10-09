@@ -22,6 +22,79 @@ export class ClientPaymentsService {
     @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProvider,
   ) {}
 
+  async listMine(actor: { id: number }) {
+    const schedules = await this.prisma.paymentSchedule.findMany({
+      where: {
+        quoteVersion: {
+          acceptedAt: { not: null },
+          quote: { prospect: { userId: actor.id } },
+        },
+      },
+      include: {
+        quoteVersion: {
+          include: {
+            quote: { select: { id: true, publicCode: true, activeVersion: true } },
+          },
+        },
+        payments: {
+          where: { status: 'CONFIRMED' },
+          orderBy: { createdAt: 'desc' },
+        },
+        manualPaymentSubmissions: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            status: true,
+            operationNumber: true,
+            paymentMethod: true,
+            paidAt: true,
+            reviewNote: true,
+          },
+        },
+      },
+      orderBy: [{ dueDate: 'asc' }, { sequence: 'asc' }],
+    });
+
+    const now = new Date();
+    return schedules
+      .filter((schedule) => schedule.quoteVersion.version === schedule.quoteVersion.quote.activeVersion)
+      .map((schedule) => {
+        const paidMinor = schedule.payments.reduce(
+          (sum, payment) => sum + Number(payment.amountMinor),
+          0,
+        );
+        const submission = schedule.manualPaymentSubmissions[0] ?? null;
+        const status =
+          paidMinor >= Number(schedule.amountMinor)
+            ? 'PAID'
+            : paidMinor > 0
+              ? 'PARTIAL'
+              : submission?.status === 'SUBMITTED'
+                ? 'UNDER_REVIEW'
+                : submission?.status === 'REJECTED'
+                  ? 'REJECTED'
+                  : schedule.dueDate < now
+                    ? 'OVERDUE'
+                    : 'PENDING';
+        return {
+          id: schedule.id,
+          quoteId: schedule.quoteVersion.quote.id,
+          quoteCode: schedule.quoteVersion.quote.publicCode,
+          installment: schedule.milestone,
+          sequence: schedule.sequence,
+          amountMinor: Number(schedule.amountMinor),
+          paidMinor,
+          currency: schedule.quoteVersion.currency,
+          dueDate: schedule.dueDate,
+          paidAt: schedule.payments[0]?.createdAt ?? submission?.paidAt ?? null,
+          status,
+          operationNumber: submission?.operationNumber ?? null,
+          paymentMethod: submission?.paymentMethod ?? null,
+          reviewNote: submission?.status === 'REJECTED' ? submission.reviewNote : null,
+        };
+      });
+  }
+
   private async payableSchedule(
     installmentId: number,
     actor: { id: number; email: string },
@@ -64,6 +137,19 @@ export class ClientPaymentsService {
     ) {
       throw new ConflictException(
         'Acepta la versión oficial vigente antes de pagar.',
+      );
+    }
+    const unpaidPrevious = await this.prisma.paymentSchedule.findFirst({
+      where: {
+        quoteVersionId: schedule.quoteVersionId,
+        sequence: { lt: schedule.sequence },
+        payments: { none: { status: 'CONFIRMED' } },
+      },
+      select: { milestone: true },
+    });
+    if (unpaidPrevious) {
+      throw new ConflictException(
+        `Completa primero el pago de ${unpaidPrevious.milestone}.`,
       );
     }
     if (!['PEN', 'USD'].includes(quoteVersion.currency)) {

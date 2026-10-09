@@ -1,6 +1,7 @@
 import {
   Controller,
   Body,
+  Get,
   Param,
   ParseIntPipe,
   Post,
@@ -28,6 +29,11 @@ class CreateCardChargeDto {
 @Roles('CLIENT')
 export class ClientPaymentsController {
   constructor(private readonly service: ClientPaymentsService) {}
+
+  @Get()
+  listMine(@Request() request: { user: { id: number } }) {
+    return this.service.listMine(request.user);
+  }
 
   @Post(':installmentId/charge')
   createCharge(

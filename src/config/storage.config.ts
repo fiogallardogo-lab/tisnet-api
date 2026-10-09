@@ -9,7 +9,7 @@ export interface StorageConfig {
 export function validateStorageConfig(
   env: Record<string, string | undefined>,
 ): StorageConfig {
-  const driver = (env.STORAGE_DRIVER ?? 'memory').trim();
+  const driver = (env.STORAGE_DRIVER ?? 'disk').trim();
 
   if (driver !== 'memory' && driver !== 'disk') {
     throw new Error(

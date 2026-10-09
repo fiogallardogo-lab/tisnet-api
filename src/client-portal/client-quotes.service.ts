@@ -20,7 +20,9 @@ export class ClientQuotesService {
         id: quoteId,
         OR: [
           { prospect: { userId: clientId } },
-          ...(clientEmail ? [{ contactEmail: clientEmail.trim().toLowerCase() }] : []),
+          ...(clientEmail
+            ? [{ contactEmail: clientEmail.trim().toLowerCase() }]
+            : []),
         ],
       },
       include: {
@@ -32,7 +34,14 @@ export class ClientQuotesService {
           include: {
             schedules: {
               orderBy: { sequence: 'asc' },
-              include: { payments: { where: { status: 'CONFIRMED' } } },
+              include: {
+                payments: { where: { status: 'CONFIRMED' } },
+                manualPaymentSubmissions: {
+                  orderBy: { createdAt: 'desc' },
+                  take: 1,
+                  select: { status: true },
+                },
+              },
             },
           },
         },
@@ -78,6 +87,8 @@ export class ClientQuotesService {
               currency: v.currency,
               dueDate: s.dueDate.toISOString().slice(0, 10),
               status: s.payments.length ? 'PAID' : 'PENDING',
+              manualSubmissionStatus:
+                s.manualPaymentSubmissions[0]?.status ?? null,
             })),
           }))
         : [

@@ -7,6 +7,7 @@ import {
   Injectable,
   NotFoundException,
   Optional,
+  StreamableFile,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import * as nodePath from 'node:path';
@@ -43,6 +44,7 @@ const ADMIN_ROLES = new Set<string>([
 ]);
 const deliverableInclude = {
   reviewedBy: { select: { id: true, name: true } },
+  clientReviewedBy: { select: { id: true, name: true } },
 } satisfies Prisma.ProjectDeliverableInclude;
 
 @Injectable()
@@ -57,11 +59,35 @@ export class DeliverablesService {
 
   async list(projectId: number, actor: DeliverablesActor) {
     await this.requireProjectAccess(projectId, actor);
-    return this.prisma.projectDeliverable.findMany({
+    const items = await this.prisma.projectDeliverable.findMany({
       where: { projectId },
-      include: deliverableInclude,
+      include: {
+        ...deliverableInclude,
+        milestone: {
+          include: {
+            paymentSchedule: {
+              include: {
+                payments: { where: { status: 'CONFIRMED' }, select: { id: true } },
+                quoteVersion: { select: { currency: true } },
+              },
+            },
+          },
+        },
+      },
       orderBy: [{ milestoneOrder: 'asc' }, { id: 'asc' }],
     });
+    return items.map((item) => ({
+      ...item,
+      paymentGate: item.milestone
+        ? {
+            sequence: item.milestone.sequence,
+            milestone: item.milestone.title,
+            amountMinor: Number(item.milestone.paymentSchedule.amountMinor),
+            currency: item.milestone.paymentSchedule.quoteVersion.currency,
+            paid: item.milestone.paymentSchedule.payments.length > 0,
+          }
+        : null,
+    }));
   }
 
   async create(
@@ -125,6 +151,7 @@ export class DeliverablesService {
       ProjectMemberRole.PRODUCT_OWNER,
     ]);
     const deliverable = await this.findDeliverable(projectId, deliverableId);
+    await this.assertMilestonePaid(projectId, deliverable.milestoneOrder);
     if (
       deliverable.status !== DeliverableStatus.DRAFT &&
       deliverable.status !== DeliverableStatus.OBSERVED
@@ -133,6 +160,7 @@ export class DeliverablesService {
         'El entregable no puede enviarse desde su estado actual',
       );
     }
+    const notes = dto.notes?.trim() || null;
     const fileUrl = dto.fileUrl?.trim() || deliverable.fileUrl;
     const externalLink = dto.externalLink?.trim() || deliverable.externalLink;
     if (!fileUrl && !externalLink) {
@@ -156,6 +184,7 @@ export class DeliverablesService {
           fileUrl,
           externalLink,
           status: DeliverableStatus.IN_REVIEW,
+          clientReviewStatus: 'PENDING',
           submittedAt: new Date(),
           reviewedAt: null,
           reviewedById: null,
@@ -171,7 +200,7 @@ export class DeliverablesService {
           action: 'SUBMITTED',
           fileUrl,
           externalLink,
-          feedbackNotes: null,
+          feedbackNotes: notes,
         },
       });
 
@@ -186,6 +215,7 @@ export class DeliverablesService {
             milestoneOrder: deliverable.milestoneOrder,
             hasPdf: !!fileUrl,
             hasVideo: !!externalLink,
+            hasNotes: !!notes,
           },
         },
       });
@@ -211,6 +241,7 @@ export class DeliverablesService {
       projectId,
       milestoneOrDeliverableId,
     );
+    await this.assertMilestonePaid(projectId, deliverable.milestoneOrder);
     if (
       deliverable.status !== DeliverableStatus.DRAFT &&
       deliverable.status !== DeliverableStatus.OBSERVED
@@ -284,6 +315,7 @@ export class DeliverablesService {
           fileUrl,
           externalLink: videoUrl,
           status: DeliverableStatus.IN_REVIEW,
+          clientReviewStatus: 'PENDING',
           submittedAt: new Date(),
           reviewedAt: null,
           reviewedById: null,
@@ -346,7 +378,24 @@ export class DeliverablesService {
       ProjectMemberRole.CLIENT,
     ]);
     const deliverable = await this.findDeliverable(projectId, deliverableId);
-    if (deliverable.status !== DeliverableStatus.IN_REVIEW) {
+    await this.assertMilestonePaid(projectId, deliverable.milestoneOrder);
+    const isClientReview = actor.role === PLATFORM_ROLES.CLIENT;
+    if (
+      isClientReview &&
+      !(
+        deliverable.status === DeliverableStatus.APPROVED &&
+        deliverable.clientReviewStatus === 'PENDING'
+      ) &&
+      !(
+        deliverable.status === DeliverableStatus.OBSERVED &&
+        deliverable.clientReviewStatus === 'OBSERVED'
+      )
+    ) {
+      throw new ConflictException(
+        'El cliente puede aprobar u observar la entrega después de la aprobación técnica del Product Owner.',
+      );
+    }
+    if (!isClientReview && deliverable.status !== DeliverableStatus.IN_REVIEW) {
       throw new ConflictException(
         'Solo se pueden revisar entregables en estado IN_REVIEW',
       );
@@ -363,23 +412,43 @@ export class DeliverablesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const locked = await tx.$queryRawUnsafe<Array<{ status: string }>>(
-        'SELECT id, status FROM ProjectDeliverable WHERE id = ? FOR UPDATE',
+      const locked = await tx.$queryRawUnsafe<Array<{ status: string; clientReviewStatus: string }>>(
+        'SELECT id, status, clientReviewStatus FROM ProjectDeliverable WHERE id = ? FOR UPDATE',
         deliverable.id,
       );
-      if (locked?.[0] && !['IN_REVIEW'].includes(locked[0].status))
+      const canReviewNow = isClientReview
+        ? (locked?.[0]?.status === 'APPROVED' && locked[0].clientReviewStatus === 'PENDING') ||
+          (locked?.[0]?.status === 'OBSERVED' && locked[0].clientReviewStatus === 'OBSERVED')
+        : locked?.[0]?.status === 'IN_REVIEW';
+      if (locked?.[0] && !canReviewNow)
         throw new ConflictException(
           'El entregable cambió de estado; recarga antes de continuar.',
         );
       const updated = await tx.projectDeliverable.update({
         where: { id: deliverable.id },
         data: {
-          status: isObserved
-            ? DeliverableStatus.OBSERVED
-            : DeliverableStatus.APPROVED,
-          feedbackNotes: isObserved ? feedbackNotes : null,
-          reviewedAt: new Date(),
-          reviewedById: actor.id,
+          ...(isClientReview
+            ? {
+                clientReviewStatus: isObserved ? 'OBSERVED' : 'APPROVED',
+                clientReviewedAt: new Date(),
+                clientReviewedById: actor.id,
+                clientFeedbackNotes: isObserved ? feedbackNotes : null,
+                ...(isObserved
+                  ? {}
+                  : {
+                      status: DeliverableStatus.APPROVED,
+                      feedbackNotes: null,
+                    }),
+              }
+            : {
+                status: isObserved
+                  ? DeliverableStatus.OBSERVED
+                  : DeliverableStatus.APPROVED,
+                feedbackNotes: isObserved ? feedbackNotes : null,
+                reviewedAt: new Date(),
+                reviewedById: actor.id,
+                ...(!isObserved ? { clientReviewStatus: 'PENDING' } : {}),
+              }),
         },
         include: deliverableInclude,
       });
@@ -388,7 +457,9 @@ export class DeliverablesService {
         data: {
           deliverableId: deliverable.id,
           actorId: actor.id,
-          action: isObserved ? 'OBSERVED' : 'APPROVED',
+          action: isClientReview
+            ? isObserved ? 'OBSERVED' : 'APPROVED'
+            : isObserved ? 'OBSERVED' : 'APPROVED',
           fileUrl: deliverable.fileUrl,
           externalLink: deliverable.externalLink,
           feedbackNotes: feedbackNotes || null,
@@ -398,18 +469,21 @@ export class DeliverablesService {
       await tx.auditEvent.create({
         data: {
           actorId: actor.id,
-          action: isObserved ? 'DELIVERABLE_OBSERVED' : 'DELIVERABLE_APPROVED',
+          action: isClientReview
+            ? isObserved ? 'CLIENT_DELIVERABLE_OBSERVED' : 'CLIENT_DELIVERABLE_APPROVED'
+            : isObserved ? 'DELIVERABLE_OBSERVED' : 'DELIVERABLE_APPROVED',
           entityType: 'PROJECT_DELIVERABLE',
           entityId: String(deliverable.id),
           metadata: {
             projectId,
             milestoneOrder: deliverable.milestoneOrder,
             hasFeedback: !!feedbackNotes,
+            reviewBy: isClientReview ? 'CLIENT' : 'PRODUCT_OWNER',
           },
         },
       });
 
-      if (!isObserved)
+      if (!isObserved && !isClientReview)
         await this.reminders?.schedule(
           tx,
           deliverable.id,
@@ -474,7 +548,8 @@ export class DeliverablesService {
       ProjectMemberRole.DEVELOPER,
       ProjectMemberRole.PRODUCT_OWNER,
     ]);
-    await this.findDeliverable(projectId, deliverableId);
+    const deliverable = await this.findDeliverable(projectId, deliverableId);
+    await this.assertMilestonePaid(projectId, deliverable.milestoneOrder);
 
     const allowedMimes = ['application/pdf', 'video/mp4', 'video/webm'];
     if (!allowedMimes.includes(file.mimetype)) {
@@ -506,17 +581,13 @@ export class DeliverablesService {
           originalName: file.originalname,
         },
       });
-      url = stored.url;
       storageKey = stored.storageKey;
     } else {
-      url = `https://storage.tisnet.pe/deliverables/${key}`;
+      throw new NotFoundException('El almacenamiento de archivos no está disponible.');
     }
-
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      const baseUrl =
-        process.env.STORAGE_BASE_URL || 'http://localhost:3000/storage';
-      url = `${baseUrl.replace(/\/+$/, '')}/deliverables/${encodeURIComponent(storageKey)}`;
-    }
+    const storageBaseUrl =
+      process.env.STORAGE_BASE_URL || 'http://localhost:3000/storage';
+    url = `${storageBaseUrl.replace(/\/+$/, '')}/deliverables/${encodeURIComponent(storageKey)}`;
 
     return {
       url,
@@ -525,6 +596,61 @@ export class DeliverablesService {
       sizeBytes: file.size,
       mimeType: file.mimetype,
     };
+  }
+
+  async getFile(
+    projectId: number,
+    deliverableId: number,
+    actor: DeliverablesActor,
+  ) {
+    const membership = await this.requireProjectAccess(projectId, actor);
+    this.requirePermission(actor, membership?.memberRole, [
+      ProjectMemberRole.CLIENT,
+      ProjectMemberRole.DEVELOPER,
+      ProjectMemberRole.PRODUCT_OWNER,
+    ]);
+    const deliverable = await this.findDeliverable(projectId, deliverableId);
+    if (!deliverable.fileUrl || !this.storageProvider) {
+      throw new NotFoundException('El archivo del entregable no está disponible.');
+    }
+
+    let storageKey: string;
+    try {
+      const parsed = new URL(deliverable.fileUrl, 'http://localhost');
+      storageKey = decodeURIComponent(parsed.pathname.split('/').filter(Boolean).pop() ?? '');
+    } catch {
+      throw new NotFoundException('No se encontró el archivo del entregable.');
+    }
+    if (!storageKey || storageKey.includes('/') || storageKey.includes('\\')) {
+      throw new NotFoundException('No se encontró el archivo del entregable.');
+    }
+    const stored = await this.storageProvider.get(storageKey);
+    if (!stored) throw new NotFoundException('El contenido del archivo no está disponible.');
+
+    const filename = storageKey.replace(/[\r\n"\\]/g, '_');
+    return new StreamableFile(stored.content, {
+      type: stored.mimeType,
+      disposition: `inline; filename="${filename}"`,
+      length: stored.content.length,
+    });
+  }
+
+  private async assertMilestonePaid(projectId: number, sequence: number) {
+    const milestone = await this.prisma.projectMilestone.findFirst({
+      where: { projectId, sequence },
+      include: {
+        paymentSchedule: {
+          include: {
+            payments: { where: { status: 'CONFIRMED' }, select: { id: true } },
+          },
+        },
+      },
+    });
+    if (milestone && milestone.paymentSchedule.payments.length === 0) {
+      throw new ConflictException(
+        `No se puede continuar con el Hito ${sequence} hasta que el cliente confirme el abono correspondiente.`,
+      );
+    }
   }
 
   private async requireProjectAccess(
