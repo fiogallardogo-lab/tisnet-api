@@ -71,6 +71,10 @@ export class CreateTaskDto {
   @IsInt()
   @Min(1)
   milestoneId?: number | null;
+  @ApiPropertyOptional({ minimum: 1, nullable: true })
+  @IsOptional()
+  @IsInt()
+  milestoneOrder?: number | null;
   @ApiPropertyOptional({ enum: WorkTaskPriority })
   @IsOptional()
   @IsEnum(WorkTaskPriority)
