@@ -3,10 +3,16 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Inject,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma, ProspectSource, ProspectStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import {
+  STORAGE_PROVIDER,
+  type StorageProvider,
+} from '../storage/storage-provider.interface.js';
 import { ListProspectsQueryDto } from './dto/list-prospects-query.dto.js';
 
 const prospectRelations = {
@@ -35,7 +41,10 @@ const prospectRelations = {
 
 @Injectable()
 export class ProspectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(STORAGE_PROVIDER) private readonly storage?: StorageProvider,
+  ) {}
 
   async linkQuote(
     userId: number,
@@ -334,6 +343,8 @@ export class ProspectsService {
       where: {
         isPublicAdvisor: true,
         user: { isActive: true },
+        executiveTitle: { not: null },
+        specialty: { not: null },
       },
       select: {
         id: true,
@@ -348,16 +359,30 @@ export class ProspectsService {
 
     return advisors.map(({ user, ...advisor }) => ({
       ...advisor,
-      photoUrl: this.publicAdvisorUrl(advisor.photoUrl),
+      photoUrl: this.publicAdvisorUrl(advisor.photoUrl, advisor.id),
       calendlyUrl: this.publicAdvisorUrl(advisor.calendlyUrl),
       name: user.name,
     }));
   }
 
-  private publicAdvisorUrl(value: string | null): string | null {
+  private publicAdvisorUrl(
+    value: string | null,
+    profileId?: number,
+  ): string | null {
     if (!value) return null;
     try {
       const url = new URL(value);
+      const key = decodeURIComponent(
+        url.pathname.split('/').filter(Boolean).at(-1) ?? '',
+      );
+      if (
+        this.storage &&
+        profileId !== undefined &&
+        /^profile-\d+-[0-9a-f-]+\.(?:png|jpe?g|webp)$/i.test(key) &&
+        key.startsWith('profile-')
+      ) {
+        return `/api/v1/public/advisors/${profileId}/photo`;
+      }
       if (
         url.protocol !== 'https:' ||
         url.username ||

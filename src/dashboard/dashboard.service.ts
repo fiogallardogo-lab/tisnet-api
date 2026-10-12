@@ -6,6 +6,109 @@ import { WorkActor } from '../work/work.service';
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
+  async developerActivity(actor: WorkActor) {
+    if (actor.role !== 'DEVELOPER')
+      throw new ForbiddenException('Actividad exclusiva del Developer');
+
+    const memberships = await this.prisma.projectMember.findMany({
+      where: {
+        userId: actor.id,
+        memberRole: 'DEVELOPER',
+        isActive: true,
+        project: { status: { not: 'ARCHIVED' } },
+      },
+      select: { projectId: true, project: { select: { name: true } } },
+    });
+    const projectIds = [...new Set(memberships.map((member) => member.projectId))];
+    if (!projectIds.length) return { items: [] };
+
+    const projectNames = new Map(
+      memberships.map((member) => [member.projectId, member.project.name]),
+    );
+    const projectScopes: Prisma.AuditEventWhereInput[] = projectIds.map(
+      (projectId) => ({
+        metadata: { path: '$.projectId', equals: projectId },
+      }),
+    );
+    projectScopes.push({
+      entityType: 'PROJECT',
+      entityId: { in: projectIds.map(String) },
+    });
+
+    const events = await this.prisma.auditEvent.findMany({
+      where: {
+        action: {
+          in: [
+            'TASK_CREATED',
+            'TASK_UPDATED',
+            'TASK_DELETED',
+            'MILESTONE_CREATED',
+            'MILESTONE_UPDATED',
+            'MILESTONE_CONTRIBUTION_SAVED',
+            'MILESTONE_CONTRIBUTIONS_SAVED',
+            'DELIVERABLE_SUBMITTED',
+            'DELIVERABLE_EVIDENCE_SUBMITTED',
+            'DELIVERABLE_OBSERVED',
+            'CLIENT_DELIVERABLE_OBSERVED',
+            'DELIVERABLE_APPROVED',
+            'CLIENT_DELIVERABLE_APPROVED',
+            'RESOURCE_CREATED',
+            'RESOURCE_UPDATED',
+            'RESOURCE_DELETED',
+            'PROJECT_MEMBER_UPDATED',
+            'PROJECT_TEAM_UPDATED',
+            'PROJECT_KICKOFF',
+            'KICKOFF_SCHEDULED',
+            'KICKOFF_RESCHEDULED',
+            'KICKOFF_CONFIRMED',
+            'PROJECT_ENABLED',
+            'PO_ASSIGNED',
+            'PROJECT_CLOSED',
+          ],
+        },
+        createdAt: { gte: new Date(Date.now() - 30 * 86400000) },
+        AND: [
+          { OR: projectScopes },
+          { OR: [{ actorId: null }, { actorId: { not: actor.id } }] },
+        ],
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 30,
+      select: {
+        id: true,
+        action: true,
+        entityType: true,
+        entityId: true,
+        metadata: true,
+        createdAt: true,
+        actor: { select: { name: true } },
+      },
+    });
+
+    return {
+      items: events.flatMap((event) => {
+        const metadata = event.metadata as Prisma.JsonObject;
+        const metadataProjectId = Number(metadata.projectId);
+        const projectId = Number.isInteger(metadataProjectId)
+          ? metadataProjectId
+          : event.entityType === 'PROJECT'
+            ? Number(event.entityId)
+            : NaN;
+        const projectName = projectNames.get(projectId);
+        if (!projectName) return [];
+        return [{
+          id: event.id,
+          action: event.action,
+          entityType: event.entityType,
+          entityId: event.entityId,
+          projectId,
+          projectName,
+          createdAt: event.createdAt,
+          actorName: event.actor?.name ?? null,
+        }];
+      }),
+    };
+  }
   async get(actor: WorkActor, requiredRole: string): Promise<DashboardDto> {
     if (actor.role !== requiredRole)
       throw new ForbiddenException('Dashboard de otro rol');

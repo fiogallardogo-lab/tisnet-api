@@ -52,6 +52,12 @@ export class KickoffController {
     return this.service.listAssignedProjects(r.user);
   }
 
+  @Get('workspace/meetings')
+  @Roles('PRODUCT_OWNER')
+  assignedMeetings(@Request() r: ActorRequest) {
+    return this.service.listAssignedMeetings(r.user);
+  }
+
   @Get('projects/:id/operations')
   @Roles('ADMIN', 'SUPER_ADMIN', 'CLIENT', 'DEVELOPER', 'PRODUCT_OWNER')
   detail(@Param('id', ParseIntPipe) id: number, @Request() r: ActorRequest) {
@@ -85,7 +91,7 @@ export class KickoffController {
   }
 
   @Patch('projects/:id/kickoff/review')
-  @Roles('ADMIN', 'SUPER_ADMIN', 'PRODUCT_OWNER')
+  @Roles('ADMIN', 'SUPER_ADMIN')
   reviewKickoff(
     @Param('id', ParseIntPipe) id: number,
     @Request() r: ActorRequest,

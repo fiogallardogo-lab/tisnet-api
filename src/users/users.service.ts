@@ -290,6 +290,7 @@ export class UsersService {
             userId: number | null;
             name: string;
             company: string | null;
+            phone: string | null;
             quotes: Array<{
               id: number;
               publicCode: string;
@@ -316,6 +317,7 @@ export class UsersService {
                   userId: true,
                   name: true,
                   company: true,
+                  phone: true,
                   quotes: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,

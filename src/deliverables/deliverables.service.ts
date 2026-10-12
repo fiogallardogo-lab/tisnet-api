@@ -64,30 +64,12 @@ export class DeliverablesService {
       include: {
         ...deliverableInclude,
         milestone: {
-          include: {
-            paymentSchedule: {
-              include: {
-                payments: { where: { status: 'CONFIRMED' }, select: { id: true } },
-                quoteVersion: { select: { currency: true } },
-              },
-            },
-          },
+          select: { id: true, title: true, sequence: true },
         },
       },
       orderBy: [{ milestoneOrder: 'asc' }, { id: 'asc' }],
     });
-    return items.map((item) => ({
-      ...item,
-      paymentGate: item.milestone
-        ? {
-            sequence: item.milestone.sequence,
-            milestone: item.milestone.title,
-            amountMinor: Number(item.milestone.paymentSchedule.amountMinor),
-            currency: item.milestone.paymentSchedule.quoteVersion.currency,
-            paid: item.milestone.paymentSchedule.payments.length > 0,
-          }
-        : null,
-    }));
+    return items;
   }
 
   async create(
@@ -99,29 +81,9 @@ export class DeliverablesService {
     this.requirePermission(actor, membership?.memberRole, [
       ProjectMemberRole.PRODUCT_OWNER,
     ]);
-    const commercialProject = await this.prisma.project.findUnique({
-      where: { id: projectId },
-      select: { quoteId: true },
+    const milestone = await this.prisma.projectMilestone.findUnique({
+      where: { projectId_sequence: { projectId, sequence: dto.milestoneOrder } },
     });
-    const milestone = commercialProject?.quoteId
-      ? await this.prisma.projectMilestone.findUnique({
-          where: {
-            projectId_sequence: { projectId, sequence: dto.milestoneOrder },
-          },
-        })
-      : null;
-    if (commercialProject?.quoteId && !milestone)
-      throw new BadRequestException(
-        'El hito debe existir en el acuerdo comercial oficial.',
-      );
-    if (
-      milestone &&
-      (dto.title.trim() !== milestone.title ||
-        new Date(dto.dueDate).getTime() !== milestone.dueDate.getTime())
-    )
-      throw new BadRequestException(
-        'El título y la fecha deben coincidir con el hito acordado.',
-      );
     try {
       return await this.prisma.projectDeliverable.create({
         data: {
@@ -151,7 +113,6 @@ export class DeliverablesService {
       ProjectMemberRole.PRODUCT_OWNER,
     ]);
     const deliverable = await this.findDeliverable(projectId, deliverableId);
-    await this.assertMilestonePaid(projectId, deliverable.milestoneOrder);
     if (
       deliverable.status !== DeliverableStatus.DRAFT &&
       deliverable.status !== DeliverableStatus.OBSERVED
@@ -241,7 +202,6 @@ export class DeliverablesService {
       projectId,
       milestoneOrDeliverableId,
     );
-    await this.assertMilestonePaid(projectId, deliverable.milestoneOrder);
     if (
       deliverable.status !== DeliverableStatus.DRAFT &&
       deliverable.status !== DeliverableStatus.OBSERVED
@@ -378,7 +338,6 @@ export class DeliverablesService {
       ProjectMemberRole.CLIENT,
     ]);
     const deliverable = await this.findDeliverable(projectId, deliverableId);
-    await this.assertMilestonePaid(projectId, deliverable.milestoneOrder);
     const isClientReview = actor.role === PLATFORM_ROLES.CLIENT;
     if (
       isClientReview &&
@@ -549,7 +508,6 @@ export class DeliverablesService {
       ProjectMemberRole.PRODUCT_OWNER,
     ]);
     const deliverable = await this.findDeliverable(projectId, deliverableId);
-    await this.assertMilestonePaid(projectId, deliverable.milestoneOrder);
 
     const allowedMimes = ['application/pdf', 'video/mp4', 'video/webm'];
     if (!allowedMimes.includes(file.mimetype)) {
@@ -633,24 +591,6 @@ export class DeliverablesService {
       disposition: `inline; filename="${filename}"`,
       length: stored.content.length,
     });
-  }
-
-  private async assertMilestonePaid(projectId: number, sequence: number) {
-    const milestone = await this.prisma.projectMilestone.findFirst({
-      where: { projectId, sequence },
-      include: {
-        paymentSchedule: {
-          include: {
-            payments: { where: { status: 'CONFIRMED' }, select: { id: true } },
-          },
-        },
-      },
-    });
-    if (milestone && milestone.paymentSchedule.payments.length === 0) {
-      throw new ConflictException(
-        `No se puede continuar con el Hito ${sequence} hasta que el cliente confirme el abono correspondiente.`,
-      );
-    }
   }
 
   private async requireProjectAccess(

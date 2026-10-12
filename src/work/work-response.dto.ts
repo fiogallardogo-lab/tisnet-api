@@ -4,8 +4,11 @@ export class TaskDto {
   @ApiProperty() projectId!: number;
   @ApiProperty() title!: string;
   @ApiProperty() description!: string;
-  @ApiProperty({ enum: ['TODO', 'IN_PROGRESS', 'DONE'] }) status!:
-    'TODO' | 'IN_PROGRESS' | 'DONE';
+  @ApiProperty({ enum: ['TODO', 'IN_PROGRESS', 'BLOCKED', 'IN_REVIEW', 'DONE'] }) status!:
+    'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'IN_REVIEW' | 'DONE';
+  @ApiProperty({ enum: ['LOW', 'MEDIUM', 'HIGH'] }) priority!: 'LOW' | 'MEDIUM' | 'HIGH';
+  @ApiProperty({ type: String, nullable: true }) blockedReason!: string | null;
+  @ApiProperty({ type: Number, nullable: true }) milestoneId!: number | null;
   @ApiProperty({ type: Number, nullable: true }) assigneeId!: number | null;
   @ApiProperty() createdById!: number;
   @ApiProperty({ type: String, nullable: true }) dueDate!: string | null;

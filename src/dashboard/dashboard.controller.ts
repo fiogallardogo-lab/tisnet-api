@@ -56,6 +56,11 @@ export class DashboardController {
   developer(@Request() r: { user: WorkActor }) {
     return this.service.get(r.user, 'DEVELOPER');
   }
+  @Get('developer/activity')
+  @Roles('DEVELOPER')
+  developerActivity(@Request() r: { user: WorkActor }) {
+    return this.service.developerActivity(r.user);
+  }
   @Get('po')
   @Roles('PRODUCT_OWNER')
   @ApiOkResponse(response(ProductOwnerDashboardDto))

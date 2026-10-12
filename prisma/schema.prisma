@@ -459,35 +459,35 @@ model ProjectMember {
 }
 
 model ProjectDeliverable {
-  paymentReminders PaymentReminder[]
-  milestoneId      Int?
-  milestone        ProjectMilestone?       @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
-  id               Int                     @id @default(autoincrement())
-  projectId        Int
-  title            String                  @db.VarChar(150)
-  description      String                  @db.Text
-  milestoneOrder   Int
-  dueDate          DateTime                @db.Date
-  status           DeliverableStatus       @default(DRAFT)
-  fileUrl          String?                 @db.VarChar(500)
-  externalLink     String?                 @db.VarChar(500)
-  feedbackNotes    String?                 @db.VarChar(2000)
-  submittedAt      DateTime?
-  reviewedAt       DateTime?
-  reviewedById     Int?
-  clientReviewStatus ClientReviewStatus @default(PENDING)
-  clientReviewedAt DateTime?
-  clientReviewedById Int?
-  clientFeedbackNotes String? @db.VarChar(2000)
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
-  project          Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  reviewedBy       User?                   @relation("DeliverableReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  clientReviewedBy User?                   @relation("ClientDeliverableReviewer", fields: [clientReviewedById], references: [id], onDelete: SetNull)
-  history          DeliverableHistory[]
-  contributions    MilestoneContribution[]
+  paymentReminders    PaymentReminder[]
+  milestoneId         Int?
+  milestone           ProjectMilestone?       @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
+  id                  Int                     @id @default(autoincrement())
+  projectId           Int
+  title               String                  @db.VarChar(150)
+  description         String                  @db.Text
+  milestoneOrder      Int
+  dueDate             DateTime                @db.Date
+  status              DeliverableStatus       @default(DRAFT)
+  fileUrl             String?                 @db.VarChar(500)
+  externalLink        String?                 @db.VarChar(500)
+  feedbackNotes       String?                 @db.VarChar(2000)
+  submittedAt         DateTime?
+  reviewedAt          DateTime?
+  reviewedById        Int?
+  clientReviewStatus  ClientReviewStatus      @default(PENDING)
+  clientReviewedAt    DateTime?
+  clientReviewedById  Int?
+  clientFeedbackNotes String?                 @db.VarChar(2000)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  project             Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewedBy          User?                   @relation("DeliverableReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  clientReviewedBy    User?                   @relation("ClientDeliverableReviewer", fields: [clientReviewedById], references: [id], onDelete: SetNull)
+  history             DeliverableHistory[]
+  contributions       MilestoneContribution[]
 
-  @@unique([projectId, milestoneOrder])
+  @@index([projectId, milestoneOrder])
   @@index([milestoneId])
   @@index([projectId, status, dueDate])
   @@index([reviewedById])
@@ -615,7 +615,7 @@ model QuoteVersion {
 
 model PaymentSchedule {
   reminder                 PaymentReminder?
-  milestoneRecord          ProjectMilestone?
+  milestoneRecord          ProjectMilestone[]
   manualPaymentSubmissions ManualPaymentSubmission[]
   id                       Int                       @id @default(autoincrement())
   quoteVersionId           Int
@@ -712,14 +712,15 @@ model Kickoff {
 model ProjectMilestone {
   id                Int                     @id @default(autoincrement())
   projectId         Int
-  paymentScheduleId Int                     @unique
+  paymentScheduleId Int?
   title             String                  @db.VarChar(150)
   dueDate           DateTime                @db.Date
   sequence          Int
   project           Project                 @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  paymentSchedule   PaymentSchedule         @relation(fields: [paymentScheduleId], references: [id], onDelete: Restrict)
+  paymentSchedule   PaymentSchedule?        @relation(fields: [paymentScheduleId], references: [id], onDelete: Restrict)
   deliverables      ProjectDeliverable[]
   contributions     MilestoneContribution[]
+  workTasks         WorkTask[]
 
   @@unique([projectId, sequence])
 }
@@ -871,26 +872,39 @@ model PublicTeamProfile {
 enum WorkTaskStatus {
   TODO
   IN_PROGRESS
+  BLOCKED
+  IN_REVIEW
   DONE
 }
 
+enum WorkTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 model WorkTask {
-  id          Int            @id @default(autoincrement())
-  projectId   Int
-  title       String         @db.VarChar(150)
-  description String         @db.VarChar(2000)
-  status      WorkTaskStatus @default(TODO)
-  assigneeId  Int?
-  createdById Int
-  dueDate     DateTime?      @db.Date
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  project     Project        @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  assignee    User?          @relation("WorkTaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
-  creator     User           @relation("WorkTaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  logs        WorkLog[]
+  id            Int               @id @default(autoincrement())
+  projectId     Int
+  milestoneId   Int?
+  title         String            @db.VarChar(150)
+  description   String            @db.VarChar(2000)
+  status        WorkTaskStatus    @default(TODO)
+  priority      WorkTaskPriority  @default(MEDIUM)
+  blockedReason String?           @db.VarChar(1000)
+  assigneeId    Int?
+  createdById   Int
+  dueDate       DateTime?         @db.Date
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  project       Project           @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  milestone     ProjectMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  assignee      User?             @relation("WorkTaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  creator       User              @relation("WorkTaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  logs          WorkLog[]
 
   @@index([projectId, status, dueDate])
+  @@index([projectId, milestoneId])
   @@index([assigneeId, status])
 }
 

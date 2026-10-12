@@ -35,6 +35,8 @@ import {
   UpdateResourceDto,
   CreateWorkLogDto,
   LogQuery,
+  CreateMilestoneDto,
+  UpdateMilestoneDto,
 } from './work.dto';
 type Req = { user: WorkActor };
 @ApiWorkErrors()
@@ -45,12 +47,22 @@ type Req = { user: WorkActor };
 @Controller('projects/:projectId')
 export class WorkController {
   constructor(private readonly service: WorkService) {}
-  @Get('tasks') @ApiWorkResponse(TaskPageDto, 200) tasks(
+  @Get('tasks') @ApiWorkResponse(TaskPageDto, 200) @Roles('DEVELOPER', 'PRODUCT_OWNER', 'ADMIN', 'SUPER_ADMIN') tasks(
     @Param('projectId', ParseIntPipe) p: number,
     @Request() r: Req,
     @Query() q: TaskQuery,
   ) {
     return this.service.tasks(p, r.user, q);
+  }
+  @Post('milestones')
+  @Roles('PRODUCT_OWNER', 'ADMIN', 'SUPER_ADMIN')
+  createMilestone(@Param('projectId', ParseIntPipe) p: number, @Request() r: Req, @Body() d: CreateMilestoneDto) {
+    return this.service.createMilestone(p, r.user, d);
+  }
+  @Patch('milestones/:id')
+  @Roles('PRODUCT_OWNER', 'ADMIN', 'SUPER_ADMIN')
+  updateMilestone(@Param('projectId', ParseIntPipe) p: number, @Param('id', ParseIntPipe) id: number, @Request() r: Req, @Body() d: UpdateMilestoneDto) {
+    return this.service.updateMilestone(p, id, r.user, d);
   }
   @Post('tasks')
   @ApiWorkResponse(TaskDto, 201)

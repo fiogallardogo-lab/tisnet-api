@@ -10,7 +10,10 @@ describe('Advisors Controllers', () => {
   };
 
   describe('PublicAdvisorsController', () => {
-    const controller = new PublicAdvisorsController(prospectsService as never);
+    const controller = new PublicAdvisorsController(
+      prospectsService as never,
+      {} as never,
+    );
 
     it('delega findPublicAdvisors al servicio', async () => {
       prospectsService.findPublicAdvisors.mockResolvedValue([

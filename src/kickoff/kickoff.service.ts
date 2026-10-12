@@ -110,6 +110,50 @@ export class KickoffService {
       };
     });
   }
+  async listAssignedMeetings(actor: { id: number; role: string }) {
+    if (actor.role !== 'PRODUCT_OWNER')
+      throw new ForbiddenException('Solo el Product Owner puede consultar esta agenda.');
+
+    const projects = await this.prisma.project.findMany({
+      where: { productOwnerId: actor.id, status: { not: 'ARCHIVED' }, quoteId: { not: null } },
+      select: { id: true, name: true, quoteId: true, developmentDate: true },
+    });
+    const projectByQuote = new Map(
+      projects.filter((project) => project.quoteId).map((project) => [project.quoteId!, project]),
+    );
+    if (!projectByQuote.size) return [];
+
+    const meetings = await this.prisma.meeting.findMany({
+      where: { quoteId: { in: [...projectByQuote.keys()] }, scheduledAt: { not: null } },
+      include: {
+        kickoff: { select: { id: true } },
+        prospect: { select: { name: true } },
+        advisorProfile: { select: { user: { select: { name: true } } } },
+      },
+      orderBy: { scheduledAt: 'asc' },
+    });
+
+    return meetings.flatMap((meeting) => {
+      const project = meeting.quoteId ? projectByQuote.get(meeting.quoteId) : undefined;
+      if (!project || meeting.kickoff || !meeting.scheduledAt ||
+          !project.developmentDate || meeting.scheduledAt < project.developmentDate)
+        return [];
+      return [{
+        meetingId: String(meeting.id),
+        projectId: project.id,
+        projectName: project.name,
+        name: meeting.prospect?.name ? 'Seguimiento · ' + meeting.prospect.name : 'Seguimiento de proyecto',
+        status: meeting.status,
+        start: meeting.scheduledAt,
+        end: meeting.endsAt,
+        createdAt: meeting.createdAt,
+        timezone: meeting.timezone,
+        advisorName: meeting.advisorProfile?.user.name ?? null,
+        meetingUrl: meeting.externalEventUri || (meeting.status === 'SCHEDULED' ? 'https://app.tisnet.pe/meetings/' + meeting.id : null),
+      }];
+    });
+  }
+
   private async validateTeam(
     tx: Prisma.TransactionClient,
     members: ProjectTeamDto['members'],
@@ -164,10 +208,6 @@ export class KickoffService {
           },
         });
         if (!client) throw new ConflictException('Cliente no disponible');
-        const schedules = await tx.paymentSchedule.findMany({
-          where: { quoteVersionId: version.id },
-          orderBy: { sequence: 'asc' },
-        });
         const scope = version.scope as { description?: string };
         const poUserId = dto.members.find(
           (m) => m.role === 'PRODUCT_OWNER',
@@ -269,28 +309,6 @@ export class KickoffService {
             },
           });
         }
-        for (const part of schedules) {
-          await tx.projectMilestone.upsert({
-            where: { paymentScheduleId: part.id },
-            update: {},
-            create: {
-              projectId: project.id,
-              paymentScheduleId: part.id,
-              title: part.milestone,
-              dueDate: part.dueDate,
-              sequence: part.sequence,
-              deliverables: {
-                create: {
-                  projectId: project.id,
-                  title: part.milestone,
-                  description: scope.description || part.milestone,
-                  milestoneOrder: part.sequence,
-                  dueDate: part.dueDate,
-                },
-              },
-            },
-          });
-        }
         await tx.auditEvent.create({
           data: {
             actorId,
@@ -371,7 +389,7 @@ export class KickoffService {
     const canManageTeam =
       ['ADMIN', 'SUPER_ADMIN'].includes(actor.role) ||
       (actor.role === 'PRODUCT_OWNER' && project.productOwnerId === actor.id);
-    const canManageKickoff = canManageTeam;
+    const canManageKickoff = ['ADMIN', 'SUPER_ADMIN'].includes(actor.role);
     const canViewFinance = ['ADMIN', 'SUPER_ADMIN', 'CLIENT'].includes(
       actor.role,
     );
@@ -619,10 +637,9 @@ export class KickoffService {
     actor: { id: number; role: string },
     dto: ReviewKickoffDto,
   ) {
-    const projectAccess = await this.access(projectId, actor);
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(actor.role) &&
-        !(actor.role === 'PRODUCT_OWNER' && projectAccess.productOwnerId === actor.id))
-      throw new ForbiddenException('Solo administración o el Product Owner asignado pueden revisar el kickoff.');
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(actor.role))
+      throw new ForbiddenException('Solo administración puede revisar el kickoff.');
+    await this.access(projectId, actor);
     if (dto.action === 'RESCHEDULE' && !dto.scheduledAt)
       throw new BadRequestException('Indica la nueva fecha y hora.');
     if (dto.action === 'CONFIRM' && dto.scheduledAt)

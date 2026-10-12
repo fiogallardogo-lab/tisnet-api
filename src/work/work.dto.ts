@@ -13,7 +13,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { WorkTaskStatus } from '@prisma/client';
+import { WorkTaskPriority, WorkTaskStatus } from '@prisma/client';
 export class WorkPageQuery {
   @ApiPropertyOptional({ default: 1 })
   @Type(() => Number)
@@ -66,13 +66,32 @@ export class CreateTaskDto {
   @IsDateString({ strict: true })
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   dueDate?: string | null;
+  @ApiPropertyOptional({ minimum: 1, nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  milestoneId?: number | null;
+  @ApiPropertyOptional({ enum: WorkTaskPriority })
+  @IsOptional()
+  @IsEnum(WorkTaskPriority)
+  priority?: WorkTaskPriority;
 }
 export class UpdateTaskDto extends PartialType(CreateTaskDto) {
   @ApiPropertyOptional({ enum: WorkTaskStatus })
   @IsOptional()
   @IsEnum(WorkTaskStatus)
   status?: WorkTaskStatus;
+  @ApiPropertyOptional({ maxLength: 1000, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  blockedReason?: string | null;
 }
+export class CreateMilestoneDto {
+  @ApiProperty({ maxLength: 150 }) @IsString() @MinLength(1) @MaxLength(150) @Matches(/\S/) title!: string;
+  @ApiProperty({ example: '2026-10-15' }) @IsDateString({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) dueDate!: string;
+}
+export class UpdateMilestoneDto extends PartialType(CreateMilestoneDto) {}
 export class CreateResourceDto {
   @ApiProperty({ maxLength: 150 })
   @IsString()

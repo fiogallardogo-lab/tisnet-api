@@ -451,7 +451,12 @@ describe('ProspectsService', () => {
 
       expect(prisma.adminProfile.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { isPublicAdvisor: true, user: { isActive: true } },
+          where: expect.objectContaining({
+            isPublicAdvisor: true,
+            user: { isActive: true },
+            executiveTitle: { not: null },
+            specialty: { not: null },
+          }),
         }),
       );
       expect(result).toEqual([

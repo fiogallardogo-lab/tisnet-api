@@ -162,12 +162,6 @@ export class ProjectEnablementService {
             },
             update: { memberRole: 'CLIENT', isActive: true },
           });
-          await this.ensureMilestones(
-            tx,
-            existing.id,
-            quoteVersion.id,
-            quoteVersion.scope,
-          );
           this.logger.log(
             `[Enablement] Project ${existing.id} already exists for quote ${quote.id}. Idempotent skip.`,
           );
@@ -245,12 +239,6 @@ export class ProjectEnablementService {
           select: { id: true },
         });
 
-        await this.ensureMilestones(
-          tx,
-          project.id,
-          quoteVersion.id,
-          quoteVersion.scope,
-        );
         await auditRecord(tx, {
           actorId,
           action: 'PROJECT_ENABLED',
@@ -409,41 +397,6 @@ export class ProjectEnablementService {
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
-
-  private async ensureMilestones(
-    tx: Prisma.TransactionClient,
-    projectId: number,
-    quoteVersionId: number,
-    scope: Prisma.JsonValue,
-  ) {
-    const schedules = await tx.paymentSchedule.findMany({
-      where: { quoteVersionId },
-      orderBy: { sequence: 'asc' },
-    });
-    const description = (scope as { description?: string })?.description;
-    for (const part of schedules) {
-      await tx.projectMilestone.upsert({
-        where: { paymentScheduleId: part.id },
-        update: {},
-        create: {
-          projectId,
-          paymentScheduleId: part.id,
-          title: part.milestone,
-          dueDate: part.dueDate,
-          sequence: part.sequence,
-          deliverables: {
-            create: {
-              projectId,
-              title: part.milestone,
-              description: description || part.milestone,
-              milestoneOrder: part.sequence,
-              dueDate: part.dueDate,
-            },
-          },
-        },
-      });
-    }
-  }
 
   private async uniqueSlug(
     tx: Prisma.TransactionClient,

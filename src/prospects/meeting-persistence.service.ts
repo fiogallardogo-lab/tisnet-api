@@ -104,40 +104,7 @@ export class MeetingPersistenceService {
         },
       }),
     ]);
-    const hasCustomSlots =
-      (await this.prisma.advisorAvailabilitySlot.count({
-        where: { advisorProfileId: advisorId },
-      })) > 0;
-
-    let candidateSlots: Array<{ id: number; start: Date; end: Date }> = slots;
-    if (candidateSlots.length === 0 && !hasCustomSlots) {
-      // Default business hours in Lima (UTC-5): 09:00, 10:00, 11:00, 15:00, 16:00, 17:00
-      // In UTC hours: 14, 15, 16, 20, 21, 22
-      const defaultHoursUtc = [14, 15, 16, 20, 21, 22];
-      const generated: Array<{ id: number; start: Date; end: Date }> = [];
-      const currentDay = new Date(a);
-      currentDay.setUTCHours(0, 0, 0, 0);
-
-      let genId = -1;
-      while (currentDay <= b) {
-        if (currentDay.getUTCDay() !== 0) {
-          for (const hour of defaultHoursUtc) {
-            const slotStart = new Date(currentDay);
-            slotStart.setUTCHours(hour, 0, 0, 0);
-            const slotEnd = new Date(currentDay);
-            slotEnd.setUTCHours(hour + 1, 0, 0, 0);
-
-            if (slotStart >= a && slotEnd <= b) {
-              generated.push({ id: genId--, start: slotStart, end: slotEnd });
-            }
-          }
-        }
-        currentDay.setUTCDate(currentDay.getUTCDate() + 1);
-      }
-      candidateSlots = generated;
-    }
-
-    return candidateSlots
+    return slots
       .filter(
         (slot) =>
           slot.start >= a &&
@@ -174,13 +141,8 @@ export class MeetingPersistenceService {
   async replaceOwnAvailability(userId: number, input: Array<{ start: string; end: string }>) {
     const advisor = await this.prisma.adminProfile.upsert({
       where: { userId },
-      update: { isPublicAdvisor: true },
-      create: {
-        userId,
-        executiveTitle: 'Asesor comercial y técnico',
-        specialty: 'Consultoría y soluciones digitales',
-        isPublicAdvisor: true,
-      },
+      update: {},
+      create: { userId },
     });
     const now = new Date();
     const rawSlots = input

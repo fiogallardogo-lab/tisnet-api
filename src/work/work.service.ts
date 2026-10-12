@@ -16,6 +16,8 @@ import {
   UpdateResourceDto,
   CreateWorkLogDto,
   LogQuery,
+  CreateMilestoneDto,
+  UpdateMilestoneDto,
 } from './work.dto';
 export interface WorkActor {
   id: number;
@@ -63,12 +65,12 @@ export class WorkService {
         userId: id,
         isActive: true,
         user: { isActive: true },
-        memberRole: { in: ['DEVELOPER', 'PRODUCT_OWNER'] },
+        memberRole: 'DEVELOPER',
       },
     });
     if (!m)
       throw new BadRequestException(
-        'Asignado debe ser Developer/PO activo del proyecto',
+        'Asignado debe ser Developer activo del proyecto',
       );
   }
   private async audit(
@@ -100,15 +102,20 @@ export class WorkService {
   }
   async tasks(projectId: number, actor: WorkActor, q: TaskQuery) {
     await this.access(projectId, actor);
+    if (actor.role === 'CLIENT')
+      throw new ForbiddenException('Las tareas internas solo son visibles para el equipo del proyecto');
     const where: Prisma.WorkTaskWhereInput = {
       projectId,
       ...(q.status ? { status: q.status } : {}),
-      ...(q.assigneeId ? { assigneeId: q.assigneeId } : {}),
+      ...(actor.role === 'DEVELOPER'
+        ? { assigneeId: actor.id }
+        : q.assigneeId ? { assigneeId: q.assigneeId } : {}),
       ...(q.search ? { title: { contains: q.search.trim() } } : {}),
     };
     const [items, count] = await this.prisma.$transaction([
       this.prisma.workTask.findMany({
         where,
+        include: { milestone: { select: { id: true, title: true, sequence: true } } },
         orderBy: { id: 'desc' },
         skip: (q.page - 1) * q.limit,
         take: q.limit,
@@ -122,6 +129,8 @@ export class WorkService {
     return this.prisma.$transaction(async (db) => {
       await this.access(projectId, actor, true, db);
       await this.assignee(db, projectId, dto.assigneeId);
+      if (dto.milestoneId != null && !(await db.projectMilestone.findFirst({ where: { id: dto.milestoneId, projectId } })))
+        throw new BadRequestException('El hito debe pertenecer al proyecto');
       const task = await db.workTask.create({
         data: {
           projectId,
@@ -130,6 +139,8 @@ export class WorkService {
           description: dto.description?.trim() ?? '',
           assigneeId: dto.assigneeId,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+          milestoneId: dto.milestoneId,
+          priority: dto.priority,
         },
       });
       await this.audit(
@@ -158,12 +169,14 @@ export class WorkService {
         if (
           actor.role !== 'DEVELOPER' ||
           task.assigneeId !== actor.id ||
-          Object.keys(dto).some((k) => k !== 'status')
+          Object.keys(dto).some((k) => !['status', 'blockedReason'].includes(k))
         )
           throw new ForbiddenException('Solo el asignado cambia el estado');
         const allowed = {
-          TODO: ['IN_PROGRESS'],
-          IN_PROGRESS: ['TODO', 'DONE'],
+          TODO: ['IN_PROGRESS', 'BLOCKED'],
+          IN_PROGRESS: ['TODO', 'BLOCKED', 'IN_REVIEW'],
+          BLOCKED: ['TODO', 'IN_PROGRESS'],
+          IN_REVIEW: ['IN_PROGRESS', 'DONE'],
           DONE: ['IN_PROGRESS'],
         };
         if (
@@ -177,6 +190,10 @@ export class WorkService {
         if (dto[key] === null)
           throw new BadRequestException(`${key} no admite null`);
       await this.assignee(db, projectId, dto.assigneeId);
+      if (dto.milestoneId != null && !(await db.projectMilestone.findFirst({ where: { id: dto.milestoneId, projectId } })))
+        throw new BadRequestException('El hito debe pertenecer al proyecto');
+      if (dto.status === 'BLOCKED' && !(dto.blockedReason || task.blockedReason)?.trim())
+        throw new BadRequestException('Describe el bloqueo de la tarea');
       const result = await db.workTask.update({
         where: { id },
         data: {
@@ -191,6 +208,10 @@ export class WorkService {
           ...(dto.dueDate !== undefined
             ? { dueDate: dto.dueDate ? new Date(dto.dueDate) : null }
             : {}),
+          ...(dto.milestoneId !== undefined ? { milestoneId: dto.milestoneId } : {}),
+          ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
+          ...(dto.blockedReason !== undefined ? { blockedReason: dto.blockedReason?.trim() || null } : {}),
+          ...(dto.status && dto.status !== 'BLOCKED' ? { blockedReason: null } : {}),
         },
       });
       await this.audit(db, actor, 'TASK_UPDATED', 'WORK_TASK', id, projectId);
@@ -217,6 +238,28 @@ export class WorkService {
       }
       await this.audit(db, actor, 'TASK_DELETED', 'WORK_TASK', id, projectId);
       return null;
+    });
+  }
+  async createMilestone(projectId: number, actor: WorkActor, dto: CreateMilestoneDto) {
+    this.manage(actor);
+    return this.prisma.$transaction(async (db) => {
+      await this.access(projectId, actor, true, db);
+      await db.$queryRaw`SELECT id FROM Project WHERE id=${projectId} FOR UPDATE`;
+      const sequence = (await db.projectMilestone.aggregate({ where: { projectId }, _max: { sequence: true } }))._max.sequence ?? 0;
+      const milestone = await db.projectMilestone.create({ data: { projectId, title: dto.title.trim(), dueDate: new Date(dto.dueDate), sequence: sequence + 1 } });
+      await this.audit(db, actor, 'MILESTONE_CREATED', 'PROJECT_MILESTONE', milestone.id, projectId);
+      return milestone;
+    });
+  }
+  async updateMilestone(projectId: number, id: number, actor: WorkActor, dto: UpdateMilestoneDto) {
+    this.manage(actor);
+    return this.prisma.$transaction(async (db) => {
+      await this.access(projectId, actor, true, db);
+      const milestone = await db.projectMilestone.findFirst({ where: { id, projectId } });
+      if (!milestone) throw new NotFoundException('Hito no encontrado');
+      const result = await db.projectMilestone.update({ where: { id }, data: { ...(dto.title ? { title: dto.title.trim() } : {}), ...(dto.dueDate ? { dueDate: new Date(dto.dueDate) } : {}) } });
+      await this.audit(db, actor, 'MILESTONE_UPDATED', 'PROJECT_MILESTONE', id, projectId);
+      return result;
     });
   }
   async resources(projectId: number, actor: WorkActor, q: WorkPageQuery) {
