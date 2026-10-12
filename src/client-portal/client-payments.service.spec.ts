@@ -24,7 +24,10 @@ describe('ClientPaymentsService payment boundaries', () => {
       },
     };
     const db = {
-      paymentSchedule: { findUnique: vi.fn().mockResolvedValue(schedule) },
+      paymentSchedule: {
+        findUnique: vi.fn().mockResolvedValue(schedule),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
     };
     const provider = {
       createCharge: vi

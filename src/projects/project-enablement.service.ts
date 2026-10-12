@@ -294,15 +294,10 @@ export class ProjectEnablementService {
         select: {
           id: true,
           productOwnerId: true,
-          kickoff: { select: { meeting: { select: { status: true } } } },
         },
       });
 
       if (!project) throw new NotFoundException('Proyecto no encontrado.');
-      if (!['SCHEDULED', 'COMPLETED'].includes(project.kickoff?.meeting?.status ?? ''))
-        throw new ConflictException(
-          'Confirma la fecha del kickoff antes de asignar el Product Owner.',
-        );
 
       const po = await tx.user.findFirst({
         where: {

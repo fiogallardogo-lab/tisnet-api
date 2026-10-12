@@ -95,15 +95,35 @@ export class ClientPortalService {
           },
           developmentDate: true,
           createdAt: true,
+          productOwner: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
           members: {
             where: { isActive: true, memberRole: { not: 'CLIENT' } },
-            select: { id: true },
+            select: {
+              id: true,
+              memberRole: true,
+              technicalRole: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
           },
           deliverables: {
             orderBy: { milestoneOrder: 'asc' },
             select: {
               id: true,
               title: true,
+              description: true,
+              milestoneOrder: true,
               dueDate: true,
               status: true,
               clientReviewStatus: true,
@@ -130,6 +150,20 @@ export class ClientPortalService {
           currency: true,
           notes: true,
           createdAt: true,
+          activeVersion: true,
+          versions: {
+            orderBy: { version: 'desc' },
+            select: {
+              id: true,
+              version: true,
+              acceptedAt: true,
+              amountMinor: true,
+              currency: true,
+              schedules: {
+                select: { id: true },
+              },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -168,13 +202,42 @@ export class ClientPortalService {
         const total = project.deliverables.length;
         const approved = project.deliverables.filter(
           (item) =>
-            item.status === 'APPROVED' && item.clientReviewStatus === 'APPROVED',
+            item.status === 'APPROVED' &&
+            (!item.clientReviewStatus || item.clientReviewStatus === 'APPROVED'),
         ).length;
         const dates = project.deliverables.map((item) =>
           item.dueDate.getTime(),
         );
         // S14-B03: project is locked until the advance payment is confirmed
         const locked = await this.enablement.isProjectLocked(project.id);
+
+        const team: { id: string; name: string; role: string; email?: string }[] = [];
+        if (project.productOwner) {
+          team.push({
+            id: String(project.productOwner.id),
+            name: project.productOwner.name,
+            role: 'Product Owner',
+            email: project.productOwner.email,
+          });
+        }
+        for (const m of (project.members as any[]) || []) {
+          if (project.productOwner && m.user?.id === project.productOwner.id) {
+            continue;
+          }
+          const roleLabel =
+            m.memberRole === 'PRODUCT_OWNER'
+              ? 'Product Owner'
+              : m.technicalRole || 'Especialista';
+          if (m.user) {
+            team.push({
+              id: String(m.user.id),
+              name: m.user.name,
+              role: roleLabel,
+              email: m.user.email,
+            });
+          }
+        }
+
         return {
           id: project.id,
           name: project.name,
@@ -189,26 +252,47 @@ export class ClientPortalService {
           estimatedDeliveryAt: dates.length
             ? new Date(Math.max(...dates)).toISOString().slice(0, 10)
             : null,
-          teamSize: project.members.length,
+          teamSize: team.length || (project.members?.length ?? 0),
           totalDeliverables: total,
           pendingDeliverables: total - approved,
+          productOwner: project.productOwner ?? null,
+          team,
           milestones: project.deliverables.map((item) => ({
             id: item.id,
             title: item.title,
+            description: item.description,
             status: item.status,
             clientReviewStatus: item.clientReviewStatus,
             date: item.dueDate.toISOString().slice(0, 10),
+            milestoneOrder: item.milestoneOrder,
           })),
         };
       }),
     );
     const ownQuotes = quotes
-      .map((quote) => ({
-        ...quote,
-        id: `quote-${quote.id}`,
-        code: quote.publicCode,
-        amountMinor: quote.amountMinor?.toString() ?? null,
-      }))
+      .map((quote) => {
+        const activeVersion =
+          (quote as any).versions?.find((item: any) => item.version === (quote as any).activeVersion) ??
+          (quote as any).versions?.[0];
+        const acceptedVersion = (quote as any).versions?.find((item: any) => item.acceptedAt);
+        const isApproved = Boolean(acceptedVersion?.acceptedAt);
+
+        return {
+          ...quote,
+          id: `quote-${quote.id}`,
+          quoteId: quote.id,
+          code: quote.publicCode,
+          status: isApproved ? 'ACCEPTED' : quote.status,
+          amountMinor:
+            activeVersion?.amountMinor?.toString() ??
+            quote.amountMinor?.toString() ??
+            null,
+          currency: activeVersion?.currency ?? quote.currency ?? 'PEN',
+          acceptedAt: acceptedVersion?.acceptedAt ?? null,
+          acceptedVersionId: acceptedVersion?.id ?? null,
+          installmentsCount: activeVersion?.schedules?.length ?? 2,
+        };
+      })
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     const advisorProfile = meetings.find(
       (meeting) =>

@@ -49,7 +49,8 @@ export class ManualPaymentSubmissionsService {
     )
       throw new BadRequestException('Adjunta un comprobante de hasta 5 MiB.');
     const isPdf =
-      file.mimetype === 'application/pdf' &&
+      (file.mimetype === 'application/pdf' ||
+        file.mimetype === 'application/x-pdf') &&
       file.buffer.subarray(0, 5).toString() === '%PDF-';
     const isPng =
       file.mimetype === 'image/png' &&
@@ -57,13 +58,15 @@ export class ManualPaymentSubmissionsService {
         .subarray(0, 8)
         .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
     const isJpeg =
-      file.mimetype === 'image/jpeg' &&
+      (file.mimetype === 'image/jpeg' ||
+        file.mimetype === 'image/jpg' ||
+        file.mimetype === 'image/pjpeg') &&
       file.buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
     if (!isPdf && !isPng && !isJpeg)
       throw new BadRequestException(
         'El comprobante debe ser PDF, PNG o JPG válido.',
       );
-    return file.mimetype;
+    return isJpeg ? 'image/jpeg' : isPdf ? 'application/pdf' : 'image/png';
   }
 
   async submit(
@@ -98,7 +101,10 @@ export class ManualPaymentSubmissionsService {
     });
     if (!schedule) throw new NotFoundException('Cuota no encontrada.');
     const { quoteVersion } = schedule;
-    if (quoteVersion.quote.prospect?.userId !== actor.id)
+    if (
+      quoteVersion.quote.prospect?.userId !== actor.id &&
+      quoteVersion.clientUserId !== actor.id
+    )
       throw new ForbiddenException('No tienes acceso a esta cuota.');
     if (
       !quoteVersion.acceptedAt ||
@@ -148,7 +154,10 @@ export class ManualPaymentSubmissionsService {
           },
         });
         if (!current) throw new NotFoundException('Cuota no encontrada.');
-        if (current.quoteVersion.quote.prospect?.userId !== actor.id)
+        if (
+          current.quoteVersion.quote.prospect?.userId !== actor.id &&
+          current.quoteVersion.clientUserId !== actor.id
+        )
           throw new ForbiddenException('No tienes acceso a esta cuota.');
         if (
           !current.quoteVersion.acceptedAt ||

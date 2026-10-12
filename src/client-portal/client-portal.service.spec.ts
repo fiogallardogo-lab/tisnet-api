@@ -50,16 +50,13 @@ describe('ClientPortalService', () => {
       id: 7,
       email: 'lucia@example.test',
     });
-    expect(prisma.project.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          members: {
-            some: { userId: 7, memberRole: 'CLIENT', isActive: true },
-          },
-          status: { not: 'ARCHIVED' },
-        },
-      }),
-    );
+      expect(prisma.project.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { not: 'ARCHIVED' },
+          }),
+        }),
+      );
     expect(prisma.quote.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {

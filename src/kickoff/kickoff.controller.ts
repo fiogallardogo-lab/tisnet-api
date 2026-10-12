@@ -142,7 +142,7 @@ export class KickoffController {
    * S14-B05: Admin assigns exactly one active PRODUCT_OWNER to a project.
    * Creates a PO membership and emits PO_ASSIGNED audit.
    */
-  @Put('projects/:id/product-owner')
+  @Put(['projects/:id/product-owner', 'kickoff/projects/:id/product-owner'])
   @Roles('ADMIN', 'SUPER_ADMIN')
   assignProductOwner(
     @Param('id', ParseIntPipe) id: number,

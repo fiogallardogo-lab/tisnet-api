@@ -35,6 +35,28 @@ const projectRelations = {
       },
     },
   },
+  productOwner: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  },
+  members: {
+    where: { isActive: true },
+    select: {
+      id: true,
+      memberRole: true,
+      technicalRole: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.ProjectInclude;
 
 type ProjectWithRelations = Prisma.ProjectGetPayload<{
@@ -414,6 +436,13 @@ export class ProjectsService {
   }
 
   private toAdminProject(project: ProjectWithRelations) {
+    const assignedPO =
+      project.productOwner?.name ??
+      project.members?.find((m) => m.memberRole === 'PRODUCT_OWNER')?.user?.name ??
+      'Sin asignar';
+    const activeNonClientMembers =
+      project.members?.filter((m) => m.memberRole !== 'CLIENT') ?? [];
+
     return {
       id: project.id,
       name: project.name,
@@ -436,6 +465,10 @@ export class ProjectsService {
       isFeatured: project.isFeatured,
       isPublished: project.isPublished,
       displayOrder: project.displayOrder,
+      productOwnerId: project.productOwnerId,
+      productOwner: project.productOwner ?? null,
+      assignedPO,
+      teamSize: activeNonClientMembers.length,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     };
