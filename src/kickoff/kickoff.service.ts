@@ -49,6 +49,7 @@ export class KickoffService {
       include: {
         members: { where: { isActive: true }, select: { id: true } },
         client: { select: { name: true } },
+        productOwner: { select: { id: true, name: true, email: true } },
         kickoff: { include: { meeting: { include: { advisorProfile: { include: { user: { select: { name: true } } } } } } } },
         milestones: { orderBy: { sequence: 'asc' }, select: { id: true, title: true, sequence: true, dueDate: true } },
         deliverables: { orderBy: [{ milestoneOrder: 'asc' }, { id: 'asc' }] },
@@ -68,6 +69,8 @@ export class KickoffService {
         id: project.id,
         name: project.name,
         clientName: project.clientName || project.client?.name || null,
+        productOwner: project.productOwner ?? null,
+        assignedPO: project.productOwner?.name ?? 'Sin asignar',
         kickoffAdvisor: project.kickoff?.meeting?.advisorProfile ? { id: project.kickoff.meeting.advisorProfile.id, name: project.kickoff.meeting.advisorProfile.user.name } : null,
         kickoff: project.kickoff?.meeting ? {
           status: project.kickoff.meeting.status,

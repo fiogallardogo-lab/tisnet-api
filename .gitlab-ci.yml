@@ -1,0 +1,55 @@
+stages:
+  - verify
+  - package
+
+default:
+  image: node:24-alpine
+
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm/
+
+.node_setup:
+  before_script:
+    - npm ci --cache .npm --prefer-offline
+
+build:
+  stage: verify
+  extends: .node_setup
+  script:
+    - npm run build
+
+lint:
+  stage: verify
+  extends: .node_setup
+  script:
+    - npm run lint
+
+unit_tests:
+  stage: verify
+  extends: .node_setup
+  script:
+    - npm test -- --run
+
+publish_image:
+  stage: package
+  image: docker:27-cli
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+    - docker build --build-arg "APP_COMMIT=$CI_COMMIT_SHA" --tag "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  needs:
+    - build
+    - lint
+    - unit_tests
